@@ -576,14 +576,16 @@ installed manually or obtained from the cosmomc git repository (access available
 <LI>Kernel density estimates in 1D and 2D now use optimized kernel bandwidth selection, linear boundary correction and multiplicative bias correction;
 for details and references see the <A HREF="http://cosmologist.info/notes/GetDist.pdf">GetDist Notes</A>. Generally much more accurate, and also works with multi-modal distributions.
 <LI>Convergence stats include correlation length in both sample and weight units (generalization so applicable to importance-sampled chains;  see the <A HREF="http://cosmologist.info/notes/GetDist.pdf">GetDist Notes</A>)
-<LI>GetDist GUI (now python/GetDistGUI.py) can show convergence, margestats and likestats, shaded contours
+<LI>GetDist GUI (now python/GetDistGUI.py) can show convergence, margestats and likestats, latex tables, and option for shaded contours
 <LI>GetDist GUI options menu windows to easily change and immediately preview different analysis and plot settings; option to change the default style module (getdist.plots or planckStyle provided)
+<LI>GetDist GUI Script Preview tab for WYSIWYG plot preview of generated and custom scripts
 </UL>
-<LI>Reorganised python code into modules (paramgrid, getdist and getdist.gui)
+<LI>Reorganized python code into modules (paramgrid, getdist and getdist.gui)
 <LI>GetDistPlots now getdist.plots; added options to plot above and below diagonal in triangle plot; various fixes
 <LI>Grid scripts compatibility with Grid Engine (OGE/SGE, as installed e.g. on StarCluster Amazon images)
 <LI>Added project files for the <A HREF="http://darmar.vgtu.lt/">CodeBlocks</A> Fortran development environment (using CosmoMC Makefile)
 <LI>Changes for compatibility with gfortran from GCC 6 trunk (which fixes critical GCC Fortran 2003 bugs that affect GCC 5.1 and lower)
+<LI>Support for Python 2.7 and Python 3.4+
 </Ul>
 <LI><B>February 2015</B><BR>
 <UL>

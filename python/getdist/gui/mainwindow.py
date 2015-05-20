@@ -1242,7 +1242,7 @@ class MainWindow(QMainWindow):
             self.canvas = None
         else:
             i = 0
-            while 1:
+            while True:
                 item = self.plotWidget.layout().takeAt(i)
                 if item is None: break
                 del item

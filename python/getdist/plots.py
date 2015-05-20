@@ -958,8 +958,7 @@ class GetDistPlotter(object):
         return plot_col, plot_row
 
     def plots_2d(self, roots, param1=None, params2=None, param_pairs=None, nx=None, legend_labels=None,
-                 legend_ncol=None,
-                 label_order=None, filled=False, shaded=False):
+                 legend_ncol=None, label_order=None, filled=False, shaded=False):
         pairs = []
         roots = makeList(roots)
         if isinstance(param1, (list, tuple)) and len(param1) == 2:
@@ -1024,7 +1023,7 @@ class GetDistPlotter(object):
                       filled_compare=False, shaded=False,
                       contour_args=None, contour_colors=None, contour_ls=None, contour_lws=None, line_args=None,
                       label_order=None,
-                      legend_ncol=None, upper_roots=None, upper_kwargs={}):
+                      legend_ncol=None, legend_loc=None, upper_roots=None, upper_kwargs={}):
         roots = makeList(roots)
         params = self.get_param_array(roots[0], in_params)
         plot_col = len(params)
@@ -1136,9 +1135,11 @@ class GetDistPlotter(object):
             self.add_colorbar_label(cb, col_param)
 
         labels = self.default_legend_labels(legend_labels, roots1d)
+        if not legend_loc and len(params) < 4 and upper_roots is None:
+            legend_loc = 'upper right'
         self.finish_plot(labels, label_order=label_order,
                          legend_ncol=legend_ncol or (None if upper_roots is None else len(labels)),
-                         legend_loc=None, no_gap=self.settings.no_triangle_axis_labels,
+                         legend_loc=legend_loc, no_gap=self.settings.no_triangle_axis_labels,
                          no_extra_legend_space=upper_roots is None)
 
     def rectangle_plot(self, xparams, yparams, yroots=None, roots=None, plot_roots=None, plot_texts=None,

@@ -60,8 +60,7 @@ class MixtureND(object):
             loglikes = -np.log(self.pdf(samples))
         else:
             loglikes = None
-        samps = mcsamples.MCSamples(samples=samples, loglikes=loglikes, names=names, ranges=self.lims, **kwargs)
-        return samps
+        return mcsamples.MCSamples(samples=samples, loglikes=loglikes, names=names, ranges=self.lims, **kwargs)
 
     def autoRanges(self, sigma_max=4, lims=None):
         res = []

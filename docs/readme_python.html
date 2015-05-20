@@ -7,7 +7,7 @@
 
 <H2>Python scripts for plotting, analysing and grids of runs</H3>
 
-See the ./python directory for scripts, which mostly require Python 2.7+. To configure your system to
+See the ./python directory for scripts, which require Python 2.7+ or 3.4+. To configure your system to
 work with the script libraries add CosmoMC's python path to your environment variables, e.g. in ~/.bashrc (or ~/bash_profile, etc):
 <pre>
 export PYTHONPATH=COSMOMC..PATH/python:$PYTHONPATH
@@ -24,18 +24,18 @@ For plotting from Planck chains see the <A HREF="readme_planck.html">Planck read
 </UL>
 <A NAME="plotting_scripts">
 <h2>Plotting scripts</h2>
-GetDistPlots (directly, or via planckStyle) are used to make plots from chain results using your own custom scripts.
+The getdist.plots module (directly, or via planckStyle) is used to make plots from chain results using your own custom scripts.
 For <A HREF="readme_grids.html">grids</A> of chains, as the Planck downloads, you can also use <B>python python/makePlots.py PLA  ..</B>
 to make plots (en masse if you wish) for quick inspection of grid results.
 <P>
-The sample scripts make use of <b>planckStyle</b>. This can be interchanged with <b>GetDistPlots</b> if you do not want
+The sample scripts make use of <b>planckStyle</b>. This can be interchanged with <b>getdist.plots</b> if you do not want
 to use the Planck style (or some extra functions used in the batch2/output samples). Both implement the functions
 <UL>
 <LI><b>getSinglePlotter</b>, to get a plotter object suitable for single plot figures
 <LI><b>getPlotter</b>, to get a plotter object suitable for making plots that scale with the number of subplots
 <LI><b>getSubplotPlotter</b>, to get a plotter object for plotting several fixed small-size subplots, suitable for scaling to fit in paper
 </UL>
-The GetDistPlotter main plotting class is defined in python/GetDistPlots.py.
+The main plotting class is defined in python/getdist/plots.py.
 For example you can do
 <blockquote>
 <pre>
@@ -71,7 +71,7 @@ Outputs of the two versions should look like this:<BR>
 <IMG SRC="http://cosmologist.info/cosmomc/pics/planck2015/mnu_nnu.png">
 <IMG SRC="http://cosmologist.info/cosmomc/pics/planck2015/mnu_nnu2.png">
 <P>
-See python/GetDistPlots.py for the various functions and options available, and the sample scripts in batch2/outputs.
+See python/getdist/plots.py for the various functions and options available, and the sample scripts in batch2/outputs.
 <p>
 The main functions for making single plots are:
 <pre>
@@ -87,10 +87,11 @@ These functions make sets of subplots:
 <pre>
     def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, label_order=None, nx=None,
                  paramList=None, roots_per_param=False, share_y=None, markers=None, xlims=None, param_renames={}):
-    def plots_2d(self, roots, param1=None, params2=None, param_pairs=None, nx=None, legend_labels=None, legend_ncol=None,
-                 label_order=None, filled=False):
-    def triangle_plot(self, roots, in_params=None, legend_labels=None, plot_3d_with_param=None, filled=False, filled_compare=False, shaded=False,
-                      contour_args=None, contour_colors=None, contour_ls=None, contour_lws=None, line_args=None, label_order=None):
+    def plots_2d(self, roots, param1=None, params2=None, param_pairs=None, nx=None, legend_labels=None,
+                 legend_ncol=None, label_order=None, filled=False, shaded=False):
+    def triangle_plot(self, roots, in_params=None, legend_labels=None, plot_3d_with_param=None, filled=False,
+                      filled_compare=False, shaded=False, contour_args=None, contour_colors=None, contour_ls=None, contour_lws=None, line_args=None,
+                      label_order=None, legend_ncol=None, legend_loc=None, upper_roots=None, upper_kwargs={}):
     def rectangle_plot(self, xparams, yparams, yroots=None, roots=None, plot_roots=None, plot_texts=None,
                        ymarkers=None, xmarkers=None, param_limits={}, legend_labels=None, legend_ncol=None,
                        label_order=None, marker_args={}, **kwargs):
@@ -98,16 +99,13 @@ These functions make sets of subplots:
 These functions give more fine grained control for adding things to a figure:
 <pre>
     def make_figure(self, nplot=1, nx=None, ny=None, xstretch=1, ystretch=1):
-
     def add_1d(self, root, param, plotno=0, normalized=False, **kwargs)
-
-    def add_2d_contours(self, root, param1=None, param2=None, plotno=0, of=None, cols=None,
-                            add_legend_proxy=True, param_pair=None, density=None, alpha=None, **kwargs):
-    def add_2d_shading(self, root, param1, param2):
+    def add_2d_contours(self, root, param1=None, param2=None, plotno=0, of=None, cols=None, contour_levels=None,
+                        add_legend_proxy=True, param_pair=None, density=None, alpha=None, **kwargs):
+    def add_2d_shading(self, root, param1, param2, colormap=None, density=None):
     def add_3d_scatter(self, root, in_params, color_bar=True, alpha=1, extra_thin=1, **ax_args):
-
-    def finish_plot(self, legend_labels=None, legend_loc=None, line_offset=0, legend_ncol=None, label_order=None, no_gap=False, no_extra_legend_space=False, no_tight=False):
-        has_legend = self.settings.line_labels and legend_labels and len(legend_labels) > 1
+    def finish_plot(self, legend_labels=None, legend_loc=None, line_offset=0, legend_ncol=None, label_order=None,
+                    no_gap=False, no_extra_legend_space=False, no_tight=False):
 </pre>
 Utility function add annotation and markers to plots:
 <pre>
@@ -121,7 +119,7 @@ Finally there's the export function:
 <pre>
     def export(self, fname=None, adir=None, watermark=None, tag=None):
 </pre>
-Plus additional function that you can find in the source code for GetDistPlots.py.
+Plus additional function that you can find in the source code for getdist/plots.py.
 
 <A NAME="stats">
 <H2>Analysis scripts</H2>
@@ -132,9 +130,8 @@ this dynamically, and also offer additional features such as being able to defin
 For simple calculations like finding the mean and variance of new derived parameters you can use the functions in python/chains.py. For example, if you want to calculate the posterior mean and limits for &sigma;<sub>8</sub> &Omega;<sub>m</sub><sup>0.6</sup> from Planck you could write a python script
 <blockquote>
 <pre>
-import GetDistPlots as s
-
-g = s.getSinglePlotter(chain_dir=r'./PLA')
+import getdist.plots as gplot
+g = gplot.getSinglePlotter(chain_dir=r'./PLA')
 
 samples = g.sampleAnalyser.samplesForRoot('base_plikHM_TT_lowTEB_lensing')
 
@@ -148,8 +145,9 @@ print '95% limits: ', samples.twoTailLimits(derived, 0.95)
 </blockquote>
 Here p.omegam is a vector of parameter values, similar p.sigma8; samples.mean and samples.std sum the samples with the corresponding weights to calculate the result.
 <P>
-See python/getdist/chains.py and python/getdist/MCSamples.py for other functions you can use.
- Use GetDist or MCSamples.py if you want to reproduce Planck results: chains.py only does tail integrals, it does not check for skewness or calculate credible intervals for skewed distributions. MCSamples gives you code access to most getdist results.
+See python/getdist/chains.py and python/getdist/mcsamples.py for other functions you can use.
+ Use GetDist or mcsamples.py if you want to reproduce Planck results. The mcsamples module gives you code access to most getdist results, and an MCSamples instance
+ can be obtained from a grid as above, or you can load a chain file directly.
 <P>
 For example if you want to do a power law fit in the variable &Omega;<sub>m</sub> and H<sub>0</sub>, you could do
 <blockquote>
@@ -173,20 +171,58 @@ PC1 (e-value: 0.006151)
 ND limits:     0.984    1.017    0.983    1.019
 </pre>
 which tells you that &Omega;<sub>m</sub>H<sub>0</sub><sup>2.97</sup>is constrained at the 0.4% level.
+<P>
+Samples can also be loaded directly from single chains, optionally with custom settings, e.g.
+<pre>
+import getdist
+
+samples = getdist.loadMCSamples(r'./PLA/base/plik_HM_TT_lowTEB/base_plikHM_TT_lowTEB', dist_settings={'ignore_rows':0.3})
+</pre>
 
 <A NAME="derived"></A>
 <h3>Adding and plotting new derived parameters</h3>
-You can use the <b>addDerived</b> function of MCSamples to add a new parameter to existing chains, which can then be used like any of the original parameters.
+You can use the <b>addDerived</b> function of the MCSamples class to add a new parameter to existing chains, which can then be used like any of the original parameters.
 An example gives the idea (from batch2/outputs/DA-H-BAO.py), which adds a new parameter with name tag 'rsH' which is a function of the original parameters 'Hubble057' and 'rdrag':
+<blockquote>
 <pre>
-    p = samples.getParams()
-    rd_fid = 149.28
-    rsH = p.Hubble057 * p.rdrag / rd_fid
-    samples.addDerived(rsH, name='rsH', label=r'H(0.57) (r_{\mathrm{drag}}/r_{\mathrm{drag}}^{\rm fid})\, [{\rm km} \,{\rm s}^{-1}{\rm Mpc}^{-1}]')
-    samples.updateChainBaseStatistics()
+p = samples.getParams()
+rd_fid = 149.28
+rsH = p.Hubble057 * p.rdrag / rd_fid
+samples.addDerived(rsH, name='rsH', label=r'H(0.57) (r_{\mathrm{drag}}/r_{\mathrm{drag}}^{\rm fid})\, [{\rm km} \,{\rm s}^{-1}{\rm Mpc}^{-1}]')
+samples.updateChainBaseStatistics()
 </pre>
+</blockquote>
 The last line is needed to ensure caches etc are cleared, but only needs to be called once if you are adding several new parameters.
 After doing this, you can use 'rsH' as you would any of the original parameter names in the chain.
+
+<h3>Analysing samples directly</h3>
+Rather than reading chain files, you can also analyse samples directly, for example using the constructor
+<pre>
+ from getdist import mcsamples
+ samples = mcsamples.MCSamples(samples=sample_points, loglikes=loglikes, names=names)
+</pre>
+where sample_points is a matrix of sample values, names are the parameter names (list of strings), and loglikes is (optionally) an array of corresponding -log(likelihood) values.
+
+<h3>Plotting densities</h3>
+The g.plot_2d (etc) functions will calculate and plot densities from samples, but you can also add densities that are calculated yourself for comparison, e.g.:
+<blockquote>
+<pre>
+from getdist.densities import Density2D
+import getdist.plots as gplot
+import numpy as np
+
+g = gplot.getSinglePlotter(chain_dir=r'./PLA')
+
+...
+xvalues = np.arange(85, 110, 0.3)
+yvalues = np.arange(1000, 1500, 4)
+x,y = np.meshgrid(xvalues, yvalues)
+loglike = my_loglike_func(x,y)
+density = Density2D(xvalues,yvalues, np.exp(-loglike / 2))
+density.contours = np.exp(-np.array([1.509, 2.4477]) ** 2 / 2)
+g.add_2d_contours(root, 'x', 'y', filled=True, density=density)
+</pre>
+</blockquote>
 
 <H3>Other scripts</H3>
 
@@ -194,23 +230,25 @@ Multi-purpose use and utility scripts include
 <UL>
 <LI>extractBestFitCAMB.py: for converting .minimum best-fit file to CAMB input .ini file (not all parameter combinations)
 <LI>extractBestFitParams.py: for converting .minimum best-fit file to cosmomc input params[xx] settings if you want to fix them
-<LI>iniFile.py: for reading and writing .ini files
 <LI>makePerfectForecastDataset.py: a simple old script for simulating perfect fake CMB datasets
-<LI>getdist/paramNames.py: for reading paramNames files, and general objects for storing parameter info
-<LI>getdist/ResultObjs.py: objects for getdist output results (.margestats) and .minimum files.
-<LI>getdist/MCSamples.py: routines and objects for loading chain files and analysing in python
+<LI>getdist/inifile.py: for reading and writing .ini files
+<LI>getdist/paramnames.py: for reading paramNames files, and general objects for storing parameter info
+<LI>getdist/types.py: objects for getdist output results (.margestats) and .minimum files, and tables
+<LI>getdist/mcsamples.py: routines and objects for loading chain files and analysing in python
 <LI>getdist/chains.py: a more basic version of the above
 <LI>getdist/covscale.py: for modifying .covmat files if parameters are re-scaled
-<LI>getdist/covMat.py: object for covariance matrix and reading .covmat
+<LI>getdist/covmat.py: object for covariance matrix and reading .covmat
 
 </UL>
 
 <A NAME="installpython"></A>
-<H3>Installing Python Windows</H3>
-See the <A HREF="https://www.python.org/downloads/windows/">Python 2.7 download</A>.
-Also install Matplotlib and PySide standard packages using standard methods, or download builds from
+<H2>Installing Python</H2>
+Instructions below are for installing python to run things natively on your machine. You could also use <A HREF="http://cosmologist.info/CosmoBox/">CosmoBox</A>.
+<H3>Python on Windows</H3>
+See the <A HREF="https://www.python.org/downloads/windows/">Python 2.7 download</A>, or install a package like  <A HREF="https://store.continuum.io/cshop/anaconda/">Anaconda</A> (Python 2.7 or 3.4+).
+Also install matplotlib and PySide standard packages using standard methods, or download builds from
  <A HREF="http://www.lfd.uci.edu/~gohlke/pythonlibs/">here</A>.
-<H3>Installing Python on a Mac</H3>
+<H3>Python on a Mac</H3>
 There are several options, here's one:
 <UL>
 <LI>Install <A HREF="https://www.macports.org/install.php">MacPorts</A>, following the instructions on that page (including installing XCode and command line tools first).
