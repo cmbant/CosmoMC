@@ -1,13 +1,17 @@
 #!/usr/bin/env python
 
 from __future__ import absolute_import
-from distutils.core import setup
 import io
 import re
+import os
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
 
 
 def find_version():
-    version_file = io.open('getdist/__init__.py').read()
+    version_file = io.open(os.path.join(os.path.dirname(__file__), 'getdist/__init__.py')).read()
     version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
                               version_file, re.M)
     if version_match:
@@ -22,6 +26,7 @@ setup(name='GetDist',
       url="https://cosmologist.info/cosmomc/",
       packages=['getdist', 'getdist.gui', 'paramgrid'],
       scripts=['GetDist', 'GetDistGUI'],
+      test_suite='tests',
       package_data={'getdist': ['getdist/analysis_defaults.ini']},
       requires=[
           'numpy',
@@ -29,13 +34,12 @@ setup(name='GetDist',
           'six',
           "scipy (>=0.11.0)",
           'PySide'],
+      #  optional (for faster file read)
+      # 'pandas (>=0.14.0)'
       classifiers=[
         "Programming Language :: Python :: 2",
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
       ],
-      # These are optional
-      # 'GUI':  ["PySide"],
-      # 'fastread': ["pandas>=0.14.0"]}
       )

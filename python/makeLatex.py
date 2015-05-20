@@ -4,7 +4,7 @@ import os
 from getdist import types
 
 def margeParamTex(rootname, params=None, limit=1, paramNameFile=None):
-    """ Get tex snipped for constraint on parameters in params """
+    """ Get tex snippet for constraint on parameters in params """
     if not '.margestats' in rootname: rootname += '.margestats'
     marge = types.MargeStats(rootname, paramNameFile)
     if not params: params = marge.list()

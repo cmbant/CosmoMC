@@ -2,7 +2,6 @@
 
 from __future__ import absolute_import
 from __future__ import print_function
-import os
 import sys
 import logging
 
@@ -13,17 +12,12 @@ except ImportError:
     sys.exit()
 
 try:
-    from PySide.QtGui import QApplication
-    os.environ['QT_API'] = 'pyside'
-except ImportError:
-    print("Can't import PySide modules. See docs/readme_python.html for how to install.")
-    sys.exit()
-
-try:
     from getdist.gui.mainwindow import MainWindow
 except ImportError:
     print("Could not find getdist.gui.mainwindow: configure your PYTHONPATH as described in the readme!")
     raise
+
+from PySide.QtGui import QApplication
 
 parser = argparse.ArgumentParser(description='GetDist GUI')
 parser.add_argument('-v', '--verbose', help='verbose', action="store_true")

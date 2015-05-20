@@ -27,7 +27,6 @@ try:
     import PySide
     from PySide.QtCore import *
     from PySide.QtGui import *
-
     os.environ['QT_API'] = 'pyside'
     try:
         import getdist.gui.Resources_pyside
@@ -634,16 +633,13 @@ class MainWindow(QMainWindow):
         self.getPlotter()
         settings = self.default_plot_settings
         pars = ['plot_meanlikes', 'shade_meanlikes', 'prob_label', 'norm_prob_label', 'prob_y_ticks', 'lineM',
-                'plot_args', 'solid_colors',
-                'default_dash_styles', 'line_labels', 'x_label_rotation', 'num_shades', 'shade_level_scale',
-                'tight_layout', 'no_triangle_axis_labels', 'colormap', 'colormap_scatter', 'colorbar_rotation',
-                'colorbar_label_pad',
-                'colorbar_label_rotation', 'tick_prune', 'tight_gap_fraction', 'legend_loc', 'figure_legend_loc',
-                'legend_frame',
-                'figure_legend_frame', 'figure_legend_ncol', 'legend_rect_border', 'legend_frac_subplot_margin',
-                'legend_frac_subplot_line',
-                'num_plot_contours', 'solid_contour_palefactor', 'alpha_filled_add', 'alpha_factor_contour_lines',
-                'axis_marker_color',
+                'plot_args', 'solid_colors', 'default_dash_styles', 'line_labels', 'x_label_rotation',
+                'num_shades', 'shade_level_scale', 'tight_layout', 'no_triangle_axis_labels', 'colormap',
+                'colormap_scatter', 'colorbar_rotation', 'colorbar_label_pad', 'colorbar_label_rotation',
+                'tick_prune', 'tight_gap_fraction', 'legend_loc', 'figure_legend_loc',
+                'legend_frame', 'figure_legend_frame', 'figure_legend_ncol', 'legend_rect_border',
+                'legend_frac_subplot_margin', 'legend_frac_subplot_line', 'num_plot_contours',
+                'solid_contour_palefactor', 'alpha_filled_add', 'alpha_factor_contour_lines', 'axis_marker_color',
                 'axis_marker_ls', 'axis_marker_lw']
         pars.sort()
         ini = IniFile()

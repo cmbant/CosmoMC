@@ -113,7 +113,7 @@ class GetDistPlotSettings(object):
         self.legend_fontsize = legend_fontsize or rcParams['legend.fontsize']
         self.lab_fontsize = lab_fontsize or rcParams['axes.labelsize']
         self.axes_fontsize = axes_fontsize or rcParams['xtick.labelsize']
-        if isinstance(self.axes_fontsize, int):
+        if isinstance(self.axes_fontsize, six.integer_types):
             self.colorbar_axes_fontsize = self.axes_fontsize - 1
         else:
             self.colorbar_axes_fontsize = 'smaller'
@@ -147,7 +147,7 @@ def getSubplotPlotter(subplot_size=2, width_inch=None, **kwargs):
     if width_inch:
         plotter.settings.fig_width_inch = width_inch
         if not kwargs.get('settings'): plotter.settings.rcSizes()
-    if subplot_size < 3 and kwargs.get('settings') is None:
+    if subplot_size < 3 and kwargs.get('settings') is None and not width_inch:
         plotter.settings.axes_fontsize += 2
         plotter.settings.colorbar_axes_fontsize += 2
         plotter.settings.legend_fontsize = plotter.settings.lab_fontsize + 1
@@ -1022,8 +1022,7 @@ class GetDistPlotter(object):
     def triangle_plot(self, roots, in_params=None, legend_labels=None, plot_3d_with_param=None, filled=False,
                       filled_compare=False, shaded=False,
                       contour_args=None, contour_colors=None, contour_ls=None, contour_lws=None, line_args=None,
-                      label_order=None,
-                      legend_ncol=None, legend_loc=None, upper_roots=None, upper_kwargs={}):
+                      label_order=None, legend_ncol=None, legend_loc=None, upper_roots=None, upper_kwargs={}):
         roots = makeList(roots)
         params = self.get_param_array(roots[0], in_params)
         plot_col = len(params)
@@ -1132,7 +1131,9 @@ class GetDistPlotter(object):
             bottom = 0.5
             if len(params) == 2: bottom += 0.1;
             cb = self.fig.colorbar(self.last_scatter, cax=self.fig.add_axes([0.9, bottom, 0.03, 0.35]))
-            self.add_colorbar_label(cb, col_param)
+            cb.ax.yaxis.set_ticks_position('left')
+            cb.ax.yaxis.set_label_position('left')
+            self.add_colorbar_label(cb, col_param, label_rotation=-self.settings.colorbar_label_rotation)
 
         labels = self.default_legend_labels(legend_labels, roots1d)
         if not legend_loc and len(params) < 4 and upper_roots is None:
@@ -1158,6 +1159,7 @@ class GetDistPlotter(object):
         ax_arr = []
         if plot_roots and yroots or roots and yroots or plot_roots and roots:
             raise GetDistPlotError('rectangle plot: must have one of roots, yroots, plot_roots')
+        if roots: roots = makeList(roots)
         limits = dict()
         for x, xparam in enumerate(xparams):
             sharex = None
@@ -1220,9 +1222,11 @@ class GetDistPlotter(object):
         if ls is None: ls = self.settings.axis_marker_ls
         (ax or plt.gca()).add_line(plt.Line2D(P1, P2, color=color, ls=ls, zorder=zorder, **kwargs))
 
-    def add_colorbar_label(self, cb, param):
+    def add_colorbar_label(self, cb, param, label_rotation=None):
+        if label_rotation is None:
+            label_rotation = self.settings.colorbar_label_rotation
         cb.set_label(param.latexLabel(), fontsize=self.settings.lab_fontsize,
-            rotation=self.settings.colorbar_label_rotation, labelpad=self.settings.colorbar_label_pad)
+            rotation=label_rotation, labelpad=self.settings.colorbar_label_pad)
         plt.setp(plt.getp(cb.ax, 'ymajorticklabels'), fontsize=self.settings.colorbar_axes_fontsize)
 
     def _makeParamObject(self, names, samples):

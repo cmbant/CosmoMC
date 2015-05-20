@@ -23,14 +23,15 @@ def lastModified(files):
     return max([os.path.getmtime(fname) for fname in files if os.path.exists(fname)])
 
 
-def chainFiles(root, chain_indices=None, ext='.txt', first_chain=0, last_chain=-1):
+def chainFiles(root, chain_indices=None, ext='.txt', first_chain=0, last_chain=-1, chain_exclude=None):
     index = -1
     files = []
     while True:
         index += 1
         fname = root + ('', '_' + str(index))[index > 0] + ext
         if index > 0 and not os.path.exists(fname) or 0 < last_chain <= index: break
-        if (chain_indices is None or index in chain_indices) and index >= first_chain and os.path.exists(fname):
+        if (chain_indices is None or index in chain_indices) and \
+           (chain_exclude is None or not index in chain_exclude) and index >= first_chain and os.path.exists(fname):
             files.append(fname)
     return files
 

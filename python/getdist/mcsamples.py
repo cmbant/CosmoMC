@@ -1494,6 +1494,30 @@ class MCSamples(chains):
     def getTable(self, columns=1, include_bestfit=False, **kwargs):
         return types.ResultTable(columns, [self.getMargeStats(include_bestfit)], **kwargs)
 
+    def getLatex(self, params=None, limit=1):
+        """ Get tex snippet for constraint on parameters in params """
+        marge = self.getMargeStats()
+        if params is None: params = marge.list()
+
+        formatter = types.NoLineTableFormatter()
+        texs = []
+        labels = []
+        for par in params:
+            tex = marge.texValues(formatter, par, limit=limit)
+            if tex is not None:
+                texs.append(tex[0])
+                labels.append(marge.parWithName(par).getLabel())
+            else:
+                texs.append(None)
+                labels.append(None)
+
+        return labels, texs
+
+    def getInlineLatex(self, param, limit=1):
+        """Get snippet like: A=x\pm y"""
+        labels, texs = self.getLatex([param], limit)
+        return labels[0] + ' = ' + texs[0]
+
     def setDensitiesandMarge1D(self, max_frac_twotail=None, writeDataToFile=False, meanlikes=False):
         if self.done_1Dbins: return
 
