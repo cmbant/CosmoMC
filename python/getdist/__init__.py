@@ -5,7 +5,7 @@ from getdist.inifile import IniFile
 from getdist.paramnames import ParamInfo, ParamNames
 from getdist.chains import WeightedSamples
 from getdist.mcsamples import MCSamples, loadMCSamples
-
+import numpy as np
 
 def get_defaults():
     import os
