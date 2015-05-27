@@ -25,7 +25,8 @@
     class(TMinimizer), allocatable :: Minimizer
     logical :: estimate_propose_matrix = .false.
     real(mcp), allocatable :: test_paramvals(:)
-
+    real(mcp) :: test_check_compare = logZero
+    
 #ifdef MPI
     integer ierror
 
@@ -111,8 +112,8 @@
         start_at_bestfit = Ini%Read_logical('start_at_bestfit',.false.)
     else if (Setup%action==action_tests) then
         test_output_root = Ini%Read_String('test_output_root')
-        test_used_params = Ini%Read_String('test_used_params')
-        !If not specified, just take from central value
+        test_used_params = Ini%Read_String('test_used_params') !If not specified, just take from central value
+        test_check_compare = Ini%Read_Double('test_check_compare',logZero)
     end if
 
     new_chains = .true.
@@ -275,7 +276,7 @@
             read(test_used_params,*, iostat=status) test_paramvals(params_used)
             if (status/=0) call MpiStop('Error reading test_used_params array')
         end if
-        call Setup%DoTests(test_output_root,test_paramvals)
+        call Setup%DoTests(test_output_root,test_paramvals, test_check_compare)
     else
         call DoAbort('undefined action')
     end if

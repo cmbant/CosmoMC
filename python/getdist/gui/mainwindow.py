@@ -1,22 +1,23 @@
 #!/usr/bin/env python
 
-# -*- coding: utf-8 -*-
+from __future__ import print_function
 import os
 import copy
 import logging
-
 import matplotlib
 import numpy as np
 import scipy
-
 import sys
 import signal
+from io import BytesIO
+import six
+
 matplotlib.use('Qt4Agg')
 matplotlib.rcParams['backend.qt4'] = 'PySide'
 
-from getdist import MCSamples, plots
-from getdist.inifile import IniFile
-from sys import platform
+from getdist.gui import SyntaxHighlight
+from getdist import plots, IniFile
+from getdist.mcsamples import GetChainRootFiles, SettingError, ParamError
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
@@ -24,22 +25,23 @@ from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as Navigatio
 
 try:
     import PySide
-    from PySide.QtCore import *
-    from PySide.QtGui  import *
+    from PySide.QtCore import Qt, SIGNAL, QSize, QSettings, QPoint, QCoreApplication
+    from PySide.QtGui import *
     os.environ['QT_API'] = 'pyside'
     try:
-        import Resources_pyside
+        import getdist.gui.Resources_pyside
     except ImportError:
-        print "Missing Resources_pyside.py: Run script update_resources.sh"
+        print("Missing Resources_pyside.py: Run script update_resources.sh")
 except ImportError:
-    print "Can't import PySide modules, please install PySide first."
+    print("Can't import PySide modules, install PySide with 'pip install PySide'.")
     sys.exit()
 
-from paramgrid import batchJob, gridconfig
+from paramgrid import batchjob, gridconfig
 # ==============================================================================
 
 class GuiSelectionError(Exception):
     pass
+
 
 class ParamListWidget(QListWidget):
     def __init__(self, widget, owner):
@@ -58,14 +60,13 @@ class ParamListWidget(QListWidget):
 
 
 class MainWindow(QMainWindow):
-
     def __init__(self, app, ini=None, base_dir=None):
         """
         Initialize of GUI components.
         """
         super(MainWindow, self).__init__()
 
-        if base_dir is None: base_dir = batchJob.getCodeRootPath()
+        if base_dir is None: base_dir = batchjob.getCodeRootPath()
         os.chdir(base_dir)
         self.updating = False
         self.app = app
@@ -76,9 +77,9 @@ class MainWindow(QMainWindow):
         self.script_plot_module = self.plot_module
 
         # GUI setup
-        self.createWidgets()
         self.createActions()
         self.createMenus()
+        self._createWidgets()
         self.createStatusBar()
         self.settingDlg = None
         self.ConfigDlg = None
@@ -92,7 +93,7 @@ class MainWindow(QMainWindow):
         signal.signal(signal.SIGINT, signal.SIG_DFL)
 
         # Path for .ini file
-        self.iniFile = ini or MCSamples.default_getdist_settings
+        self.iniFile = ini or getdist.default_getdist_settings
 
         # Path of root directory
         self.rootdirname = None
@@ -129,47 +130,52 @@ class MainWindow(QMainWindow):
                                triggered=self.close)
 
         self.statsAct = QAction(QIcon(":/images/view_text.png"),
-                               "Marge Stats", self,
-                               shortcut="",
-                               statusTip="Show Marge Stats",
-                               triggered=self.showMargeStats)
+                                "Marge Stats", self,
+                                shortcut="",
+                                statusTip="Show Marge Stats",
+                                triggered=self.showMargeStats)
 
         self.likeStatsAct = QAction(QIcon(":/images/view_text.png"),
-                               "Like Stats", self,
-                               shortcut="",
-                               statusTip="Show Likelihood (N-D) Stats",
-                               triggered=self.showLikeStats)
+                                    "Like Stats", self,
+                                    shortcut="",
+                                    statusTip="Show Likelihood (N-D) Stats",
+                                    triggered=self.showLikeStats)
 
         self.convergeAct = QAction(QIcon(":/images/view_text.png"),
-                               "Converge Stats", self,
-                               shortcut="",
-                               statusTip="Show Convergence Stats",
-                               triggered=self.showConvergeStats)
-
+                                   "Converge Stats", self,
+                                   shortcut="",
+                                   statusTip="Show Convergence Stats",
+                                   triggered=self.showConvergeStats)
 
         self.PCAAct = QAction(QIcon(":/images/view_text.png"),
-                               "Parameter PCA", self,
-                               shortcut="",
-                               statusTip="Do PCA of selected parameters",
-                               triggered=self.showPCA)
+                              "Parameter PCA", self,
+                              shortcut="",
+                              statusTip="Do PCA of selected parameters",
+                              triggered=self.showPCA)
+
+        self.paramTableAct = QAction(QIcon(""),
+                              "Parameter table (latex)", self,
+                              shortcut="",
+                              statusTip="View parameter table",
+                              triggered=self.showParamTable)
 
         self.optionsAct = QAction(QIcon(""),
-                               "Analysis settings", self,
-                               shortcut="",
-                               statusTip="Show settings for getdist and plot densities",
-                               triggered=self.showSettings)
+                                  "Analysis settings", self,
+                                  shortcut="",
+                                  statusTip="Show settings for getdist and plot densities",
+                                  triggered=self.showSettings)
 
         self.plotOptionsAct = QAction(QIcon(""),
-                               "Plot settings", self,
-                               shortcut="",
-                               statusTip="Show settings for plot display",
-                               triggered=self.showPlotSettings)
+                                      "Plot settings", self,
+                                      shortcut="",
+                                      statusTip="Show settings for plot display",
+                                      triggered=self.showPlotSettings)
 
         self.configOptionsAct = QAction(QIcon(""),
-                               "Plot module config ", self,
-                               shortcut="",
-                               statusTip="Configure plot module",
-                               triggered=self.showConfigSettings)
+                                        "Plot module config ", self,
+                                        shortcut="",
+                                        statusTip="Configure plot module",
+                                        triggered=self.showConfigSettings)
 
         self.aboutAct = QAction(QIcon(":/images/help_about.png"),
                                 "&About", self,
@@ -192,7 +198,9 @@ class MainWindow(QMainWindow):
         self.dataMenu.addAction(self.statsAct)
         self.dataMenu.addAction(self.likeStatsAct)
         self.dataMenu.addAction(self.convergeAct)
+        self.dataMenu.addSeparator()
         self.dataMenu.addAction(self.PCAAct)
+        self.dataMenu.addAction(self.paramTableAct)
 
         self.menuBar().addSeparator()
         self.optionMenu = self.menuBar().addMenu("&Options")
@@ -211,14 +219,26 @@ class MainWindow(QMainWindow):
         """
         self.statusBar().showMessage("Ready", 2000)
 
-    def createWidgets(self):
+    def showMessage(self, msg=''):
+        self.statusBar().showMessage(msg)
+        if msg:
+            QCoreApplication.processEvents()
+
+    def _createWidgets(self):
         """
         Create widgets.
         """
-        self.centralWidget = QWidget(self)
-        self.setCentralWidget(self.centralWidget)
+        self.tabWidget = QTabWidget(self)
+        self.tabWidget.setTabPosition(QTabWidget.East)
+        self.tabWidget.setTabPosition(QTabWidget.South)
+        self.connect(self.tabWidget, SIGNAL("currentChanged(int)"), self.tabChanged)
+        self.setCentralWidget(self.tabWidget)
 
-        self.selectWidget = QWidget(self.centralWidget)
+        # First tab: Gui Selection
+        self.firstWidget = QWidget(self)
+        self.tabWidget.addTab(self.firstWidget, "Gui Selection")
+
+        self.selectWidget = QWidget(self.firstWidget)
         self.lineEditDirectory = QLineEdit(self.selectWidget)
         self.lineEditDirectory.clear()
         self.lineEditDirectory.setReadOnly(True)
@@ -260,15 +280,15 @@ class MainWindow(QMainWindow):
 
         self.listParametersX = QListWidget(self.selectWidget)
         self.listParametersX.clear()
-#        self.connect(self.listParametersX,
-#                     SIGNAL("itemChanged(QListWidgetItem *)"),
-#                     self.itemParamXChanged)
+        # self.connect(self.listParametersX,
+        # SIGNAL("itemChanged(QListWidgetItem *)"),
+        # self.itemParamXChanged)
 
         self.listParametersY = QListWidget(self.selectWidget)
         self.listParametersY.clear()
-#        self.connect(self.listParametersY,
-#                     SIGNAL("itemChanged(QListWidgetItem *)"),
-#                     self.itemParamYChanged)
+        #        self.connect(self.listParametersY,
+        #                     SIGNAL("itemChanged(QListWidgetItem *)"),
+        #                     self.itemParamYChanged)
 
         self.selectAllX = QCheckBox("Select All", self.selectWidget)
         self.selectAllX.setCheckState(Qt.Unchecked)
@@ -335,11 +355,11 @@ class MainWindow(QMainWindow):
         self.comboBoxParamTag.hide()
         self.comboBoxDataTag.hide()
 
-        self.plotWidget = QWidget(self.centralWidget)
+        self.plotWidget = QWidget(self.firstWidget)
         layout = QVBoxLayout(self.plotWidget)
         self.plotWidget.setLayout(layout)
 
-        splitter = QSplitter(self.centralWidget)
+        splitter = QSplitter(self.firstWidget)
         splitter.addWidget(self.selectWidget)
         splitter.addWidget(self.plotWidget)
         w = self.width()
@@ -347,7 +367,65 @@ class MainWindow(QMainWindow):
 
         hbox = QHBoxLayout()
         hbox.addWidget(splitter)
-        self.centralWidget.setLayout(hbox)
+        self.firstWidget.setLayout(hbox)
+
+        # Second tab: Script
+        self.secondWidget = QWidget(self)
+        self.tabWidget.addTab(self.secondWidget, "Script Preview")
+
+        self.editWidget = QWidget(self.secondWidget)
+        self.script_edit = ""
+        self.plotter_script = None
+
+        self.toolBar = QToolBar()
+        openAct = QAction(QIcon(":/images/file_open.png"),
+                          "open script", self.toolBar,
+                          statusTip="Open script",
+                          triggered=self.openScript)
+        saveAct = QAction(QIcon(":/images/file_save.png"),
+                          "Save script", self.toolBar,
+                          statusTip="Save script",
+                          triggered=self.saveScript)
+        clearAct = QAction(QIcon(":/images/view_clear.png"),
+                           "Clear", self.toolBar,
+                           statusTip="Clear",
+                           triggered=self.clearScript)
+        self.toolBar.addAction(openAct)
+        self.toolBar.addAction(saveAct)
+        self.toolBar.addAction(clearAct)
+
+        self.textWidget = QPlainTextEdit(self.editWidget)
+        textfont = QFont("Monospace")
+        textfont.setStyleHint(QFont.TypeWriter)
+        self.textWidget.setWordWrapMode(QTextOption.NoWrap)
+        self.textWidget.setFont(textfont)
+        SyntaxHighlight.PythonHighlighter(self.textWidget.document())
+
+        self.pushButtonPlot2 = QPushButton("Make plot", self.editWidget)
+        self.connect(self.pushButtonPlot2, SIGNAL("clicked()"), self.plotData2)
+
+        layoutEdit = QVBoxLayout()
+        layoutEdit.addWidget(self.toolBar)
+        layoutEdit.addWidget(self.textWidget)
+        layoutEdit.addWidget(self.pushButtonPlot2)
+        self.editWidget.setLayout(layoutEdit)
+
+        self.plotWidget2 = QWidget(self.secondWidget)
+        layout2 = QVBoxLayout(self.plotWidget2)
+        self.plotWidget2.setLayout(layout2)
+        self.scrollArea = QScrollArea(self.plotWidget2)
+        self.plotWidget2.layout().addWidget(self.scrollArea)
+
+        splitter2 = QSplitter(self.secondWidget)
+        splitter2.addWidget(self.editWidget)
+        splitter2.addWidget(self.plotWidget2)
+        w = self.width()
+        splitter2.setSizes([w / 2., w / 2.])
+
+        hbox2 = QHBoxLayout()
+        hbox2.addWidget(splitter2)
+        self.secondWidget.setLayout(hbox2)
+
         self.canvas = None
         self.readSettings()
 
@@ -381,12 +459,18 @@ class MainWindow(QMainWindow):
         """
         Callback for action 'Export as PDF/Image'.
         """
-        if self.plotter:
+        index = self.tabWidget.currentIndex()
+        if index == 0:
+            plotter = self.plotter
+        else:
+            plotter = self.plotter_script
+
+        if plotter:
             filename, _ = QFileDialog.getSaveFileName(
                 self, "Choose a file name", '.', "PDF (*.pdf);; Image (*.png *.jpg)")
             if not filename: return
             filename = str(filename)
-            self.plotter.export(filename)
+            plotter.export(filename)
         else:
             # logging.warning("No plotter data to export")
             QMessageBox.warning(self, "Export", "No plotter data to export")
@@ -395,7 +479,14 @@ class MainWindow(QMainWindow):
         """
         Callback for action 'Save script'.
         """
-        if self.script == '':
+        index = self.tabWidget.currentIndex()
+        if index == 0:
+            script = self.script
+        else:
+            self.script_edit = self.textWidget.toPlainText()
+            script = self.script_edit
+
+        if script == '':
             QMessageBox.warning(self, "Script", "No script to save")
             # logging.warning("Script is empty!")
             return
@@ -406,11 +497,11 @@ class MainWindow(QMainWindow):
         filename = str(filename)
         logging.debug("Export script to %s" % filename)
         with open(filename, 'w') as f:
-            f.write(self.script)
+            f.write(script)
 
     def reLoad(self):
         adir = self.getSettings().value('lastSearchDirectory')
-        batchJob.resetGrid(adir)
+        batchjob.resetGrid(adir)
         self.openDirectory(adir)
 
     def getRootname(self):
@@ -430,20 +521,19 @@ class MainWindow(QMainWindow):
         rootname = self.getRootname()
         if rootname is None: return
         try:
-            self.statusBar().showMessage("Calculating convergence stats....")
+            self.showMessage("Calculating convergence stats....")
             samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
             stats = samples.getConvergeTests(samples.converge_test_limit)
             summary = samples.getNumSampleSummaryText()
             if getattr(samples, 'GelmanRubin', None):
                 summary += "var(mean)/mean(var), remaining chains, worst e-value: R-1 = %13.5F" % samples.GelmanRubin
+            dlg = DialogConvergeStats(self, stats, summary, rootname)
+            dlg.show()
+            dlg.activateWindow()
         except Exception as e:
             self.errorReport(e, caption="Convergence stats")
         finally:
-            self.statusBar().showMessage("")
-
-        dlg = DialogConvergeStats(self, stats, summary, rootname)
-        dlg.show()
-        dlg.activateWindow()
+            self.showMessage()
 
     def showPCA(self):
         """
@@ -456,15 +546,14 @@ class MainWindow(QMainWindow):
             pars = self.getXParams()
             if len(pars) == 1: pars += self.getYParams()
             if len(pars) < 2: raise GuiSelectionError('Select two or more parameters first')
-            self.statusBar().showMessage("Calculating PCA....")
+            self.showMessage("Calculating PCA....")
             PCA = samples.PCA(pars)
             dlg = DialogPCA(self, PCA, rootname)
             dlg.show()
         except Exception as e:
             self.errorReport(e, caption="Parameter PCA")
         finally:
-            self.statusBar().showMessage("")
-
+            self.showMessage()
 
     def showMargeStats(self):
         """
@@ -473,16 +562,40 @@ class MainWindow(QMainWindow):
         rootname = self.getRootname()
         if rootname is None: return
         try:
-            self.statusBar().showMessage("Calculating margestats....")
+            self.showMessage("Calculating margestats....")
+            QCoreApplication.processEvents()
             samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
             stats = samples.getMargeStats()
+            dlg = DialogMargeStats(self, stats, rootname)
+            dlg.show()
         except Exception as e:
             self.errorReport(e, caption="Marge stats")
         finally:
-            self.statusBar().showMessage("")
+            self.showMessage()
 
-        dlg = DialogMargeStats(self, stats, rootname)
-        dlg.show()
+    def showParamTable(self):
+        """
+        Callback for action 'Show Parameter Table'.
+        """
+        rootname = self.getRootname()
+        if rootname is None: return
+        try:
+            samples = self.plotter.sampleAnalyser.samplesForRoot(rootname)
+            pars = self.getXParams()
+            if len(pars) < 1:
+                pars = self.getXParams(fulllist=True)
+            if len(pars) < 1:
+                raise GuiSelectionError('Select one or more parameters first')
+            self.showMessage("Generating table....")
+            cols = len(pars) // 20 + 1
+            tables = [samples.getTable(columns=cols, limit=lim + 1, paramList=pars) for lim in range(len(samples.contours))]
+            dlg = DialogParamTables(self, tables, rootname)
+            dlg.show()
+        except Exception as e:
+            self.errorReport(e, caption="Parameter tables")
+        finally:
+            self.showMessage()
+
 
     def showLikeStats(self):
         rootname = self.getRootname()
@@ -502,7 +615,7 @@ class MainWindow(QMainWindow):
         if not self.plotter:
             QMessageBox.warning(self, "Settings", "Open chains first ")
             return
-        if isinstance(self.iniFile, basestring): self.iniFile = IniFile(self.iniFile)
+        if isinstance(self.iniFile, six.string_types): self.iniFile = IniFile(self.iniFile)
         self.settingDlg = self.settingDlg or DialogSettings(self, self.iniFile)
         self.settingDlg.show()
         self.settingDlg.activateWindow()
@@ -519,21 +632,24 @@ class MainWindow(QMainWindow):
         """
         self.getPlotter()
         settings = self.default_plot_settings
-        pars = ['plot_meanlikes', 'shade_meanlikes', 'prob_label', 'norm_prob_label', 'prob_y_ticks', 'lineM', 'plot_args', 'solid_colors',
-                'default_dash_styles', 'line_labels', 'x_label_rotation', 'num_shades', 'shade_level_scale',
-                'tight_layout', 'no_triangle_axis_labels', 'colormap', 'colormap_scatter', 'colorbar_rotation', 'colorbar_label_pad',
-                'colorbar_label_rotation', 'tick_prune', 'tight_gap_fraction', 'legend_loc', 'figure_legend_loc', 'legend_frame',
-                'figure_legend_frame', 'figure_legend_ncol', 'legend_rect_border', 'legend_frac_subplot_margin', 'legend_frac_subplot_line',
-                'num_plot_contours', 'solid_contour_palefactor', 'alpha_filled_add', 'alpha_factor_contour_lines', 'axis_marker_color',
+        pars = ['plot_meanlikes', 'shade_meanlikes', 'prob_label', 'norm_prob_label', 'prob_y_ticks', 'lineM',
+                'plot_args', 'solid_colors', 'default_dash_styles', 'line_labels', 'x_label_rotation',
+                'num_shades', 'shade_level_scale', 'tight_layout', 'no_triangle_axis_labels', 'colormap',
+                'colormap_scatter', 'colorbar_rotation', 'colorbar_label_pad', 'colorbar_label_rotation',
+                'tick_prune', 'tight_gap_fraction', 'legend_loc', 'figure_legend_loc',
+                'legend_frame', 'figure_legend_frame', 'figure_legend_ncol', 'legend_rect_border',
+                'legend_frac_subplot_margin', 'legend_frac_subplot_line', 'num_plot_contours',
+                'solid_contour_palefactor', 'alpha_filled_add', 'alpha_factor_contour_lines', 'axis_marker_color',
                 'axis_marker_ls', 'axis_marker_lw']
-        pars.sort
+        pars.sort()
         ini = IniFile()
         for par in pars:
             ini.getAttr(settings, par)
         ini.params.update(self.custom_plot_settings)
         self.plotSettingIni = ini
 
-        self.plotSettingDlg = self.plotSettingDlg or DialogPlotSettings(self, ini, pars, title='Plot Settings', width=450)
+        self.plotSettingDlg = self.plotSettingDlg or DialogPlotSettings(self, ini, pars, title='Plot Settings',
+                                                                        width=450)
         self.plotSettingDlg.show()
         self.plotSettingDlg.activateWindow()
 
@@ -541,10 +657,10 @@ class MainWindow(QMainWindow):
         try:
             settings = self.default_plot_settings
             self.custom_plot_settings = {}
-            for key, value in vals.iteritems():
+            for key, value in six.iteritems(vals):
                 current = getattr(settings, key)
-                if str(current) <> value and len(value):
-                    if isinstance(current, basestring):
+                if str(current) != value and len(value):
+                    if isinstance(current, six.string_types):
                         self.custom_plot_settings[key] = value
                     elif current is None:
                         try:
@@ -552,7 +668,7 @@ class MainWindow(QMainWindow):
                         except:
                             self.custom_plot_settings[key] = value
                     else:
-                            self.custom_plot_settings[key] = eval(value)
+                        self.custom_plot_settings[key] = eval(value)
                 else:
                     self.custom_plot_settings.pop(key, None)
         except Exception as e:
@@ -568,7 +684,7 @@ class MainWindow(QMainWindow):
         ini.params['script_plot_module'] = self.script_plot_module
         ini.comments['plot_module'] = ["module used by the GUI (e.g. change to planckStyle)"]
         ini.comments['script_plot_module'] = ["module used by saved plot scripts  (e.g. change to planckStyle)"]
-        self.ConfigDlg = self.ConfigDlg or DialogConfigSettings(self, ini, ini.params.keys(), title='Plot Config')
+        self.ConfigDlg = self.ConfigDlg or DialogConfigSettings(self, ini, list(ini.params.keys()), title='Plot Config')
         self.ConfigDlg.show()
         self.ConfigDlg.activateWindow()
 
@@ -577,8 +693,9 @@ class MainWindow(QMainWindow):
         scriptmod = vals.get('script_plot_module', self.script_plot_module)
         self.script = ''
         mod = vals.get('plot_module', self.plot_module)
-        if mod <> self.plot_module or scriptmod <> self.script_plot_module:
+        if mod != self.plot_module or scriptmod != self.script_plot_module:
             try:
+                matplotlib.rcParams.clear()
                 matplotlib.rcParams.update(self.orig_rc)
                 __import__(mod)  # test for error
                 logging.debug('Loaded module %s', mod)
@@ -602,11 +719,11 @@ class MainWindow(QMainWindow):
         """
         QMessageBox.about(
             self, "About GetDist GUI",
-            "GetDist GUI v " + str(MCSamples.version) + "\ncosmologist.info/cosmomc/\n" +
+            "GetDist GUI v " + getdist.__version__ + "\ncosmologist.info/cosmomc/\n" +
             "\nPython: " + sys.version +
             "\nMatplotlib: " + matplotlib.__version__ +
             "\nSciPy: " + scipy.__version__ +
-            "\nNumpy: " + np.version.version +
+            "\nNumpy: " + np.__version__ +
             "\nPySide: " + PySide.__version__)
 
 
@@ -643,7 +760,7 @@ class MainWindow(QMainWindow):
                 if self.is_grid:
                     self._resetGridData()
 
-            root_list = MCSamples.GetChainRootFiles(dirName)
+            root_list = GetChainRootFiles(dirName)
             if not len(root_list):
                 QMessageBox.critical(self, "Open chains", "No chains or grid found in that directory")
                 return
@@ -668,34 +785,10 @@ class MainWindow(QMainWindow):
         return self.plotter
 
     def _updateParameters(self):
-
         roots = self.checkedRootNames()
         if not len(roots):
             return
         paramNames = self.plotter.sampleAnalyser.samplesForRoot(self.rootfiles[roots[0]]).paramNames.list()
-
-#         all_params = []
-#
-#         for root in  self.checkedRootNames():
-#             if self.rootnames.has_key(root):
-#                 rootname, _ = self.roonames[root]
-#                 params = self.plotter.sampleAnalyser.samplesForRoot(rootname).paramNames.list()
-#                 logging.debug("%i parameters" % len(params))
-#                 all_params.append(params)
-#         if all_params:
-#             if len(all_params) == 1:
-#                 paramNames = all_params[0]
-#                 logging.debug("%i parameters used" % len(paramNames))
-#             else:
-#                 # Find shared parameters
-#                 shared_params = []
-#                 for param in all_params[0]:
-#                     shared = True
-#                     for other_params in all_params[1:]:
-#                         if not param in other_params: shared = False
-#                     if shared: shared_params.append(param)
-#                 paramNames = shared_params
-#                 logging.debug("%i (shared) parameters used" % len(paramNames))
 
         self._updateListParameters(paramNames, self.listParametersX, self.getXParams())
         self._updateListParameters(paramNames, self.listParametersY, self.getYParams())
@@ -731,18 +824,18 @@ class MainWindow(QMainWindow):
         self.is_grid = True
         logging.debug("Read grid chain in %s" % batchPath)
         try:
-            batch = batchJob.readobject(batchPath)
+            batch = batchjob.readobject(batchPath)
         except:
-            batchJob.resetGrid(batchPath)
-            batch = batchJob.readobject(batchPath)
+            batchjob.resetGrid(batchPath)
+            batch = batchjob.readobject(batchPath)
 
         self.batch = batch
         items = dict()
         for jobItem in batch.items(True, True):
             if jobItem.chainExists():
-                if not jobItem.paramtag in items: items[jobItem.paramtag] = []
+                if jobItem.paramtag not in items: items[jobItem.paramtag] = []
                 items[jobItem.paramtag].append(jobItem)
-        logging.debug("Found %i names for grid" % len(items.keys()))
+        logging.debug("Found %i names for grid" % len(list(items.keys())))
         self.grid_paramtag_jobItems = items
 
         self.getPlotter(chain_dir=self.rootdirname)
@@ -764,7 +857,7 @@ class MainWindow(QMainWindow):
         self.comboBoxRootname.clear()
         self.listRoots.show()
         self.pushButtonRemove.show()
-        baseRoots = [ os.path.basename(root) for root in listOfRoots ]
+        baseRoots = [os.path.basename(root) for root in listOfRoots]
         self.comboBoxRootname.addItems(baseRoots)
         if len(baseRoots) > 1:
             self.comboBoxRootname.setCurrentIndex(-1)
@@ -837,7 +930,7 @@ class MainWindow(QMainWindow):
         logging.debug("Param: %s" % self.paramTag)
 
         self.comboBoxDataTag.clear()
-        self.comboBoxDataTag.addItems([ jobItem.datatag for jobItem in self.grid_paramtag_jobItems[self.paramTag]])
+        self.comboBoxDataTag.addItems([jobItem.datatag for jobItem in self.grid_paramtag_jobItems[self.paramTag]])
         self.comboBoxDataTag.setCurrentIndex(-1)
         self.comboBoxDataTag.show()
 
@@ -864,11 +957,12 @@ class MainWindow(QMainWindow):
                 if match_items:
                     match_items[0].setCheckState(Qt.Checked)
 
-    def getCheckedParams(self, checklist):
-        return [checklist.item(i).text() for i in range(checklist.count()) if checklist.item(i).checkState() == Qt.Checked]
+    def getCheckedParams(self, checklist, fulllist=False):
+        return [checklist.item(i).text() for i in range(checklist.count()) if
+                fulllist or checklist.item(i).checkState() == Qt.Checked]
 
-    def getXParams(self):
-        return self.getCheckedParams(self.listParametersX)
+    def getXParams(self, fulllist=False):
+        return self.getCheckedParams(self.listParametersX, fulllist)
 
     def getYParams(self):
         return self.getCheckedParams(self.listParametersY)
@@ -906,7 +1000,7 @@ class MainWindow(QMainWindow):
             self.comboBoxColor.clear()
             self.comboBoxColor.addItems(listOfParams)
             idx = self.comboBoxColor.findText(param_old, Qt.MatchExactly)
-            if idx <> -1:
+            if idx != -1:
                 self.comboBoxColor.setCurrentIndex(idx)
 
     def checkedRootNames(self):
@@ -918,9 +1012,9 @@ class MainWindow(QMainWindow):
         return items
 
     def errorReport(self, e, caption="Error", msg="", capture=False):
-        if isinstance(e, MCSamples.SettingError):
+        if isinstance(e, SettingError):
             QMessageBox.critical(self, 'Setting error', str(e))
-        elif isinstance(e, MCSamples.ParamError):
+        elif isinstance(e, ParamError):
             QMessageBox.critical(self, 'Param error', str(e))
         elif isinstance(e, IOError):
             QMessageBox.critical(self, 'File error', str(e))
@@ -929,6 +1023,7 @@ class MainWindow(QMainWindow):
         else:
             if not msg:
                 import traceback
+
                 msg = "\n".join(traceback.format_tb(sys.exc_info()[2])[-5:])
             QMessageBox.critical(self, caption, str(e) + "\n\n" + msg)
             del msg
@@ -944,7 +1039,7 @@ class MainWindow(QMainWindow):
         """
         Slot function called when pushButtonPlot is pressed.
         """
-        self.statusBar().showMessage("Generating plot....")
+        self.showMessage("Generating plot....")
         actionText = "plot"
         try:
             # Ensure at least 1 root name specified
@@ -970,40 +1065,41 @@ class MainWindow(QMainWindow):
             self.plotter.settings.legend_frac_subplot_margin = 0.05
             self.plotter.settings.__dict__.update(self.custom_plot_settings)
 
-            script = "import %s as s\nimport os\n\n" % self.script_plot_module
+            script = "import %s as gplot\nimport os\n\n" % self.script_plot_module
             if isinstance(self.iniFile, IniFile):
-                    script += 'analysis_settings = %s\n' % (self.iniFile.params)
+                script += 'analysis_settings = %s\n' % self.iniFile.params
             if len(items_x) > 1 or len(items_y) > 1:
                 plot_func = 'getSubplotPlotter'
             else:
                 plot_func = 'getSinglePlotter'
             if self.is_grid:
                 if isinstance(self.iniFile, IniFile):
-                    script += "g=s.%s(chain_dir=r'%s',analysis_settings=analysis_settings)\n" % (plot_func, self.rootdirname)
+                    script += "g=gplot.%s(chain_dir=r'%s',analysis_settings=analysis_settings)\n" % (
+                        plot_func, self.rootdirname)
                 else:
-                    script += "g=s.%s(chain_dir=r'%s')\n" % (plot_func, self.rootdirname)
+                    script += "g=gplot.%s(chain_dir=r'%s')\n" % (plot_func, self.rootdirname)
             else:
-                if isinstance(self.iniFile, basestring):
-                    script += "g=s.%s(mcsamples=True, analysis_settings=r'%s')\n" % (plot_func, self.iniFile)
+                if isinstance(self.iniFile, six.string_types):
+                    script += "g=gplot.%s(mcsamples=True, analysis_settings=r'%s')\n" % (plot_func, self.iniFile)
                 elif isinstance(self.iniFile, IniFile):
-                    script += "g=s.%s(mcsamples=True, analysis_settings=analysis_settings)\n" % (plot_func)
+                    script += "g=gplot.%s(mcsamples=True, analysis_settings=analysis_settings)\n" % plot_func
                 else:
-                    script += "g=s.%s(mcsamples=True)\n" % (plot_func)
+                    script += "g=gplot.%s(mcsamples=True)\n" % plot_func
                 for root in roots:
                     script += "g.sampleAnalyser.addRoot(r'%s')\n" % (self.rootfiles[root])
 
             if self.custom_plot_settings:
-                for key, value in self.custom_plot_settings.iteritems():
-                    if isinstance(value, basestring):
+                for key, value in six.iteritems(self.custom_plot_settings):
+                    if isinstance(value, six.string_types):
                         value = '"' + value + '"'
                     script += 'g.settings.%s = %s\n' % (key, value)
 
             if len(roots) < 3:
-                script += 'roots = %s\n' % (roots)
+                script += 'roots = %s\n' % roots
             else:
                 script += "roots = []\n"
                 for root in roots:
-                    script += "roots.append('%s')\n" % (root)
+                    script += "roots.append('%s')\n" % root
 
             logging.debug("Plotting with roots = %s" % str(roots))
 
@@ -1038,9 +1134,11 @@ class MainWindow(QMainWindow):
                         param_3d = None
                         script += "param_3d = None\n"
                     setSizeForN(len(params))
-                    self.plotter.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled, shaded=shaded)
+                    self.plotter.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=filled,
+                                               shaded=shaded)
                     self.updatePlot()
-                    script += "g.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=%s, shaded=%s)\n" % (filled, shaded)
+                    script += "g.triangle_plot(roots, params, plot_3d_with_param=param_3d, filled_compare=%s, shaded=%s)\n" % (
+                        filled, shaded)
                 else:
                     raise GuiSelectionError("Select more than 1 x parameter for triangle plot")
 
@@ -1060,57 +1158,58 @@ class MainWindow(QMainWindow):
                 script += "g.plots_1d(roots, params=params)\n"
 
             elif len(items_x) > 0 and len(items_y) > 0:
-                    if len(items_x) > 1 and len(items_y) > 1:
-                        # Rectangle plot
-                        actionText = 'Rectangle plot'
-                        script += "xparams = %s\n" % str(items_x)
-                        script += "yparams = %s\n" % str(items_y)
-                        script += "filled=%s\n" % filled
-                        logging.debug("Rectangle plot with xparams=%s and yparams=%s" % (str(items_x), str(items_y)))
+                if len(items_x) > 1 and len(items_y) > 1:
+                    # Rectangle plot
+                    actionText = 'Rectangle plot'
+                    script += "xparams = %s\n" % str(items_x)
+                    script += "yparams = %s\n" % str(items_y)
+                    script += "filled=%s\n" % filled
+                    logging.debug("Rectangle plot with xparams=%s and yparams=%s" % (str(items_x), str(items_y)))
 
-                        setSizeQT(min(height / len(items_y), width / len(items_x)))
-                        self.plotter.rectangle_plot(items_x, items_y, roots=roots, filled=filled)
-                        self.updatePlot()
-                        script += "g.rectangle_plot(xparams, yparams, roots=roots,filled=filled)\n"
+                    setSizeQT(min(height / len(items_y), width / len(items_x)))
+                    self.plotter.rectangle_plot(items_x, items_y, roots=roots, filled=filled)
+                    self.updatePlot()
+                    script += "g.rectangle_plot(xparams, yparams, roots=roots,filled=filled)\n"
 
+                else:
+                    # 2D plot
+                    if len(items_x) == 1 and len(items_y) == 1:
+                        pairs = [[items_x[0], items_y[0]]]
+                        setSizeQT(min(height, width))
+                    elif len(items_x) == 1 and len(items_y) > 1:
+                        item_x = items_x[0]
+                        pairs = list(zip([item_x] * len(items_y), items_y))
+                        setSizeForN(round(np.sqrt(len(pairs) / 1.4)))
+                    elif len(items_x) > 1 and len(items_y) == 1:
+                        item_y = items_y[0]
+                        pairs = list(zip(items_x, [item_y] * len(items_x)))
+                        setSizeForN(round(np.sqrt(len(pairs) / 1.4)))
                     else:
-                        # 2D plot
-                        if len(items_x) == 1 and len(items_y) == 1:
-                            pairs = [ [items_x[0], items_y[0]] ]
-                            setSizeQT(min(height, width))
-                        elif len(items_x) == 1 and len(items_y) > 1:
-                            item_x = items_x[0]
-                            pairs = zip([item_x] * len(items_y), items_y)
-                            setSizeForN(round(np.sqrt(len(pairs) / 1.4)))
-                        elif len(items_x) > 1 and len(items_y) == 1:
-                            item_y = items_y[0]
-                            pairs = zip(items_x, [item_y] * len(items_x))
-                            setSizeForN(round(np.sqrt(len(pairs) / 1.4)))
+                        pairs = []
+                    if filled or line:
+                        actionText = '2D plot'
+                        script += "pairs = %s\n" % pairs
+                        logging.debug("2D plot with pairs = %s" % str(pairs))
+                        self.plotter.plots_2d(roots, param_pairs=pairs, filled=filled, shaded=shaded)
+                        self.updatePlot()
+                        script += "g.plots_2d(roots, param_pairs=pairs, filled=%s, shaded=%s)\n" % (
+                            str(filled), str(shaded))
+                    elif color:
+                        # 3D plot
+                        sets = [list(pair) + [color_param] for pair in pairs]
+                        logging.debug("3D plot with sets = %s" % str(sets))
+                        actionText = '3D plot'
+                        triplets = ["['%s', '%s', '%s']" % tuple(trip) for trip in sets]
+                        if len(sets) == 1:
+                            script += "g.plot_3d(roots, %s)\n" % triplets[0]
+                            self.plotter.settings.scatter_size = 6
+                            self.plotter.make_figure(1, ystretch=0.75)
+                            self.plotter.plot_3d(roots, sets[0])
                         else:
-                            pairs = []
-                        if filled or line:
-                            actionText = '2D plot'
-                            script += "pairs = %s\n" % pairs
-                            logging.debug("2D plot with pairs = %s" % str(pairs))
-                            self.plotter.plots_2d(roots, param_pairs=pairs, filled=filled, shaded=shaded)
-                            self.updatePlot()
-                            script += "g.plots_2d(roots, param_pairs=pairs, filled=%s, shaded=%s)\n" % (str(filled), str(shaded))
-                        elif color:
-                            # 3D plot
-                            sets = [list(pair) + [color_param] for pair in pairs]
-                            logging.debug("3D plot with sets = %s" % str(sets))
-                            actionText = '3D plot'
-                            triplets = ["['%s', '%s', '%s']" % tuple(trip) for trip in sets]
-                            if len(sets) == 1:
-                                script += "g.plot_3d(roots, %s)\n" % triplets[0]
-                                self.plotter.settings.scatter_size = 6
-                                self.plotter.make_figure(1, ystretch=0.75)
-                                self.plotter.plot_3d(roots, sets[0])
-                            else:
-                                script += "sets = [" + ",".join(triplets) + "]\n"
-                                script += "g.plots_3d(roots, sets)\n"
-                                self.plotter.plots_3d(roots, sets)
-                            self.updatePlot()
+                            script += "sets = [" + ",".join(triplets) + "]\n"
+                            script += "g.plots_3d(roots, sets)\n"
+                            self.plotter.plots_3d(roots, sets)
+                        self.updatePlot()
             else:
                 text = ""
                 text += "Wrong parameters selection. Specify parameters such as:\n"
@@ -1131,7 +1230,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.errorReport(e, caption=actionText)
         finally:
-            self.statusBar().showMessage("")
+            self.showMessage()
 
 
     def updatePlot(self):
@@ -1139,14 +1238,14 @@ class MainWindow(QMainWindow):
             self.canvas = None
         else:
             i = 0
-            while 1:
+            while True:
                 item = self.plotWidget.layout().takeAt(i)
                 if item is None: break
                 del item
             if hasattr(self, "canvas"): del self.canvas
             if hasattr(self, "toolbar"): del self.toolbar
             self.canvas = FigureCanvas(self.plotter.fig)
-            if platform <> "darwin":
+            if sys.platform != "darwin":
                 # for some reason the toolbar crashes out on a Mac; just don't show it
                 self.toolbar = NavigationToolbar(self.canvas, self)
                 self.plotWidget.layout().addWidget(self.toolbar)
@@ -1155,16 +1254,133 @@ class MainWindow(QMainWindow):
             self.canvas.draw()
             self.plotWidget.show()
 
+
+    # Edit script
+
+    def tabChanged(self, index):
+        """
+        Update script text editor when entering 'gui' tab.
+        """
+
+        # Enable menu options for edition only
+        self.reLoadAct.setEnabled(index == 0)
+        self.dataMenu.setEnabled(index == 0)
+        self.optionMenu.setEnabled(index == 0)
+
+        if index == 1 and self.script:
+            self.script_edit = self.textWidget.toPlainText()
+            if self.script_edit and self.script_edit != self.script:
+                reply = QMessageBox.question(
+                    self, "Overwrite script",
+                    "Script is not empty. Overwrite current script?",
+                    QMessageBox.Yes | QMessageBox.No)
+                if reply == QMessageBox.No: return
+
+            self.script_edit = self.script
+            self.textWidget.setPlainText(self.script_edit)
+
+    def openScript(self):
+        filename, _ = QFileDialog.getOpenFileName(
+            self, "Choose a file name", '.', "Python (*.py)")
+        if not filename: return
+        filename = str(filename)
+        logging.debug("Open file %s" % filename)
+        with open(filename, 'r') as f:
+            self.script_edit = f.read()
+        self.textWidget.setPlainText(self.script_edit)
+
+    def clearScript(self):
+        self.textWidget.clear()
+        self.script_edit = ''
+
+    def plotData2(self):
+        """
+        Slot function called when pushButtonPlot2 is pressed.
+        """
+        self.script_edit = self.textWidget.toPlainText()
+        oldset = plots.defaultSettings
+        oldrc = matplotlib.rcParams.copy()
+        plots.defaultSettings = plots.GetDistPlotSettings()
+        matplotlib.rcParams.clear()
+        matplotlib.rcParams.update(self.orig_rc)
+        self.showMessage("Rendering plot....")
+        try:
+            script_exec = self.script_edit
+            if "g.export()" in script_exec:
+                # Comment line which produces export to PDF
+                script_exec = script_exec.replace("g.export", "#g.export")
+
+            globaldic = {}
+            localdic = {}
+            exec(script_exec, globaldic, localdic)
+
+            for v in six.itervalues(localdic):
+                if isinstance(v, plots.GetDistPlotter):
+                    self.updateScriptPreview(v)
+                    break
+        except Exception as e:
+            self.errorReport(e, caption="Plot script")
+        finally:
+            plots.defaultSettings = oldset
+            matplotlib.rcParams.clear()
+            matplotlib.rcParams.update(oldrc)
+            self.showMessage()
+
+
+    def updateScriptPreview(self, plotter):
+        if plotter.fig is None:
+            return
+
+        self.plotter_script = plotter
+
+        i = 0
+        while True:
+            item = self.plotWidget2.layout().takeAt(i)
+            if item is None: break
+            if hasattr(item, "widget"):
+                child = item.widget()
+                del child
+            del item
+
+        # Save in PNG format, and display it in a QLabel
+        buf = BytesIO()
+
+        plotter.fig.savefig(
+            buf,
+            format='png',
+            edgecolor='w',
+            facecolor='w',
+            dpi=100,
+            bbox_extra_artists=plotter.extra_artists,
+            bbox_inches='tight')
+        buf.seek(0)
+
+        image = QImage.fromData(buf.getvalue())
+
+        pixmap = QPixmap.fromImage(image)
+        label = QLabel(self.scrollArea)
+        label.setPixmap(pixmap)
+
+        self.scrollArea = QScrollArea(self.plotWidget2)
+        self.scrollArea.setWidget(label)
+        self.scrollArea.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        # self.scrollArea.setStyleSheet("background-color: rgb(255,255,255)")
+
+        self.plotWidget2.layout().addWidget(self.scrollArea)
+        self.plotWidget2.layout()
+        self.plotWidget2.show()
+
+
 # ==============================================================================
 
 
 class DialogTextOutput(QDialog):
-
-    def __init__(self, parent, text):
-        QDialog.__init__(self, parent)
+    def __init__(self, parent, text=None):
+        QDialog.__init__(self, parent, Qt.WindowSystemMenuHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
         self.textfont = QFont("Monospace")
         self.textfont.setStyleHint(QFont.TypeWriter)
-        self.text = self.getTextBox(text)
+        if text:
+            self.text = self.getTextBox(text)
         self.setAttribute(Qt.WA_DeleteOnClose)
 
     def getTextBox(self, text):
@@ -1173,6 +1389,7 @@ class DialogTextOutput(QDialog):
         box.setFont(self.textfont)
         box.setText(text)
         return box
+
 
 # ==============================================================================
 
@@ -1193,7 +1410,7 @@ class DialogLikeStats(DialogTextOutput):
         layout.addWidget(self.text, 0, 0)
 
         if stats:
-            headers = stats.headerLine().strip().split() + [ 'label' ]
+            headers = stats.headerLine().strip().split() + ['label']
             self.table.setColumnCount(len(headers))
             self.table.setHorizontalHeaderLabels([h.replace('_', ' ') for h in headers])
             self.table.verticalHeader().setVisible(False)
@@ -1226,9 +1443,8 @@ class DialogLikeStats(DialogTextOutput):
 # ==============================================================================
 
 class DialogMargeStats(QDialog):
-
     def __init__(self, parent=None, stats="", root=''):
-        QDialog.__init__(self, parent)
+        QDialog.__init__(self, parent, Qt.WindowSystemMenuHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
 
         self.label = QLabel(self)
         self.table = QTableWidget(self)
@@ -1243,11 +1459,11 @@ class DialogMargeStats(QDialog):
 
         if stats:
 
-            headers = stats.headerLine(inc_limits=True)[0].split() + [ 'label' ]
+            headers = stats.headerLine(inc_limits=True)[0].split() + ['label']
             self.table.setColumnCount(len(headers))
             self.table.setHorizontalHeaderLabels([h.replace('_', ' ') for h in headers])
             self.table.verticalHeader().setVisible(False)
-#            self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+            # self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
             self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
             self.table.setSelectionMode(QAbstractItemView.SingleSelection)
             self.table.setRowCount(stats.numParams())
@@ -1273,10 +1489,10 @@ class DialogMargeStats(QDialog):
             h = min(QApplication.desktop().screenGeometry().height() * 4 / 5, h)
             self.resize(w, h)
 
+
 # ==============================================================================
 
 class DialogConvergeStats(DialogTextOutput):
-
     def __init__(self, parent, stats, summary, root):
         DialogTextOutput.__init__(self, parent, stats)
         layout = QGridLayout()
@@ -1295,7 +1511,6 @@ class DialogConvergeStats(DialogTextOutput):
 # ==============================================================================
 
 class DialogPCA(DialogTextOutput):
-
     def __init__(self, parent, PCA_text, root):
         DialogTextOutput.__init__(self, parent, PCA_text)
         layout = QGridLayout()
@@ -1307,10 +1522,63 @@ class DialogPCA(DialogTextOutput):
 
 # ==============================================================================
 
-class DialogSettings(QDialog):
+class DialogParamTables(DialogTextOutput):
+    def __init__(self, parent, tables, root):
+        DialogTextOutput.__init__(self, parent)
+        self.tables = tables
+        self.root = root
+        self.tabWidget = QTabWidget(self)
+        self.tabWidget.setTabPosition(QTabWidget.North)
+        self.connect(self.tabWidget, SIGNAL("currentChanged(int)"), self.tabChanged)
+        layout = QGridLayout()
+        layout.addWidget(self.tabWidget, 1, 0, 1, 2)
+        self.copyButton = QPushButton(QIcon(""), "Copy latex")
+        self.saveButton = QPushButton(QIcon(""), "Save latex")
+        self.connect(self.copyButton, SIGNAL("clicked()"), self.copyLatex)
+        self.connect(self.saveButton, SIGNAL("clicked()"), self.saveLatex)
 
+        layout.addWidget(self.copyButton, 2, 0)
+        layout.addWidget(self.saveButton, 2, 1)
+
+        self.setLayout(layout)
+        self.tabs = [QWidget(self) for _ in range(len(tables))]
+        self.generated = [None] * len(tables)
+        for table, tab in zip(tables, self.tabs):
+            self.tabWidget.addTab(tab, table.results[0].limitText(table.limit) + '%')
+        self.tabChanged(0)
+
+        self.setWindowTitle(self.tr('Parameter tables for: ' + root))
+        # h = min(QApplication.desktop().screenGeometry().height() * 4 / 5, 800)
+        # self.resize(500, h)
+        self.adjustSize()
+
+    def tabChanged(self, index):
+        if not self.generated[index]:
+            viewWidget = QWidget(self.tabs[index])
+            buf = self.tables[index].tablePNG(bytesIO=True)
+            pixmap = QPixmap.fromImage(QImage.fromData(buf.getvalue()))
+            label = QLabel(viewWidget)
+            label.setPixmap(pixmap)
+            layout = QGridLayout()
+            layout.addWidget(label, 1, 0)
+            self.tabs[index].setLayout(layout)
+            self.generated[index] = True
+
+    def copyLatex(self):
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.tables[self.tabWidget.currentIndex()].tableTex())
+
+    def saveLatex(self):
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "Choose a file name", '.', "Latex (*.tex)")
+        if not filename: return
+        self.tables[self.tabWidget.currentIndex()].write(str(filename))
+
+# ==============================================================================
+
+class DialogSettings(QDialog):
     def __init__(self, parent, ini, items=None, title='Analysis Settings', width=300, update=None):
-        QDialog.__init__(self, parent)
+        QDialog.__init__(self, parent, Qt.WindowSystemMenuHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
 
         self.update = update
         self.table = QTableWidget(self)
@@ -1334,7 +1602,7 @@ class DialogSettings(QDialog):
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
 
         if items is None:
-            names = IniFile(MCSamples.default_getdist_settings)
+            names = IniFile(getdist.default_getdist_settings)
             items = []
             self.ini = ini
             for key in ini.readOrder:
@@ -1351,13 +1619,13 @@ class DialogSettings(QDialog):
         self.rows = len(items) + nblank
         self.table.setRowCount(self.rows)
         for irow, key in enumerate(items):
-                item = QTableWidgetItem(str(key))
-                item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-                self.table.setItem(irow, 0, item)
-                item = QTableWidgetItem(ini.string(key))
-                hint = names.comments.get(key, None)
-                if hint: item.setToolTip("\n".join(hint))
-                self.table.setItem(irow, 1, item)
+            item = QTableWidgetItem(str(key))
+            item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+            self.table.setItem(irow, 0, item)
+            item = QTableWidgetItem(ini.string(key))
+            hint = names.comments.get(key, None)
+            if hint: item.setToolTip("\n".join(hint))
+            self.table.setItem(irow, 1, item)
         for i in range(nblank):
             item = QTableWidgetItem(str(""))
             irow = len(items) + i
@@ -1366,7 +1634,7 @@ class DialogSettings(QDialog):
             self.table.setItem(irow, 1, item)
         self.table.resizeRowsToContents()
         self.table.resizeColumnsToContents()
-        self.table.horizontalHeader().setStretchLastSection(True);
+        self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setEditTriggers(QAbstractItemView.AllEditTriggers)
 
         h = self.table.verticalHeader().length() + 40
@@ -1385,9 +1653,11 @@ class DialogSettings(QDialog):
         self.ini.params.update(self.getDict())
         self.parent().settingsChanged()
 
+
 class DialogPlotSettings(DialogSettings):
     def doUpdate(self):
         self.parent().plotSettingsChanged(self.getDict())
+
 
 class DialogConfigSettings(DialogSettings):
     def doUpdate(self):
@@ -1395,12 +1665,9 @@ class DialogConfigSettings(DialogSettings):
 
 
 if __name__ == "__main__":
-
     app = QApplication(sys.argv)
     mainWin = MainWindow(app)
     mainWin.show()
     sys.exit(app.exec_())
 
 # ==============================================================================
-
-

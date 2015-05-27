@@ -108,9 +108,7 @@
     call fpico_set_param("theta", CosmomcTheta())
     call fpico_set_param("helium_fraction", p%yhe)
 
-    !    call fpico_set_param("massless_neutrinos", )
-    !!!Check what's going on with neutrinos
-    call fpico_set_param("massive_neutrinos", p%Num_Nu_massless+p%Num_Nu_massive)
+    call fpico_set_param("massive_neutrinos", CMB%nnu)
     call fpico_set_param("scalar_spectral_index(1)",p%InitPower%an(1))
     call fpico_set_param("scalar_nrun(1)",p%InitPower%n_run(1))
     call fpico_set_param("initial_ratio(1)",p%InitPower%rat(1))
@@ -141,7 +139,7 @@
    ! end if
 
     call fpico_compute_result(success)
-    if (success /= 0) then
+    if (success == 0) then
         ! for now just reject if out of pico bounds
         !call mpiStop('PICO failed to get result')
         if (Feedback>1) write(*,*) 'PICO out of bounds'
@@ -206,6 +204,8 @@
 
     call this%CAMB_Calculator%ReadParams(Ini)
     this%calcName ='PICO'
+    
+    !$ write(*,*) '**WARNING**: pico may not work when CosmoMC compiled with -openmp (why??)'
 
     call fpico_init(1_fpint)
     call fpico_load(Ini%Read_String_Default("pico_datafile", EnvDefault=.true.))

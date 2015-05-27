@@ -1,11 +1,12 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 import fnmatch
 import shutil
+from paramgrid import batchjob_args
 
-from paramgrid import batchJobArgs
-
-
-Opts = batchJobArgs.batchArgs('copy all files of a given type from all getdist output directories in the batch', importance=True, converge=True)
+Opts = batchjob_args.batchArgs('copy all files of a given type from all getdist output directories in the batch',
+                               importance=True, converge=True)
 
 Opts.parser.add_argument('target_dir')
 Opts.parser.add_argument('file_extension', nargs='+')
@@ -31,7 +32,7 @@ for ext in args.file_extension:
         if os.path.exists(jobItem.distPath) and (args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge)):
             for f in os.listdir(jobItem.distPath):
                 if fnmatch.fnmatch(f, jobItem.name + pattern):
-                    print jobItem.distPath + f
+                    print(jobItem.distPath + f)
                     if args.normalize_names:
                         fout = jobItem.makeNormedName(replacements)[0] + os.path.splitext(f)[1]
                     else:

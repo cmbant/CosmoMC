@@ -33,12 +33,19 @@ else
 #gfortran 5.0 and earlier will not work (many F2003 bugs)
 #gfortran 6 trunk should work, and perhaps GCC 5.2 when available; see virtual machines for up-to-date environments
 F90C = gfortran
-FFLAGS = -cpp -O3 -march=native -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4
+FFLAGS = -cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4
 DEBUGFLAGS = -cpp -g -fbounds-check -fbacktrace -ffree-line-length-none -fopenmp -fmax-errors=4 -ffpe-trap=invalid,overflow,zero
 MODOUT =  -J$(OUTPUT_DIR)
 #LAPACKL = -Wl,-framework -Wl,accelerate
 #commented above is (I think) for Mac; this is standard linux (sudo apt-get install liblapack-dev)
 LAPACKL = -lblas -llapack
+
+#march native does not work on Mac, otherwise use (comment out if your cluster is inhomogeneous)
+ifneq ($(shell uname -s),Darwin)
+#native optimization does not work on Mac
+FFLAGS+=-march=native
+endif
+
 endif
 
 #use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
@@ -118,19 +125,15 @@ ifneq ($(PRECISION),)
 FFLAGS += -D$(PRECISION) -DMATRIX_$(PRECISION)
 endif
 
-ifneq ($(NONCLIKLIKE),)
-FFLAGS += -DNONCLIK
-endif
-
 PLANCKLIKEFILES= $(OUTPUT_DIR)/CMB_BK_Planck.o
-
 
 ifneq ($(CLIK_PATH),)
 FFLAGS += -DCLIK
-PLANCKLIKEFILES += $(OUTPUT_DIR)/$(PLANCKLIKE).o
+PLANCKLIKEFILES += $(OUTPUT_DIR)/cliklike.o
 endif
 
 ifeq ($(NONCLIKLIKE),cliklike_CamSpec)
+FFLAGS += -DNONCLIK
 PLANCKLIKEFILES +=  $(OUTPUT_DIR)/temp_like.o
 PLANCKLIKEFILES += $(OUTPUT_DIR)/cliklike_CamSpec.o
 endif

@@ -8,7 +8,7 @@ defaultContours = [0.68, 0.95]
 
 def getContourLevels(inbins, contours=defaultContours, missing_norm=0, half_edge=True):
     """
-     Get countour levels encolosing "countours" of the probability.
+     Get contour levels enclosing "contours" of the probability.
      inbins is the density. If half_edge, then edge bins are only half integrated over in each direction.
      missing_norm accounts of any points not included in inbins (e.g. points in far tails that are not in inbins)
      Works for any dimension bins array
@@ -16,8 +16,8 @@ def getContourLevels(inbins, contours=defaultContours, missing_norm=0, half_edge
     contour_levels = np.zeros(len(contours))
     if half_edge:
         abins = inbins.copy()
-        lastindices = [-1] + [slice(None, None, None) for d in abins.shape[1:]]
-        firstindices = [0] + [slice(None, None, None) for d in abins.shape[1:]]
+        lastindices = [-1] + [slice(None, None, None) for _ in abins.shape[1:]]
+        firstindices = [0] + [slice(None, None, None) for _ in abins.shape[1:]]
         for _ in abins.shape:
             abins[tuple(lastindices)] /= 2
             abins[tuple(firstindices)] /= 2
@@ -63,7 +63,7 @@ def getContourLevels(inbins, contours=defaultContours, missing_norm=0, half_edge
 class GridDensity(object):
     def normalize(self, by='integral', in_place=False):
         if by == 'integral':
-            norm = self.integral()
+            norm = self.norm_integral()
         elif by == 'max':
             norm = np.max(self.P)
             if norm == 0:
@@ -78,7 +78,7 @@ class GridDensity(object):
     def setP(self, P=None):
         if P is not None:
             for size, ax in zip(P.shape, self.axes):
-                if size <> ax.size:
+                if size != ax.size:
                     raise DensitiesError("Array size mismatch in Density arrays: P %s, axis %s" % (size, ax.size))
             self.P = P
         else:
@@ -97,7 +97,8 @@ class GridDensity(object):
     def getContourLevels(self, contours=defaultContours):
         return getContourLevels(self.P, contours)
 
-class Density1D(GridDensity, RectBivariateSpline):
+
+class Density1D(GridDensity):
 
     def __init__(self, x, P=None, view_ranges=None):
         self.n = x.size
@@ -125,7 +126,7 @@ class Density1D(GridDensity, RectBivariateSpline):
     def integrate(self, P):
         return  ((P[0] + P[-1]) / 2 + np.sum(P[1:-1])) * self.spacing
 
-    def integral(self):
+    def norm_integral(self):
         return self.integrate(self.P)
 
     def initLimitGrids(self, factor=None):
@@ -198,7 +199,7 @@ class Density2D(GridDensity, RectBivariateSpline):
         norm *= self.spacing
         return norm
 
-    def integral(self):
+    def norm_integral(self):
         return self.integrate(self.P)
 
     def _initSpline(self):

@@ -19,13 +19,13 @@ g.add_2d_contours('base_' + s.defdata, 'omegam', 'sigma8', ls='-', color='black'
 
 if False:
     g.add_2d_contours('base_mnu_lensonly', 'omegam', 'sigma8', ls='--', color='black')
- #   g.add_2d_contours('base_mnu_lensonly_HST70p6', 'omegam', 'sigma8', ls='-', color='blue')
+    # g.add_2d_contours('base_mnu_lensonly_HST70p6', 'omegam', 'sigma8', ls='-', color='blue')
     g.add_2d_contours('base_mnu_lensonly_BAO', 'omegam', 'sigma8', ls='--', color='green')
     g.add_2d_contours('base_mnu_lensonly_theta', 'omegam', 'sigma8', ls='--', color='red')
 
 # g.add_legend([s.defplanck, s.defplanck + '+lensing'])
 
-g.add_legend([ s.lensonly + '+' + s.BAO, s.lensonly + '+' + s.BAO + r'+$\theta_{\rm MC}$', s.defplanck])
+g.add_legend([s.lensonly + '+' + s.BAO, s.lensonly + '+' + s.BAO + r'+$\theta_{\rm MC}$', s.defplanck])
 
 xlim([0.15, 0.6])
 ylim([0.6, 1.02])

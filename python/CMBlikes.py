@@ -2,12 +2,13 @@
 # AL July 2014
 # note this is not well tested with final published versions of likelihoods
 # Does not handle calibration parameter
-
-import pylab as plt
+from __future__ import absolute_import
+from __future__ import print_function
+from matplotlib import pyplot as plt
 import os
 import numpy as np
 import sys
-from getdist import inifile
+from getdist import IniFile
 
 
 def readTextCommentColumns(fname, cols):
@@ -82,7 +83,7 @@ class BinWindows(object):
             for b in range(self.nbins):
                 with open(froot + stem + '_window/window%u.dat' % (b + 1), 'w') as f:
                     for L in np.arange(self.lmin[b], self.lmax[b] + 1):
-                        f.write("%5u " + "%10e"*len(self.cols_in) + "\n" % (L, self.binning_matrix[b, :, L]))
+                        f.write(("%5u " + "%10e" * len(self.cols_in) + "\n") % (L, self.binning_matrix[b, :, L]))
 
 
 class DatasetLikelihood(object):
@@ -119,12 +120,12 @@ class DatasetLikelihood(object):
                 i1 = self.field_index[pair[0]]
                 i2 = self.field_index[pair[1]]
 
-                if (i1 < 0 or i2 < 0): continue
-                if (i2 > i1): i1, i2 = i2, i1
+                if i1 < 0 or i2 < 0: continue
+                if i2 > i1: i1, i2 = i2, i1
                 ix = 0
                 for ii in range(self.nfields):
                     for jj in range(ii + 1):
-                        if (ii == i1 and jj == i2): cols[i] = ix
+                        if ii == i1 and jj == i2: cols[i] = ix
                         ix += 1
             return cols
 
@@ -145,17 +146,17 @@ class DatasetLikelihood(object):
                 window = np.loadtxt(windows % (b + 1))
                 Err = False
                 for i, L in enumerate(window[:, 0].astype(int)):
-                    if (L >= self.cl_lmin and L <= self.cl_lmax):
+                    if self.cl_lmin <= L <= self.cl_lmax:
                         bins.binning_matrix[b, :, L - self.cl_lmin] = window[i, 1:]
                     else:
                         Err = Err or any(window[i, 1:] != 0)
-                if Err: print 'WARNING: %s %u outside cl_lmin-cl_max range: %s' % (file_stem, b, windows % (b + 1))
+                if Err: print('WARNING: %s %u outside cl_lmin-cl_max range: %s' % (file_stem, b, windows % (b + 1)))
             return bins
 
 
         def loadDataset(self, froot):
             if not '.dataset' in froot: froot += '.dataset'
-            ini = inifile.IniFile(froot)
+            ini = IniFile(froot)
             self.readIni(ini)
 
         def readIni(self, ini):
@@ -259,7 +260,7 @@ def plotAndChisq(dataset, cl_file):
     d = DatasetLikelihood(dataset)
     cls = ClsArray(cl_file)
     d.plot(cls)
-    print 'Chi-squared: ', d.chi_squared(cls)
+    print('Chi-squared: ', d.chi_squared(cls))
     plt.show()
 
 
@@ -268,7 +269,7 @@ if __name__ == "__main__":
 #    sys.exit()
     try: import argparse
     except:
-        print 'use "module load" to load python 2.7'
+        print('use "module load" to load python 2.7')
         sys.exit()
     parser = argparse.ArgumentParser(description="Load .dataset and calculate likelihood")
     parser.add_argument('dataset', help='.dataset filename')

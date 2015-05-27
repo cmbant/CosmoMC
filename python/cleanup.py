@@ -1,10 +1,11 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 import fnmatch
+from paramgrid import batchjob_args
 
-from paramgrid import batchJobArgs
 
-
-Opts = batchJobArgs.batchArgs('delete failed chains, files etc.', importance=True, converge=True)
+Opts = batchjob_args.batchArgs('delete failed chains, files etc.', importance=True, converge=True)
 
 Opts.parser.add_argument('--dist', action='store_true')
 Opts.parser.add_argument('--ext', nargs='+', default=['*'])
@@ -20,9 +21,9 @@ def fsizestr(fname):
     global sizeMB
     sz = os.path.getsize(fname) / 1024
     sizeMB += sz / 1024.
-    if (sz < 1024): return str(sz) + 'KB'
-    if (sz < 1024 * 1024): return str(sz / 1024) + 'MB'
-    if (sz < 1024 * 1024 * 1024): return str(sz / 1024 / 1024) + 'GB'
+    if sz < 1024: return str(sz) + 'KB'
+    if sz < 1024 * 1024: return str(sz / 1024) + 'MB'
+    if sz < 1024 * 1024 * 1024: return str(sz / 1024 / 1024) + 'GB'
 
 if args.chainnum is not None:
     args.ext = ['_' + args.chainnum + '.' + ext for ext in args.ext]
@@ -41,8 +42,8 @@ for jobItem in Opts.filteredBatchItems():
                         fname = adir + f
                         if os.path.exists(fname):
                             if not args.empty or os.path.getsize(fname) == 0:
-                                print fname, ' (' + fsizestr(fname) + ')'
+                                print(fname, ' (' + fsizestr(fname) + ')')
                                 if args.confirm: os.remove(fname)
 
-print 'Total size: %u MB' % (sizeMB)
-if not args.confirm: print 'Files not actually deleted: add --confirm to delete'
+print('Total size: %u MB' % sizeMB)
+if not args.confirm: print('Files not actually deleted: add --confirm to delete')

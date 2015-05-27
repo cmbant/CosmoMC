@@ -90,7 +90,7 @@
                 class is (TMpiChainCollector)
                     Collector%Sampler => Sampler
                     if (BaseParams%covariance_has_new) &
-                    & Collector%MPi%MPI_Max_R_ProposeUpdate = Collector%Mpi%MPI_Max_R_ProposeUpdateNew
+                        & Collector%MPi%MPI_Max_R_ProposeUpdate = Collector%Mpi%MPI_Max_R_ProposeUpdateNew
                 end select
             end if
             call Sampler%SetCovariance(BaseParams%covariance_estimate)
@@ -143,13 +143,14 @@
 
     end subroutine TSetup_DoSampling
 
-    subroutine TSetup_DoTests(this, output_root, paramsvals)
+    subroutine TSetup_DoTests(this, output_root, paramsvals, check_compare)
     !This runs likelihoods for fixed values of parameters and outputs the likelihoods and timings
     !e.g. for likelihood testing between versions, performance testing, etc.
     !also can set output_root to write out theory calculation and derived quantities for specific parameters
     class(TSetup) :: this
     character(LEN=*) :: output_root
     real(mcp), intent(in) :: paramsvals(:)
+    real(mcp), intent(in) :: check_compare
     Type(ParamSet) :: Params
     real(mcp) :: logLike, time
     Type(TTimer) Timer
@@ -161,11 +162,23 @@
     time = Timer%Time()
     write(*,*) '   loglike     chi-sq'
     if (Feedback <=2) call DataLikelihoods%WriteLikelihoodContribs(stdout, Params%likelihoods)
-    write(*,*) 'Test likelihoods done, total logLike = '//RealToStr(logLike)//', chi-sq = '//RealToStr(logLike*2)
-    write(*,*) 'Likelihood calculation time (seconds)= '//RealToStr(time)
-    if (output_root/='') then
-        call this%LikeCalculator%WriteParamPointTextData(output_root, Params)
-        call this%LikeCalculator%WriteParamsHumanText(output_root//'.pars', Params, LogLike)
+    if (logLike == logZero) then
+        write(*,*) 'Test likelihoods done, parameter point rejected (logZero or outside prior)'
+    else
+        write(*,'("Test likelihoods done, total logLike, chi-eq = ",2f11.3)') logLike, logLike*2
+        if (check_compare /= logZero) then
+            write(*,'("Expected likelihoods,  total logLike, chi-eq = ",2f11.3)')  check_compare, check_compare*2
+            if (abs(check_compare-LogLike) < 0.05) then
+                write(*,*) '...OK, delta = ', logLike-check_compare
+            else
+                error stop '** Likelihoods do not match **'
+            end if
+        end if
+        write(*,*) 'Likelihood calculation time (seconds)= '//RealToStr(time)
+        if (output_root/='') then
+            call this%LikeCalculator%WriteParamPointTextData(output_root, Params)
+            call this%LikeCalculator%WriteParamsHumanText(output_root//'.pars', Params, LogLike)
+        end if
     end if
     call DoStop()
 

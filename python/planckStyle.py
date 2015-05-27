@@ -1,12 +1,11 @@
+from __future__ import absolute_import
 import os
 import copy
-
+import getdist
+from getdist import types, plots
 from matplotlib import rcParams, rc
-import pylab as plt
-
-from paramgrid import batchJob
-import getdist.plots as plots
-from getdist import ResultObjs, MCSamples
+from matplotlib import pyplot as plt
+from paramgrid import batchjob
 
 
 # common setup for matplotlib
@@ -25,9 +24,12 @@ params = {'backend': 'pdf',
 
 sfmath = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'sfmath'
 # use of Sans Serif also in math mode
-rc('text.latex', preamble=r'\usepackage{' + sfmath.replace(os.sep, '/') + '}')
 
-rcParams.update(params)
+def setRc():
+    rc('text.latex', preamble=r'\usepackage{' + sfmath.replace(os.sep, '/') + '}')
+    rcParams.update(params)
+
+setRc()
 
 if False:
     non_final = True
@@ -78,7 +80,7 @@ lensingall = datalabel[defdata_all_lensing]
 defplanck = datalabel[defdata]
 
 shortlabel = {}
-for key, value in datalabel.items():
+for key, value in list(datalabel.items()):
     shortlabel[key] = value.replace(planck + ' ', '')
 
 NoLowLhighLtau = r'\textit{Planck}$-$lowL+highL+$\tau$prior'
@@ -100,7 +102,7 @@ s.figure_legend_frame = False
 s.prob_label = r'$P/P_{\rm max}$'
 s.norm_prob_label = 'Probability density'
 s.prob_y_ticks = True
-s.param_names_for_labels = os.path.join(batchJob.getCodeRootPath(), 'clik_units.paramnames')
+s.param_names_for_labels = os.path.join(batchjob.getCodeRootPath(), 'clik_units.paramnames')
 s.alpha_filled_add = 0.85
 s.solid_contour_palefactor = 0.6
 
@@ -108,11 +110,11 @@ s.solid_colors = [('#8CD3F5', '#006FED'), ('#F7BAA6', '#E03424'), ('#D1D1D1', '#
 s.axis_marker_lw = 0.6
 s.lw_contour = 1
 
-s.param_names_for_labels = os.path.normpath(os.path.join(os.path.dirname(__file__), '..' ,'clik_latex.paramnames'))
+s.param_names_for_labels = os.path.normpath(os.path.join(os.path.dirname(__file__), '..' , 'clik_latex.paramnames'))
 
-use_plot_data = MCSamples.use_plot_data
-rootdir = MCSamples.default_grid_root or os.path.join(batchJob.getCodeRootPath(), 'main')
-output_base_dir = MCSamples.output_base_dir or batchJob.getCodeRootPath()
+use_plot_data = getdist.use_plot_data
+rootdir = getdist.default_grid_root or os.path.join(batchjob.getCodeRootPath(), 'main')
+output_base_dir = getdist.output_base_dir or batchjob.getCodeRootPath()
 
 H0_gpe = [70.6, 3.3]
 
@@ -130,7 +132,7 @@ def plotBounds(omm, data, c='gray'):
 class planckPlotter(plots.GetDistPlotter):
 
     def getBatch(self):
-        if not hasattr(self, 'batch'): self.batch = batchJob.readobject(rootdir)
+        if not hasattr(self, 'batch'): self.batch = batchjob.readobject(rootdir)
         return self.batch
 
     def doExport(self, fname=None, adir=None, watermark=None, tag=None):
@@ -158,6 +160,8 @@ def getPlotter(plot_data=None, chain_dir=None, **kwargs):
     global plotter, rootdir
     if not kwargs.get('settings'):
         kwargs['settings'] = s
+    # make sure rc changed as desired  (e.g. module is reloaded)
+    setRc()
     if plot_data is not None or use_plot_data:
         plotter = planckPlotter(plot_data or os.path.join(rootdir, 'plot_data'), **kwargs)
     if chain_dir or not use_plot_data:
@@ -193,7 +197,7 @@ def getSinglePlotter(ratio=3 / 4., plot_data=None, chain_dir=None, width_inch=3.
     return plotter
 
 
-class planckStyleTableFormatter(ResultObjs.noLineTableFormatter):
+class planckStyleTableFormatter(types.NoLineTableFormatter):
     """Planck style guide compliant formatter
     
     Andrea Zonca (edits by AL for consistent class structure)"""
@@ -246,7 +250,7 @@ class planckStyleTableFormatter(ResultObjs.noLineTableFormatter):
         self.spacer = ''
 
     def formatTitle(self, title):
-        return ResultObjs.texEscapeText(title)
+        return types.texEscapeText(title)
 
     def belowTitleLine(self, colsPerParam, numResults):
         out = r'\noalign{\vskip -3pt}'

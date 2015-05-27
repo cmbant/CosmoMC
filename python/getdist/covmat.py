@@ -1,9 +1,10 @@
+from __future__ import print_function
 import numpy as np
 
-class covMat(object):
-
-    def __init__(self, filename='', matrix=None, paramNames=[]):
-
+class CovMat(object):
+    def __init__(self, filename='', matrix=None, paramNames=None):
+        if not paramNames:
+            paramNames = []
         self.matrix = matrix
         self.paramNames = paramNames
         self.size = 0
@@ -32,27 +33,28 @@ class covMat(object):
     def rescaleParameter(self, name, scale):
         if name in self.paramNames:
             i = self.paramNames.index(name)
-            self.matrix[:, i] = self.matrix[:, i] * scale;
-            self.matrix[i, :] = self.matrix[i, :] * scale;
-        else: print 'Not in covmat: ' + name
+            self.matrix[:, i] = self.matrix[:, i] * scale
+            self.matrix[i, :] = self.matrix[i, :] * scale
+        else:
+            print('Not in covmat: ' + name)
 
     def mergeCovmatWhereNew(self, cov2):
         params1 = self.paramNames
         params2 = cov2.paramNames
 
-        C = covMat()
+        C = CovMat()
         C.paramNames.extend(params1)
 
         for param in cov2.paramNames:
-                if param not in C.paramNames:
-                    C.paramNames.append(param)
+            if param not in C.paramNames:
+                C.paramNames.append(param)
         l1 = len(params1)
         l2 = len(params2)
         l = len(C.paramNames)
 
-        map1 = dict(zip(params1, range(0, l1)))
-        map2 = dict(zip(params2, range(0, l2)))
-        covmap = dict(zip(range(0, l), C.paramNames))
+        map1 = dict(list(zip(params1, list(range(0, l1)))))
+        map2 = dict(list(zip(params2, list(range(0, l2)))))
+        covmap = dict(list(zip(list(range(0, l)), C.paramNames)))
 
         C.matrix = np.zeros((l, l))
         for i in range(0, l):
@@ -73,13 +75,14 @@ class covMat(object):
         return m
 
     def plot(self):
-        import pylab as plt
+        import matplotlib.pyplot as plt
+
         plt.pcolor(self.correlation())
         plt.colorbar()
         sz = self.size
-        plt.yticks(np.arange(0.5, sz + .5), range(1, sz + 1))
+        plt.yticks(np.arange(0.5, sz + .5), list(range(1, sz + 1)))
         plt.gca().set_yticklabels(self.paramNames)
-        plt.xticks(np.arange(0.5, sz + .5), range(1, sz + 1))
+        plt.xticks(np.arange(0.5, sz + .5), list(range(1, sz + 1)))
         plt.xlim([0, sz])
         plt.ylim([0, sz])
 

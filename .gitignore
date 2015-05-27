@@ -24,3 +24,4 @@ data/clik
 cosmomc
 cosmomc_debug
 CosmoMC/
+__pycache__/

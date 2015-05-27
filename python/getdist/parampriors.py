@@ -1,7 +1,6 @@
 import os
 
 class ParamBounds(object):
-
     def __init__(self, fileName=None):
         self.names = []
         self.lower = {}
@@ -12,7 +11,7 @@ class ParamBounds(object):
         self.filenameLoadedFrom = os.path.split(fileName)[1]
         with open(fileName) as f:
             for line in f:
-                strings = [text.strip() for text in  line.split()]
+                strings = [text.strip() for text in line.split()]
                 if len(strings) == 3:
                     self.setRange(strings[0], strings[1:])
 
@@ -37,8 +36,8 @@ class ParamBounds(object):
             f.write(str(self))
 
     def setRange(self, name, strings):
-        if strings[0] <> 'N' and strings[0] is not None: self.lower[name] = float(strings[0])
-        if strings[1] <> 'N' and strings[1] is not None: self.upper[name] = float(strings[1])
+        if strings[0] != 'N' and strings[0] is not None: self.lower[name] = float(strings[0])
+        if strings[1] != 'N' and strings[1] is not None: self.upper[name] = float(strings[1])
         if not name in self.names: self.names.append(name)
 
     def getUpper(self, name):

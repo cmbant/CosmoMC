@@ -1,17 +1,17 @@
+from __future__ import print_function
 import numpy as np
-import sys
 from scipy import fftpack
 try:
     from scipy.optimize import fsolve, brentq, minimize
 except ImportError:
-    print 'Install scipy version 11 or higher (or e.g. module load python 2.7.5 or higher which is likely linked to later scipy)'
-    sys.exit()
+    print('Install scipy version 11 or higher (or e.g. module load python 2.7.5 or higher which is likely linked to later scipy)')
+    raise
 
-from convolve import dct2d
+from getdist.convolve import dct2d
 import logging
 
 """
-Code to find optimal bandwidths for basic kernel density estiamtors in 1 and 2D
+Code to find optimal bandwidths for basic kernel density estimators in 1 and 2D
 Adapted from Matlab code by Zdravko Botev
 Extended to include correlation estimation and numerical AMISE minimization in 2D case
 Antony Lewis, 2015-03
@@ -60,7 +60,7 @@ def _bandwidth_fixed_point(h, N, I, logI, a2):
         try:
             t_j = (const / N / f) ** (2 / (3. + 2 * j))
         except:
-            print f, h, N, j
+            print(f, h, N, j)
             raise
         f = 2 * np.pi ** (2 * j) * np.dot(a2, np.exp(j * logI - I * (pisquared * t_j)))
     return h - (2 * N * rootpi * f) ** (-1. / 5)
@@ -100,9 +100,9 @@ def gaussian_kde_bandwidth_binned(data, Neff, a=None):
     hfrac = 0.53 * Neff ** (-1. / 5)  # default value in case of failure
     try:
 #        hfrac = brentq(_bandwidth_fixed_point, 0, 0.2, (Neff, I, logI, a2), xtol=0.001)
-        hfrac = fsolve(_bandwidth_fixed_point, hfrac, (Neff, I, logI, a2), xtol=hfrac / 20)
+        hfrac = fsolve(_bandwidth_fixed_point, hfrac, (Neff, I, logI, a2), xtol=hfrac / 20)[0]
     except:
-        print 'kde_bandwidth failed'
+        print('kde_bandwidth failed')
     return hfrac
 
 # ##2D functions
@@ -114,7 +114,7 @@ class KernelOptimizer2D(object):
 
     def __init__(self, data, Neff, correlation, do_correlation=True):
         size = data.shape[0]
-        if size <> data.shape[1]:
+        if size != data.shape[1]:
             raise ValueError('KernelOptimizer2D only handles square arrays currently')
         self.a2 = dct2d(data / np.sum(data))[1:, 1:] ** 2
         self.I = np.arange(1, size, dtype=np.float64) ** 2
@@ -179,7 +179,6 @@ class KernelOptimizer2D(object):
         bias = 0.25 * (
                 hx ** 4 * self.p[4, 0] + hy ** 4 * self.p[0, 4] + 2 * hx ** 2 * hy ** 2 * self.p[2, 2] * (2 * c ** 2 + 1)
                 + 4 * c * hx * hy * (hx ** 2 * self.p[3, 1] + hy ** 2 * self.p[1, 3]))
-#        print 'c, var, bias', c, var, bias, var + max(bias, 0)
         if bias < 0:
             raise Exception("bias not positive definite")
         return var + bias
@@ -239,9 +238,8 @@ class KernelOptimizer2D(object):
                 AMISEopt = self.AMISE(res.x)
                 if AMISEopt < AMISE * 0.9:
                     h_x, h_y, corr = res.x
-#              print 'res x,AMISE = ', res.x, AMISEopt
         except:
-            logging.debug('AMISE optmization failed')
+            logging.debug('AMISE optimization failed')
             pass
         return h_x, h_y, corr
 

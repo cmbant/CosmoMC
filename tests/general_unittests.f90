@@ -2,12 +2,14 @@
     program tester
     use ListTests
     use InterpolationTests
+    use IniTests
     implicit none
     
     integer :: fails =0
 
     fails = fails + RunListTests()
     fails = fails + RunInterpolationTests()
+    fails = fails + RunIniTests()
 
     print *, 'Total fails: ', fails
     
