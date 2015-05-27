@@ -143,13 +143,14 @@
 
     end subroutine TSetup_DoSampling
 
-    subroutine TSetup_DoTests(this, output_root, paramsvals)
+    subroutine TSetup_DoTests(this, output_root, paramsvals, check_compare)
     !This runs likelihoods for fixed values of parameters and outputs the likelihoods and timings
     !e.g. for likelihood testing between versions, performance testing, etc.
     !also can set output_root to write out theory calculation and derived quantities for specific parameters
     class(TSetup) :: this
     character(LEN=*) :: output_root
     real(mcp), intent(in) :: paramsvals(:)
+    real(mcp), intent(in) :: check_compare
     Type(ParamSet) :: Params
     real(mcp) :: logLike, time
     Type(TTimer) Timer
@@ -164,7 +165,15 @@
     if (logLike == logZero) then
         write(*,*) 'Test likelihoods done, parameter point rejected (logZero or outside prior)'
     else
-        write(*,*) 'Test likelihoods done, total logLike = '//RealToStr(logLike)//', chi-sq = '//RealToStr(logLike*2)
+        write(*,'("Test likelihoods done, total logLike, chi-eq = ",2f11.3)') logLike, logLike*2
+        if (check_compare /= logZero) then
+            write(*,'("Expected likelihoods,  total logLike, chi-eq = ",2f11.3)')  check_compare, check_compare*2
+            if (abs(check_compare-LogLike) < 0.05) then
+                write(*,*) '...OK, delta = ', logLike-check_compare
+            else
+                error stop '** Likelihoods do not match **'
+            end if
+        end if
         write(*,*) 'Likelihood calculation time (seconds)= '//RealToStr(time)
         if (output_root/='') then
             call this%LikeCalculator%WriteParamPointTextData(output_root, Params)
