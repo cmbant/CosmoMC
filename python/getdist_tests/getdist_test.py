@@ -30,16 +30,17 @@ class GetDistFileTest(unittest.TestCase):
                 os.remove(os.path.join(self.tempdir, f))
 
     def testLoad(self):
-        samples = loadMCSamples(self.root, dist_settings={'ignore_rows':0.1})
-        g = plots.getSinglePlotter(chain_dir=self.tempdir, analysis_settings={'ignore_rows':0.1})
-        self.assertEqual(g.sampleAnalyser.samplesForRoot('testchain').numrows, samples.numrows, "Inconsistent chain loading")
+        samples = loadMCSamples(self.root, dist_settings={'ignore_rows': 0.1})
+        g = plots.getSinglePlotter(chain_dir=self.tempdir, analysis_settings={'ignore_rows': 0.1})
+        self.assertEqual(g.sampleAnalyser.samplesForRoot('testchain').numrows, samples.numrows,
+                         "Inconsistent chain loading")
         self.assertEqual(g.sampleAnalyser.samplesForRoot('testchain').getTable().tableTex(),
-                         samples.getTable().tableTex(), 'Inconsistent load result')
+            samples.getTable().tableTex(), 'Inconsistent load result')
         samples.getConvergeTests(0.95)
         self.assertAlmostEqual(0.0009368, samples.GelmanRubin, 5, 'Gelman Rubin error, got ' + str(samples.GelmanRubin))
 
     def testPlotFile(self):
-        samples = loadMCSamples(self.root, dist_settings={'ignore_rows':0.1})
+        samples = loadMCSamples(self.root, dist_settings={'ignore_rows': 0.1})
         g = plots.getSinglePlotter()
         g.plot_3d(samples, ['x', 'y', 'x'])
         g.export(self.root + '_plot.pdf')
@@ -52,7 +53,7 @@ class GetDistTest(unittest.TestCase):
         np.random.seed(10)
         self.testdists = Test2DDistributions()
         self.samples = self.testdists.bimodal[0].MCSamples(12000, logLikes=True)
-        warnings.filterwarnings('ignore', '.*tight_layout.*',)
+        warnings.filterwarnings('ignore', '.*tight_layout.*', )
 
     def testTables(self):
         self.assertEqual(str(self.samples.getLatex(limit=2)),
@@ -67,7 +68,10 @@ class GetDistTest(unittest.TestCase):
     def testLimits(self):
         samples = self.testdists.cut_correlated.MCSamples(12000, logLikes=False)
         stats = samples.getMargeStats()
-        print(stats.parWithName('x1').limits)
+        lims = stats.parWithName('x').limits
+        self.assertAlmostEqual(lims[0].lower, 0.2175, 3)
+        self.assertAlmostEqual(lims[1].lower, 0.0548, 3)
+        self.assertTrue(lims[2].onetail_lower)
 
     def testPlots(self):
         g = plots.getSinglePlotter()
@@ -96,7 +100,7 @@ class GetDistTest(unittest.TestCase):
         g.newPlot()
         g.triangle_plot([samples, samples2], ['x', 'y'])
 
-        samples.updateSettings({'contours':'0.68,0.95,0.99'})
+        samples.updateSettings({'contours': '0.68 0.95 0.99'})
         g.settings.num_contours = 3
         g.plot_2d(samples, 'x', 'y', filled=True)
 
