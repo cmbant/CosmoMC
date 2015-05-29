@@ -64,6 +64,11 @@ class GetDistTest(unittest.TestCase):
         samples = self.testdists.bending.MCSamples(12000, logLikes=True)
         self.assertTrue('e-value: 0.097' in samples.PCA(['x', 'y']))
 
+    def testLimits(self):
+        samples = self.testdists.cut_correlated.MCSamples(12000, logLikes=False)
+        stats = samples.getMargeStats()
+        print(stats.parWithName('x1').limits)
+
     def testPlots(self):
         g = plots.getSinglePlotter()
         samples = self.samples
@@ -90,4 +95,8 @@ class GetDistTest(unittest.TestCase):
         samples2 = prob2.MCSamples(12000)
         g.newPlot()
         g.triangle_plot([samples, samples2], ['x', 'y'])
+
+        samples.updateSettings({'contours':'0.68,0.95,0.99'})
+        g.settings.num_contours = 3
+        g.plot_2d(samples, 'x', 'y', filled=True)
 
