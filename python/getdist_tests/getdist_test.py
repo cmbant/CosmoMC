@@ -45,6 +45,14 @@ class GetDistFileTest(unittest.TestCase):
         g.plot_3d(samples, ['x', 'y', 'x'])
         g.export(self.root + '_plot.pdf')
 
+    def testLoadName(self):
+        g = plots.getSinglePlotter(chain_dir=self.tempdir,
+                                    analysis_settings={'ignore_rows': 0.3, 'contours':[0.68, 0.95, 0.99]})
+
+        g.settings.num_plot_contours = 3
+        g.plot_2d('testchain', ['x', 'y'])
+        g.export('z://test.pdf')
+
 
 class GetDistTest(unittest.TestCase):
     """test some getdist routines and plotting"""
@@ -53,7 +61,7 @@ class GetDistTest(unittest.TestCase):
         np.random.seed(10)
         self.testdists = Test2DDistributions()
         self.samples = self.testdists.bimodal[0].MCSamples(12000, logLikes=True)
-        warnings.filterwarnings('ignore', '.*tight_layout.*', )
+        warnings.filterwarnings('ignore', '.*tight_layout.*',)
 
     def testTables(self):
         self.assertEqual(str(self.samples.getLatex(limit=2)),
