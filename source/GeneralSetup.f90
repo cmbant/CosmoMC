@@ -171,7 +171,8 @@
             if (abs(check_compare-LogLike) < 0.05) then
                 write(*,*) '...OK, delta = ', logLike-check_compare
             else
-                error stop '** Likelihoods do not match **'
+                write(*,*) '** Likelihoods do not match **'
+                error stop 2
             end if
         end if
         write(*,*) 'Likelihood calculation time (seconds)= '//RealToStr(time)
