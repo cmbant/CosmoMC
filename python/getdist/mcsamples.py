@@ -732,7 +732,7 @@ class MCSamples(chains):
                         pass
                     except:
                         thin_fac[ix] = 0
-                    if thin_rows < 2: thin_fac[ix] = 0
+                    if thin_fac[ix] and thin_rows < 2: thin_fac[ix] = 0
 
                 lines += "Raftery&Lewis statistics\n"
                 lines += "\n"
