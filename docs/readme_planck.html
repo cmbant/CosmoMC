@@ -17,13 +17,13 @@ The Planck lensing and Bicep-Keck-Planck likelihoods are included with the cosmo
 <H3>Using the Planck likelihood with CosmoMC</H3>
 Note you need to use ifort 14 or higher to build CosmoMC, or gfortran (gcc) 6 latest (easily available for testing in <A HREF="http://cosmologist.info/CosmoBox.html">virtual environments</A>) so make sure you have that configured before you start.
 <UL>
-<LI>Download and install the Planck likelihood code and data files to somewhere convenient from 
+<LI>Download and install the Planck likelihood code and data files to somewhere convenient from
 <UL>
 <LI><A HREF="http://wiki.cosmos.esa.int/planckpla/index.php/CMB_spectrum_%26_Likelihood_Code">Planck likelihood code and data download links</A>
 </UL>
 
 <LI>Extract and install the likelihood by doing:
-<pre>tar xvfj plc-2.0.tar.bz2</pre>
+<pre>tar xvfj COM_Likelihood_Code-v2.*.tar.bz2</pre>
 <LI><pre>cd plc-2.0</pre>
 <LI><pre>./waf configure --lapack_mkl=${MKLROOT} --install_all_deps</pre>
   (you may need to change the options on this line depending on your installation; --install_all_deps may not be needed; see the plc_2.0 readme.md for details)
@@ -38,10 +38,11 @@ If you haven't done it already, also add CosmoMC's python path (for plotting and
 <pre>
 export PYTHONPATH=COSMOMC..PATH/python:$PYTHONPATH
 </pre>
-<LI>Then change to your COSMOMC..PATH root directory and make a symbolic link to your PLC installation
+<LI>Make sure you have downloaded and extracted the Planck likelihood file data files that you want
+<LI>Then change to your COSMOMC..PATH root directory and make a symbolic link to your data file installation
 <pre>
 cd COSMOMC...PATH
-ln -s $CLIK_PATH ./data/clik
+ln -s DATA...PATH/plc_2.0 ./data/clik
 </pre>
 (CosmoMC will look for files in ./data/clik/hi_l, ./data/clik/lowl_l, etc etc.).
 <LI>You can now build cosmomc by running "make" as described further in the <A HREF="readme.html">ReadMe</A>, and it should detect and link to your PLC (clik) installation.
