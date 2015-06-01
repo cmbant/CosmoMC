@@ -59,13 +59,8 @@ PRECISION ?=
 #set WMAP empty not to compile with WMAP, e.g. WMAP = /scratch/../WMAP9/likelihood_v5
 WMAP ?=
 
-#set PICO=YES to build with pico support, or set path to PICO manually
 #e.g. PICO=/path/to/pypico
-PICO ?= $(shell python -c "import pypico; print pypico.get_folder()")
-ifeq ($(PICO),YES)
-override PICO =$(shell python -c "import pypico; print pypico.get_folder()")
-endif
-
+PICO ?= $(shell python -c "import pypico; print pypico.get_folder()" 2> /dev/null)
 
 #Needed for WMAP; set from ~/.bashrc definition or edit here
 cfitsio ?=
