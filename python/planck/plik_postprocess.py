@@ -6,7 +6,7 @@ import numpy as nm
 import clik
 import clik.smicahlp as smh
 import re
-import os, sys
+import sys
 
 
 def parse_minimumfile(minfile):
@@ -224,6 +224,4 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    import sys
-
     main(sys.argv)

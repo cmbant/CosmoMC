@@ -40,7 +40,7 @@ Available scripts include:
 <LI><b>makeGrid.py</b>: as descried above, for setting up a grid of models. Stores the information in a "pickle" file that can then be read by the other scripts for iterating over batch items.
 <LI><b>runbatch.py</b>: submit runs to a job submission script
 <LI><b>runningJobs.py</b>: to check what is currently running and current convergence statistics.
-<LI><b>checkConverge.py</b>: after running getGridGetdist, this can be used to find chains with poor convergence
+<LI><b>checkConverge.py</b>: after running runGridGetdist, this can be used to find chains with poor convergence
 <LI><b>cleanup.py</b>: for cleaning up files (e.g. before re-running a failed chain); can also just be used to list files for runs matching input parameters
 <LI><b>runGridGetdist.py</b>: runs getdist over the grid of chain results, and generating parameter constraints (.margestats files etc). This runs the fortran getdist, and produces plot_data files for plotting; run with <b>--no_plots</b> if you don't need these (e.g. using the GetDist GUI, or python plot scripts).
 <LI><b>makeTables.py</b>: script for making latex (and hence PDF) tables from .margestats and .minimum files produced by runGridGetDist.py.

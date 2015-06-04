@@ -190,7 +190,7 @@ p = samples.getParams()
 rd_fid = 149.28
 rsH = p.Hubble057 * p.rdrag / rd_fid
 samples.addDerived(rsH, name='rsH', label=r'H(0.57) (r_{\mathrm{drag}}/r_{\mathrm{drag}}^{\rm fid})\, [{\rm km} \,{\rm s}^{-1}{\rm Mpc}^{-1}]')
-samples.updateChainBaseStatistics()
+samples.updateBaseStatistics()
 </pre>
 </blockquote>
 The last line is needed to ensure caches etc are cleared, but only needs to be called once if you are adding several new parameters.
