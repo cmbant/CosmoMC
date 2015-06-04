@@ -37,4 +37,4 @@ else:
     elif args.delete_ids is not None: ids += args.delete_ids
     else: print('Must give --delete_id_range or --delete_ids if no batch directory')
     for jobId in ids:
-        subprocess.check_output('qdel ' + str(jobId), shell=True).strip()
+        subprocess.check_output('qdel ' + str(jobId), shell=True)
