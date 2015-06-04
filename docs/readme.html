@@ -66,43 +66,47 @@ learn the proposal matrix from the covariance of the post-burn-in samples so far
 <p>There are two programs supplied <B>cosmomc</B> and <B>getdist</B>. The first is a compiled Fortran code
 does the actual Monte-Carlo and produces sets of .txt chain files and (optionally) .data output
 files (the binary .data files include the theoretical CMB power spectra
-etc.). The "getdist" program analyses the .txt files calculating statistics
+etc.).  The "cosmomc" program can also do post processing on .data files, for example doing importance
+sampling with new data. The "getdist" program analyses the .txt files calculating statistics
 and outputs files for the requested 1D, 2D and 3D plots (and could be used independently of the main cosmomc program), and there are Fortran and python versions.
-The Python version is is the most up to date, and output is not the same as the fortran version (which is mainly provided for backwards checking and reproducing Planck results).  The "cosmomc" program also does post processing on .data files, for example doing importance
+The Python version is is the most up to date, and output is not the same as the fortran version (which is mainly provided for backwards checking and reproducing Planck results). GetDist is included with CosmoMC, but can be also run quite separately from the standalone <A HREF="https://pypi.python.org/pypi/GetDist/">python package</A>. The "cosmomc" program also does post processing on .data files, for example doing importance
 sampling with new data.
 <P>
 Please e-mail details of any bugs or enhancements to <a href="http://cosmologist.info/">Antony Lewis</a>. If you have any questions please ask in the <A HREF="http://cosmocoffee.info">CosmoCoffee</A> computers and software forum. You can also read answers to other people's questions there.
 
 
-<A NAME="Compiling"><h2  style ="color:darkred">Downloading and Compiling</h2></A>
-To run CosmoMC you will need a Fortran 2003 (or higher) compiler - Intel Fortran 14 or higher works (earlier versions will not).
-The latest gfortran (part of GCC 6) source also works, but the currently released versions do not.
-If you just want to analyse chains and run plots, you only need python 2.7+ (see <A HREF="#Analysing">plotting</A> below).
-<P>
-Two options:
-<UL>
-<LI>Use CosmoMC (and CAMB) in the pre-configured virtual machine <A HREF="http://cosmologist.info/CosmoBox">CosmoBox</A>. This is good for development and debugging or if you have problems with compilers etc on your local system. There are both desktop virtual machine images and Amazon AWS images that can be used for running clusters in the cloud.
-<LI>
-Download and install yourself:
-<ul>
-<li>
-Get the <a href="http://cosmologist.info/cosmomc/submit.html">download</a>
-and unzip and untar it (run "gunzip cosmomc.tar.gz", then "tar -xf cosmomc.tar")</li>
-</ul>
-</ul>
-Compiling and running:
-<ul>
-<LI>To use Planck you need to download and install the Planck likelihood code and data. See the <A HREF="readme_planck.html">Planck readme</A> before continuing.
-<li>
-Run "make"  (try "gmake" if you get an error)</li>
-<LI>
-The Makefiles used by "make" should detect ifort and gfortran, but if necessary edit the relevant top parts of the Makefile in the source directory depending on what system you are using
-<blockquote><FONT SIZE=2>Using MPI simplifies running several chains and proposal optimization. MPI can be used with OpenMP: generally you want to use OpenMP to use all the shared-memory processors on each node of a cluster, and MPI to run multiple chains on different nodes (the program can also just be run on a single CPU).
-</FONT></blockquote>
 
+<A NAME="Compiling"><h2  style ="color:darkred">Downloading and Compiling</h2></A>
+To run compile and run CosmoMC you will need a Fortran 2008 compiler. Various options include
+<UL>
+<LI>Intel Fortran 14 or higher (earlier versions will not work). This is usually installed on supercomputers.
+<LI>The latest gfortran (part of GCC 6) compiled from source  (currently released versions do not work).
+<LI>A pre-configured virtual development environment, available from <A HREF="http://cosmologist.info/CosmoBox">CosmoBox</A>. <br>
+<i>This is good for consistent development and debugging, and ensures required libraries are also available. There are both desktop virtual machine (and Docker) images, and an Amazon AWS image that can be used for running clusters in the cloud.</i>
+</UL>
+If you just want to analyse chains and run plots, you only need python 2.7+ or 3.4+ (see <A HREF="#Analysing">plotting</A> below).
+<P>
+You then need to download and install the program:
+<ul>
+<li>Get the <a href="http://cosmologist.info/cosmomc/submit.html">download</a> (or clone from git)
+<li>Extract the files with
+<pre>
+tar xvf cosmomc.tar.gz
+</pre>
+<li>Change to the cosmomc directory and run "make"
+<br>
+<i>To use Planck data you need to download and install the Planck likelihood code and data first. See the <A HREF="readme_planck.html">Planck readme</A>.
+The Makefiles used by "make" should detect ifort and gfortran, but if necessary edit the relevant top parts of the Makefile in the source directory depending on what system you are using.</i>
 <li>To output chains you might want to make a <b>chains</b> subdirectory, or (perhaps better) symlink to somewhere on your data disk.
+</ul>
+
+By default the build uses MPI. Using MPI simplifies running several chains and proposal optimization. MPI can be used with OpenMP for parallelization of each chain. Generally you want to use OpenMP to use all the shared-memory processors on each node of a cluster, and MPI to run multiple chains on different nodes (the program can also just be run on a single CPU).
+<p>
+For code editing some project files are available for standard development environments:
+<ul>
 <LI>A CodeBlocks project file is provided (cosmomc.cbp), which can also be used to run and debug from the cross-platform <A hREF="http://darmar.vgtu.lt/">CodeBlocks IDE</A>.
-<LI>On Windows using Visual Fortran, open the solution file in the VisualStudio folder, and set test.ini (or your .ini file) as the program argument. This is not set up to compile with MPI, so mainly useful for development. Visual Fortran does not use the provided Makefiles, but works out dependencies automatically (and has much better debugging support than gdb with CodeBlocks).
+<LI>On Windows using Visual Fortran, open the solution file in the VisualStudio folder.<br>
+  <i>Set test.ini (or your .ini file) as the program argument. This is not set up to compile with MPI, so mainly useful for development. Visual Fortran does not use the provided Makefiles, but works out dependencies automatically (and has much better debugging support than gdb with CodeBlocks).</i>
 </ul><P>
 <P>
 See <A HREF="http://cosmologist.info/cosmomc/cosmomc.bib">BibTex file</A> for relevant citations.
@@ -288,7 +292,7 @@ You can change the number of chains, nodes, walltime etc when submitting a job b
 There are now several ways you can analyse chain results:
 <UL>
 <LI>Using the <b>python/GetDist.py</b> program (which can be run without having a fortran compiler installed).
-<LI>With the GetDist Gui interactive program, in <b>python/GetDistGUI.py</b>.  See the <A HREF="readme_gui.html">GetDist Gui readme</A>.
+<LI>With the GetDist Gui interactive program, in <b>python/GetDistGUI.py</b>.  See the <A HREF="readme_gui.html">GetDist GUI readme</A>.
 <LI>Programmatically, using the python modules via <A HREF="readme_python.html">python scripts</A>.
 <LI>Using the <b>getdist</b> program, compiled with Fortran (used by Planck 2015 chains, but now deprecated)
 </UL>
@@ -328,24 +332,27 @@ x2   0 N
 Note that not all parameters need to be specified, and "N" can be used to denote that a particular upper or lower limit is unbounded. The ranges are used to determine
 densities and plot bounds if there are samples near the boundary; if there are no samples anywhere near the boundary the ranges have no affect on plot bounds, which are chosen appropriately for the range of the samples.
 <P>
-The GetDist program, scripts and gui could be used completely independently of the cosmomc program if you produce chains (or samples) in the same format. If there is just one file of samples, you can also use xxx.txt without the _n number tag that's used to denote separate chains.
+The GetDist program, scripts and gui could be used completely independently of the CosmoMC program if you produce chains (or samples) in the same format
+(see the pip-installable <A HREF="https://pypi.python.org/pypi/GetDist/">python package</A>). If there is just one file of samples, you can also use xxx.txt without the _n number tag that's used to denote separate chains.
 <P>
 <H3>Running the GetDist program</H3>
 The GetDist program processes the chains and produces a set of output files giving marginalized constraints, convergence diagnostics, etc, and optionally some scripts for producing plots. This is convenient for bulk production of parameter constraints and first-look plotting; use the <A HREF="readme_python.html">python modules</A> in your own scripts if you need more fine-grained control.
 <p>
 Running using the python version
 <blockquote>
-<B>python python/GetDist.py distparams.ini [chains/chainroot]</B>
+<B>python python/GetDist.py [distparams.ini] [chains/chainroot]</B>
 </blockquote>
 or using compiled Fortran:
 <blockquote>
 <B>./getdist distparams.ini [chains/chainroot]</B>
 </blockquote>
-Here the parameter input file distparams.ini determines analysis parameters. The chain root name to analyse can be given in the .ini file, or you can specify it as an optional parameter on the command line to quickly analyse different chains with the same settings. The parameter input file should be fairly self-explanatory,
-and is in the same format as the cosmomc parameter input file.
-
+Here the parameter input file distparams.ini determines analysis parameters; in the python version this is optional, and if omitted defaults will be used. The chain root name to analyse can be given in the .ini file, or you can specify it as an optional parameter on the command line to quickly analyse different chains with the same settings. The parameter input file should be fairly self-explanatory,
+and is in the same format as the cosmomc parameter input file. To make a new .ini file you can edit to customize settings use
+<blockquote>
+<B>python python/GetDist.py --make_param_file myparams.ini</B>
+</blockquote>
 <p>
-Note that the outputs from the python and fortran versions of GetDist are not identical due to slightly different algorithms, but should usually be consistent to better than the sampling noise for parameter means and limits. Both can produce pre-computed densities for plotting (in plot_data directory), but the python plotting scripts do not require this (they are generated on demand) - output will be faster and make far fewer files if <b>no_plots=T</b>.
+Note that the outputs from the python and fortran versions of GetDist are not identical due to slightly different algorithms, but should usually be consistent to better than the sampling noise for parameter means and limits. Both can produce pre-computed densities for plotting (in the <B>plot_data_dir</b> directory), but the python plotting scripts do not require this - output will be faster and make far fewer files if <b>plot_data_dir</b> is not set.
 <P>
 
 <P>
@@ -355,9 +362,6 @@ Note that the outputs from the python and fortran versions of GetDist are not id
 <LI>GetDist processes the <B>file_root</B>.txt file, and outputs statistics, marginalized
 plots, samples plots, and performs PCA (principle component analysis). <BR><BR>
 <LI>Set <b>ignore_rows</b> to a positive integer to ignore that number of output rows as burn-in, or to a fraction &lt;1 to skip that fraction of each chain's rows.
-<BR><BR><LI>
-Set the <b>thin_factor</b> parameter to produce a file_root_thin.txt file containing
-every <b>thin_factor</b>th sample.
 <BR><BR>
 <LI>Set the <b>parameter_names</b> parameter to specify a .paramnames file with the names and labels for parameters corresponding to the various columns in the chain files (see the supplied examples). If this parameter is empty getdist reads the parameters from the file_root.paramnames file that is output when generating the chains.
 <BR><BR><LI>
@@ -375,7 +379,7 @@ When limits[paramname] are used the .margestats file
 <IMG SRC="http://cosmologist.info/cosmomc/pics/r_wrong.png"><BR>
 Incorrect result when <B>limits[r02]</B> is not set.</TD><TD> <IMG SRC="http://cosmologist.info/cosmomc/pics/r_correct.png"><BR>Correct result when setting <B>limits[r02]=0 N</B>.</TD></TR></table>
 <P>
-<LI>Various parameters determine how sample densities are computed (see the <A HREF="http://cosmologist.info/notes/GetDist.pdf">Kernel Density Estimation notes</A>).  The <B>smooth_scale_1D</b> and <B>smooth_scale_2D</B> parameters can be set to change the smoothing scale
+<LI>Various parameters determine how sample densities are computed (see the <A HREF="http://cosmologist.info/notes/GetDist.pdf">Kernel Density Estimation notes</A>).  The <B>smooth_scale_1D</b> and <B>smooth_scale_2D</B> parameters can be set to change the smoothing scale.
 For smooth_scale_1D:
 <UL>
 <LI>if smooth_scale_1D &gt;= 1 smooth by smooth_scale_1D bin widths
@@ -580,12 +584,16 @@ for details and references see the <A HREF="http://cosmologist.info/notes/GetDis
 <LI>GetDist GUI (now python/GetDistGUI.py) can show convergence, margestats and likestats, latex tables, and option for shaded contours
 <LI>GetDist GUI options menu windows to easily change and immediately preview different analysis and plot settings; option to change the default style module (getdist.plots or planckStyle provided)
 <LI>GetDist GUI Script Preview tab for WYSIWYG plot preview of generated and custom scripts
+<LI>GetDist available separately as a pip-installable <A HREF="https://pypi.python.org/pypi/GetDist/">python package</A>
 </UL>
 <LI>Reorganized python code into modules (paramgrid, getdist and getdist.gui)
 <LI>GetDistPlots now getdist.plots; added options to plot above and below diagonal in triangle plot; various fixes
 <LI>Grid scripts compatibility with Grid Engine (OGE/SGE, as installed e.g. on StarCluster Amazon images)
 <LI>Added project files for the <A HREF="http://darmar.vgtu.lt/">CodeBlocks</A> Fortran development environment (using CosmoMC Makefile)
-<LI>Changes for compatibility with gfortran from GCC 6 trunk (which fixes critical GCC Fortran 2003 bugs that affect GCC 5.1 and lower)
+<LI>Changes for compatibility with gfortran from GCC 6 trunk (which fixes critical GCC Fortran 2003 bugs that affect GCC 5.1 and lower).
+Updated development environments available with <A HREF="http://cosmologist.info/CosmoBox">CosmoBox</A>
+<LI>Fix for small inconsistency in how neutrino Neff was set in Calculator_PICO. Added warning if attempting to run with PICO when compiled with -openmp (fails for unknown reason; just remove openmp form Makefile and rebuild).
+<LI>Tidied up Makefiles, with auto-detection of ifort and gfortran (only gcc 6+ works)
 <LI>Support for Python 2.7 and Python 3.4+
 </Ul>
 <LI><B>February 2015</B><BR>
