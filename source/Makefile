@@ -11,6 +11,7 @@ ifortErr = $(shell which ifort >/dev/null; echo $$?)
 #these settings for ifort 14 and higher. Earlier versions will not work.
 ifeq "$(ifortErr)" "0"
 #ifort; Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
+
 F90C     = ifort
 #use this if mpif90 is trying to use gfortran: MPIF90C = mpif90 -f90=ifort
 
@@ -27,6 +28,11 @@ LAPACKL =  -Wl,--start-group $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROO
 FFLAGS+=  -axAVX,SEE4.2 -static-intel
 else
 FFLAGS += -xHost
+endif
+
+ifneq (NERSC_HOST,)
+#setting for Edison/Hopper on NERSC
+MPIF90C = ftn
 endif
 
 else
