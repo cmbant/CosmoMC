@@ -573,7 +573,8 @@ installed manually or obtained from the cosmomc git repository (access available
 <UL>
 <LI>Settings (batch2/) for the Planck 2015 likelihood release. Planck lensing and BKP likelihoods are native and included with cosmomc, others can be linked to the Planck likelihood code.
 <LI>Added SZ likelihood, szcounts.f90, as used by the Planck 2015 cluster paper
-<LI>BKP likelihood update to include tests including E
+<LI>BKP likelihood update to include tests including E; small fix to covariance matrix (does not significantly change results)
+<LI>action=4 test run has option to check likelihoods gives expected values (as test_planck.ini)
 </UL>
 <LI>New GetDist:
 <UL>
@@ -587,6 +588,7 @@ for details and references see the <A HREF="http://cosmologist.info/notes/GetDis
 <LI>GetDist available separately as a pip-installable <A HREF="https://pypi.python.org/pypi/GetDist/">python package</A>
 </UL>
 <LI>Reorganized python code into modules (paramgrid, getdist and getdist.gui)
+<LI>Plot scripts and GUI can now compare named chains from multiple grids/directories (chain_dir=[dir1, dir2...]; note chain names must be distinct)
 <LI>GetDistPlots now getdist.plots; added options to plot above and below diagonal in triangle plot; various fixes
 <LI>Grid scripts compatibility with Grid Engine (OGE/SGE, as installed e.g. on StarCluster Amazon images)
 <LI>Added project files for the <A HREF="http://darmar.vgtu.lt/">CodeBlocks</A> Fortran development environment (using CosmoMC Makefile)

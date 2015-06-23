@@ -499,6 +499,12 @@ class ParamLimit(object):
 
 
 class MargeStats(ParamResults):
+    """
+    Stores marginalized 1D parameter statistics, including mean, variance and confidence limits
+    
+    Access names.parWithName('xxx').limits[i] to get a  :func:`~getdist.types.ParamLimit`
+    for the ith limit of parameter named xxx. By default i=1 is 68%, i=2 is 95%.  
+    """
     def loadFromFile(self, filename):
         textFileLines = self.fileList(filename)
         lims = textFileLines[0].split(':')[1]
