@@ -31,7 +31,7 @@ class GetDistFileTest(unittest.TestCase):
                 os.remove(os.path.join(self.tempdir, f))
 
     def testLoad(self):
-        samples = loadMCSamples(self.root, dist_settings={'ignore_rows': 0.1})
+        samples = loadMCSamples(self.root, settings={'ignore_rows': 0.1})
         g = plots.getSinglePlotter(chain_dir=self.tempdir, analysis_settings={'ignore_rows': 0.1})
         self.assertEqual(g.sampleAnalyser.samplesForRoot('testchain').numrows, samples.numrows,
                          "Inconsistent chain loading")
@@ -41,7 +41,7 @@ class GetDistFileTest(unittest.TestCase):
         self.assertAlmostEqual(0.0009368, samples.GelmanRubin, 5, 'Gelman Rubin error, got ' + str(samples.GelmanRubin))
 
     def testPlotFile(self):
-        samples = loadMCSamples(self.root, dist_settings={'ignore_rows': 0.1})
+        samples = loadMCSamples(self.root, settings={'ignore_rows': 0.1})
         g = plots.getSinglePlotter()
         g.plot_3d(samples, ['x', 'y', 'x'])
         g.export(self.root + '_plot.pdf')
@@ -59,7 +59,7 @@ class GetDistFileTest(unittest.TestCase):
             if os.getenv('TRAVIS', None):
                 return str(subprocess.check_output(['GetDist.py'] + args))
             else:
-                return str(subprocess.check_output(['python', os.path.join(os.path.dirname(__file__), '../', 'GetDist.py')] + args))
+                return str(subprocess.check_output(['python', os.path.join(os.path.dirname(__file__), '..' + os.sep, 'GetDist.py')] + args))
 
         os.chdir(self.tempdir)
         res = callGetDist([self.root])

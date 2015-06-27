@@ -147,13 +147,13 @@ if False:
 
     ls = d[:, 0]
     ix = 4
-    plt.subplot(211)
+    plt._subplot(211)
     plt.plot(ls, d[:, ix], color='k')
     plt.plot(ls, diso[:, ix], color='g')
     plt.plot(ls, dx[:, ix], color='r')
     plt.xlim([0, 1000])
     # gca().set_yscale('log')
-    plt.subplot(212)
+    plt._subplot(212)
     plt.plot(ls, (dx[:, ix] - d[:, ix]) / d[:, ix], color='r')
     plt.ylim([-0.1, 0.1])
     plt.xlim([0, 1000])

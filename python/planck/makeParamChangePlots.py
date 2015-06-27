@@ -66,7 +66,7 @@ for paramtag, parambatch in items:
                                 jobItem.result_marge.parWithName(param.name).err for jobItem in compares]
                     else:
                         means = [jobItem.result_marge.parWithName(param.name).mean for jobItem in compares]
-                        subplot(plot_row, plot_col, ix + 1)
+                        _subplot(plot_row, plot_col, ix + 1)
                         if args.bands_sigma is not None and compi == 0:
                             if args.sigma_between is not None:
                                 sigmas_ref = par_sigmas[str(args.sigma_between[0]) + '_' + param.name]
@@ -80,14 +80,14 @@ for paramtag, parambatch in items:
                                 c = fill_colors[i]
                                 fill_between(lmaxs, means[compare_index] + delta, means[compare_index] - delta,
                                              facecolor=c, alpha=1, edgecolor=c, lw=0)
-                        plot(lmaxs, means, **g.get_line_styles(compi))
+                        plot(lmaxs, means, **g._get_line_styles(compi))
 
     if parnames:
         for i, param in enumerate(parnames):
-            subplot(plot_row, plot_col, i + 1)
+            _subplot(plot_row, plot_col, i + 1)
             text(0.95, 0.8, '$' + param.label + '$', horizontalalignment='right', verticalalignment='center',
                  transform=gca().transAxes, fontsize=18)
             xlim(lmaxs[0], lmaxs[-1])
-        g.finish_plot(g.default_legend_labels(None, [paramtag + '_' + p for p in args.compare]),
+        g.finish_plot(g._default_legend_labels(None, [paramtag + '_' + p for p in args.compare]),
                       legend_ncol=len(args.compare))
         for ext in args.outputs: g.export(paramtag + '_' + args.fname + '.' + ext)
