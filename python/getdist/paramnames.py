@@ -3,15 +3,17 @@ import os
 import fnmatch
 import six
 
+
 class ParamInfo(object):
     """
-    Parmeter information object. 
+    Parameter information object.
     
     :ivar name: the parameter name tag (no spacing or punctuation)
     :ivar label: latex label (without enclosing $)
     :ivar comment: any descriptive comment describing the parameter
     :ivar isDerived: True if a derived parameter, False otherwise (e.g. for MCMC parameters)
     """
+
     def __init__(self, line=None, name='', label='', comment='', derived=False, number=None):
         self.setName(name)
         self.isDerived = derived
@@ -77,6 +79,7 @@ class ParamList(object):
         
     :ivar names: list of :class:`ParamInfo` objects
     """
+
     def __init__(self, fileName=None, setParamNameFile=None, default=None, names=None):
         """
         :param fileName: name of .paramnames file to load from

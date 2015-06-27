@@ -42,7 +42,7 @@ def chainFiles(root, chain_indices=None, ext='.txt', first_chain=0, last_chain=-
 
     :param root: Root name for files (no extension)
     :param chain_indices: If True, only indexes inside the list included, If False, includes all indexes.
-    :param ext: extention for files
+    :param ext: extension for files
     :param first_chain: The first index to include.
     :param last_chain: The last index to include.
     :param chain_exclude: A list of indexes to exclude, None to include all
@@ -135,7 +135,7 @@ class WeightedSamples(object):
     WeightedSamples is the base class for a set of weighted parameter samples
     
     :ivar weights:  array of weights for each sample (default: array of 1)
-    :ivar loglikes: array of -log(Likleihoods) for each sample (default: array of 0)
+    :ivar loglikes: array of -log(Likelihoods) for each sample (default: array of 0)
     :ivar samples: n_samples x n_parameters numpy array of parameter values
     :ivar n: number of parameters
     :ivar numrows: number of samples positions (rows in the samples array)

@@ -55,12 +55,12 @@ class GridDensity(object):
     :ivar P: array of density values
     """
     def normalize(self, by='integral', in_place=False):
-        '''
+        """
         Normalize the density grid
-        
+
         :param by: 'integral' for standard normalization, or 'max', to normalize so the maximum value is unity
         :param in_place: if True, normalize in place, otherwise make copy (in case self.P is used elsewhere)
-        '''
+        """
 
         if by == 'integral':
             norm = self.norm_integral()
@@ -78,11 +78,11 @@ class GridDensity(object):
         return self
 
     def setP(self, P=None):
-        '''
+        """
         Set the density grid values
-        
+
         :param P: numpy array of density values
-        '''
+        """
         if P is not None:
             for size, ax in zip(P.shape, self.axes):
                 if size != ax.size:
@@ -106,12 +106,12 @@ class GridDensity(object):
         return b
 
     def getContourLevels(self, contours=defaultContours):
-        '''
+        """
         Get contour levels
-        
+
         :param contours: list of confidence limits to get (default [0.68, 0.95])
         :return: list of contour levels
-        '''
+        """
         return getContourLevels(self.P, contours)
 
 
@@ -121,11 +121,11 @@ class Density1D(GridDensity):
 
     """
     def __init__(self, x, P=None, view_ranges=None):
-        '''
+        """
         :param x: array of x values
         :param P: array of densities at x values
         :param view_ranges: optional range for viewing density
-        '''
+        """
         self.n = x.size
         self.axes = [x]
         self.x = x
@@ -235,12 +235,12 @@ class Density2D(GridDensity, RectBivariateSpline):
     """
 
     def __init__(self, x, y, P=None, view_ranges=None):
-        '''
+        """
         :param x: array of x values
         :param y: array of y values
         :param P: 2D array of density values at x, y
         :param view_ranges: optional ranges for viewing density
-        '''
+        """
         self.x = x
         self.y = y
         self.axes = [y, x]

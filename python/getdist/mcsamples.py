@@ -91,7 +91,6 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, settings={}
 
 class Kernel1D(object):
     def __init__(self, winw, h):
-
         self.winw = winw
         self.h = h
         self.x = np.arange(-winw, winw + 1)
@@ -1223,7 +1222,7 @@ class MCSamples(Chains):
 
         :param name: name of the parameter
         :param kwargs: arguments for :func:`~MCSamples.get1DDensityGridData`
-        :return: A :class:`~.densties.Density1D` instance for parameter with given name
+        :return: A :class:`~.densities.Density1D` instance for parameter with given name
         """
         if self.needs_update: self.updateBaseStatistics()
         if not kwargs:
@@ -1234,11 +1233,11 @@ class MCSamples(Chains):
     def get1DDensityGridData(self, j, writeDataToFile=False, get_density=False, paramConfid=None, meanlikes=False,
                              **kwargs):
         """
-        Gets a :class:`~.densties.Density1D` instance for the marginalized 1D density of a parameter. Result is not cached.
+        Gets a :class:`~.densities.Density1D` instance for the marginalized 1D density of a parameter. Result is not cached.
 
         :param j: a name or index of the parameter
         :param writeDataToFile: True if should write to text file.
-        :param get_density: return a :class:`~.densties.Density1D` instance only, does not write out or calculate mean likelihoods for plots
+        :param get_density: return a :class:`~.densities.Density1D` instance only, does not write out or calculate mean likelihoods for plots
         :param paramConfid: optional cached :class:`ParamConfidenceData` instance
         :param meanlikes: include mean likelihoods
         :param kwargs: optional settings to override instance settings of the same name:
@@ -1248,7 +1247,7 @@ class MCSamples(Chains):
                - *mult_bias_correction_order*
                - *fine_bins*
                - *num_bins*
-        :return: A :class:`~.densties.Density1D` instance
+        :return: A :class:`~.densities.Density1D` instance
         """
         j = self._parAndNumber(j)[0]
         if j is None: return None
@@ -1348,7 +1347,7 @@ class MCSamples(Chains):
             a4 = np.dot(xWin2, Kernel.x ** 2)
             corrected = (density1D.P * a4 - a2 * x2P) / (a4 - a2 ** 2)
             ix = density1D.P > 0
-            density1D.P[ix] = density1D.P[ix] * np.exp(np.minimum(corrected[ix] / density1D.P[ix], 2) - 1)
+            density1D.P[ix] *= np.exp(np.minimum(corrected[ix] / density1D.P[ix], 2) - 1)
 
         if mult_bias_correction_order:
             prior_mask = np.ones(fine_bins)
@@ -1788,7 +1787,8 @@ class MCSamples(Chains):
             if os.path.exists(bf_file):
                 return types.BestFit(bf_file)
             else:
-                raise MCSamplesError('Best fit can only be included if loaded from file and file_root.minimum exists (cannot be calculated from samples)')
+                raise MCSamplesError(
+                    'Best fit can only be included if loaded from file and file_root.minimum exists (cannot be calculated from samples)')
         return m
 
     def getLikeStats(self):
@@ -1917,7 +1917,7 @@ class MCSamples(Chains):
                 if not marge_limits_bot and not marge_limits_top:
                     # Two tail, check if limits are at very different density
                     if (math.fabs(density1D.Prob(tail_confid_top) -
-                        density1D.Prob(tail_confid_bot)) < self.credible_interval_threshold):
+                                      density1D.Prob(tail_confid_bot)) < self.credible_interval_threshold):
                         tail_limit_top = tail_confid_top
                         tail_limit_bot = tail_confid_bot
 

@@ -10,10 +10,11 @@ class ParamBounds(object):
     :ivar lower: dict of lower limits, indexed by parameter name
     :ivar upper: dict of upper limits, indexed by parameter name
     """
+
     def __init__(self, fileName=None):
-        '''
+        """
         :param fileName: optional file name to read from
-        '''
+        """
         self.names = []
         self.lower = {}
         self.upper = {}
@@ -44,11 +45,11 @@ class ParamBounds(object):
         return s
 
     def saveToFile(self, fileName):
-        '''
+        """
         Save to a plain text file
-        
+
         :param fileName: file name to save to
-        '''
+        """
         with open(fileName, 'w') as f:
             f.write(str(self))
 
@@ -58,15 +59,15 @@ class ParamBounds(object):
         if not name in self.names: self.names.append(name)
 
     def getUpper(self, name):
-        '''
+        """
         :param name: parameter name
         :return: upper limit, or None if not specified
-        '''
+        """
         return self.upper.get(name, None)
 
     def getLower(self, name):
-        '''
+        """
         :param name: parameter name
         :return: lower limit, or None if not specified
-        '''
+        """
         return self.lower.get(name, None)

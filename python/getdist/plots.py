@@ -20,6 +20,7 @@ import logging
 
 """Plotting scripts for GetDist outputs"""
 
+
 def makeList(roots):
     """
     Checks if the given parameter is a list, If not, Creates a list with the parameter as an item in it.
@@ -84,7 +85,7 @@ class GetDistPlotSettings(object):
     :ivar alpha_filled_add: alpha for adding filled contours to a plot
     :ivar alpha_factor_contour_lines: alpha factor for adding lines between filled contours 
     :ivar axis_marker_color: The color for the marker
-    :ivar axis_marker_ls: The linestyle for the marker
+    :ivar axis_marker_ls: The line style for the marker
     :ivar axis_marker_lw: The line width for the marker
     """
 
@@ -92,9 +93,9 @@ class GetDistPlotSettings(object):
         """
         If fig_width_inch set, fixed setting for fixed total figure size in inches.
         Otherwise use subplot_size_inch to determine default font sizes etc.,
-        and figure will then be as wide as neccessary to show all subplots at specified size.
+        and figure will then be as wide as necessary to show all subplots at specified size.
 
-        :param subplot_size_inch: Determinates the size of subplots, and hence default font sizes
+        :param subplot_size_inch: Determines the size of subplots, and hence default font sizes
         :param fig_width_inch: The width of the figure in inches, If set, forces fixed total size.
         """
         self.plot_meanlikes = False
@@ -103,7 +104,8 @@ class GetDistPlotSettings(object):
         # self.prob_label = 'Probability'
         self.norm_prob_label = 'P'
         self.prob_y_ticks = False
-        self.lineM = ['-k', '-r', '-b', '-g', '-m', '-c', '-y', '--k', '--r', '--b', '--g', '--m']  # : line styles/colors
+        self.lineM = ['-k', '-r', '-b', '-g', '-m', '-c', '-y', '--k', '--r', '--b', '--g',
+                      '--m']  # : line styles/colors
         self.plot_args = None
         self.solid_colors = ['#006FED', '#E03424', 'gray', '#009966', '#000866', '#336600', '#006633', 'm',
                              'r']
@@ -397,7 +399,7 @@ class MCSampleAnalysis(object):
         """
         Resets the caches, starting afresh optionally with new analysis settings
 
-        :param settings: Either an :class:`~.inifie.IniFile` instance, 
+        :param settings: Either an :class:`~.inifile.IniFile` instance,
                the name of an .ini file, or a dict holding sample analysis settings.
         """
         self.analysis_settings = {}
@@ -749,7 +751,7 @@ class GetDistPlotter(object):
         :return: :class:`~.paramnames.ParamNames` instance
         """
         if not root in self.param_name_sets: self.param_name_sets[root] = self.sampleAnalyser.paramsForRoot(root,
-                                                                    labelParams=self.settings.param_names_for_labels)
+                                                                                                            labelParams=self.settings.param_names_for_labels)
         return self.param_name_sets[root]
 
     def paramBoundsForRoot(self, root):
@@ -882,8 +884,8 @@ class GetDistPlotter(object):
             CS = ax.contourf(density.x, density.y, density.P, levels, colors=cols, alpha=alpha, **kwargs)
             if proxyIx >= 0: self.contours_added[proxyIx] = (plt.Rectangle((0, 0), 1, 1, fc=CS.tcolors[-1][0]))
             ax.contour(density.x, density.y, density.P, levels[:1], colors=CS.tcolors[-1],
-                        linewidths=self.settings.lw_contour, alpha=alpha * self.settings.alpha_factor_contour_lines,
-                        **kwargs)
+                       linewidths=self.settings.lw_contour, alpha=alpha * self.settings.alpha_factor_contour_lines,
+                       **kwargs)
         else:
             args = self._get_line_styles(plotno, **kwargs)
             # if color is None: color = self._get_color(plotno, **kwargs)
@@ -894,7 +896,7 @@ class GetDistPlotter(object):
             kwargs = self._get_plot_args(plotno, **kwargs)
             kwargs['alpha'] = alpha
             CS = ax.contour(density.x, density.y, density.P, contour_levels, colors=cols, linestyles=linestyles,
-                             linewidths=self.settings.lw_contour, **kwargs)
+                            linewidths=self.settings.lw_contour, **kwargs)
             dashes = args.get('dashes')
             if dashes:
                 for c in CS.collections:
@@ -1020,13 +1022,13 @@ class GetDistPlotter(object):
         :param add_legend_proxy: True if should add to the legend proxy
         :param line_offset: line_offset if not adding first contours to plot
         :param proxy_root_exclude: any root names not to include when adding to the legend proxy
-        :param kwargs: additioanl optional arguments:
+        :param kwargs: additional optional arguments:
         
                 * **filled**: True for filled contours
                 * **lims**: list of limits for the plot [xmin, xmax, ymin, ymax]
                 * **ls** : list of line styles for the different sample contours plotted 
                 * **colors**: list of colors for the different sample contours plotted 
-                * **lws**: list of linewidths for the different sample contours plotted
+                * **lws**: list of line widths for the different sample contours plotted
                 * **alphas**: list of alphas for the different sample contours plotted 
                 * **line_args**: a list of dictionaries with settings for each set of contours
                 * arguments for :func:`~GetDistPlotter.setAxes`
@@ -1254,7 +1256,7 @@ class GetDistPlotter(object):
                 * **lims**: optional limits for x range of the plot [xmin, xmax]
                 * **ls** : list of line styles for the different lines plotted 
                 * **colors**: list of colors for the different lines plotted 
-                * **lws**: list of linewidths for the different lines plotted
+                * **lws**: list of line widths for the different lines plotted
                 * **alphas**: list of alphas for the different lines plotted 
                 * **line_args**: a list of dictionaries with settings for each set of lines
                 * arguments for :func:`~GetDistPlotter.setAxes`
@@ -1357,7 +1359,7 @@ class GetDistPlotter(object):
         Gets an array of :class:`~.paramnames.ParamInfo` for named params
 
         :param root: The root name of the samples to use
-        :param params: the parameter names (if not speified, get all)
+        :param params: the parameter names (if not specified, get all)
         :param renames: optional dictionary mapping input names and equivalent names used by the samples
         :return: list of :class:`~.paramnames.ParamInfo` instances for the parameters
         """
@@ -1365,7 +1367,7 @@ class GetDistPlotter(object):
             return self.paramNamesForRoot(root).names
         else:
             if isinstance(params, six.string_types) or \
-                          not all([isinstance(param, ParamInfo) for param in params]):
+                    not all([isinstance(param, ParamInfo) for param in params]):
                 return self.paramNamesForRoot(root).parsWithNames(params, error=True, renames=renames)
         return params
 
@@ -1482,7 +1484,7 @@ class GetDistPlotter(object):
         :param legend_ncol: The number of columns in the legend, defaults to 1 
         :param label_order: minus one to show legends in reverse order that lines were added, or a list giving specific order of line indices 
         :param no_gap: True if should leave no subplot padding in tight_layout
-        :param no_extra_legend_space: True to prevent making addtional space above subplots for the legend
+        :param no_extra_legend_space: True to prevent making additional space above subplots for the legend
         :param no_tight: don't use :func:`~matplotlib:matplotlib.pyplot.tight_layout` to adjust subplot positions
         """
         has_legend = self.settings.line_labels and legend_labels and len(legend_labels) > 1
@@ -1506,7 +1508,7 @@ class GetDistPlotter(object):
                     frac = self.settings.legend_frac_subplot_margin + nrows * self.settings.legend_frac_subplot_line
                 else:
                     frac = self.settings.legend_frac_subplot_margin + (
-                                    nrows * self.settings.legend_fontsize * 0.015) / self.settings.subplot_size_inch
+                                                                          nrows * self.settings.legend_fontsize * 0.015) / self.settings.subplot_size_inch
                 if self.plot_row == 1: frac = min(frac, 0.5)
                 if 'upper' in legend_loc:
                     plt.subplots_adjust(top=1 - frac / self.plot_row)
@@ -1539,7 +1541,8 @@ class GetDistPlotter(object):
             return legend_labels
 
     def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, label_order=None, nx=None,
-                 paramList=None, roots_per_param=False, share_y=None, markers=None, xlims=None, param_renames={}, **kwargs):
+                 paramList=None, roots_per_param=False, share_y=None, markers=None, xlims=None, param_renames={},
+                 **kwargs):
         """
         Make an array of 1D marginalized density subplots 
 
@@ -2171,7 +2174,7 @@ class GetDistPlotter(object):
 
         :param roots: root name or :class:`~.mcsamples.MCSamples` instance (or list of any of either of these) for the samples to plot
         :param param_x: x parameter name
-        :param param_y: y paraeter name
+        :param param_y: y parameter name
         :param param_z: list of parameter to names to color samples in each subplot (default: all)
         :param max_z: The maximum number of z parameters we should use.
         :param kwargs: keyword arguments for :func:`~GetDistPlotter.plot_3d`

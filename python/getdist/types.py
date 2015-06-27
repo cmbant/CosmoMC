@@ -223,10 +223,11 @@ class ResultTable(object):
     """
     Class for holding a latex table of parameter statistics
     """
+
     def __init__(self, ncol, results, limit=2, tableParamNames=None, titles=None, formatter=None,
                  numFormatter=None, blockEndParams=None, paramList=None, refResults=None, shiftSigma_indep=False,
                  shiftSigma_subset=False):
-        '''    
+        """
         :param ncol: number of columns
         :param results: a :class:`MargeStats` or :class:`BestFit` instance, or a list of them for comparing different results
         :param limit: which limit to include (1 is first limit calculated, usually 68%, 2 the second, usually 95%)
@@ -239,7 +240,7 @@ class ResultTable(object):
         :param refResults: for showing parameter shifts, a reference :class:`MargeStats` instance to show differences to
         :param shiftSigma_indep: show parameter shifts in sigma assuming data are independent
         :param shiftSigma_subset: show parameter shifts in sigma assuming data are a subset of each other
-        '''
+        """
         # results is a margeStats or bestFit table
         self.lines = []
         if formatter is None:
@@ -348,13 +349,13 @@ class ResultTable(object):
         self.lines.append(self.format.endTable())
 
     def tableTex(self, document=False, latex_preamble=None, packages=['amsmath', 'amssymb', 'bm']):
-        '''
+        """
         Get the latex string for the table
-        
+
         :param document: if True, make a full latex file, if False just the snippet for including in another file
         :param latex_preamble: any preamble to include in the latex file
         :param packages: list of packages to load
-        '''
+        """
 
         if document:
             lines = []
@@ -382,15 +383,15 @@ class ResultTable(object):
         TextFile(self.tableTex(**kwargs)).write(fname)
 
     def tablePNG(self, dpi=None, latex_preamble=None, filename=None, bytesIO=False):
-        '''
+        """
         Get a .png file image of the table. You must have latex installed to use this.
-        
+
         :param dpi: dpi settings for the png
         :param latex_preamble: any latex preamble
         :param filename: filename to save to (defaults to file in the temp directory)
         :param bytesIO: if True, return a BytesIO instance holding the .png data
         :return: if bytesIO, the BytesIO instance, otherwise name of the output file
-        '''
+        """
         texfile = tempfile.mktemp(suffix='.tex')
         self.write(texfile, document=True, latex_preamble=latex_preamble)
         basefile = os.path.splitext(texfile)[0]
@@ -441,12 +442,13 @@ class BestFit(ParamResults):
     """
     Class holding the result of a likelihood minimization, inheriting from :class:`ParamResults`
     """
+
     def __init__(self, fileName=None, setParamNameFile=None, want_fixed=False):
-        '''        
+        """
         :param fileName: text file to load from, assumed to be in CosmoMC's .minimum format
         :param setParamNameFile: optional name of .paramnames file listing preferred parameter labels for the parameters
         :param want_fixed:  whether to include values of parameters that are not allowed to vary
-        '''
+        """
 
         ParamResults.__init__(self)
         if fileName is not None: self.loadFromFile(fileName, want_fixed=want_fixed)
@@ -533,6 +535,7 @@ class ParamLimit(object):
     :ivar onetail_upper: True if one-tail upper limit
     :ivar ontail_lower: True if one-tail lower limit
     """
+
     def __init__(self, minmax, tag='two'):
         self.lower = minmax[0]
         self.upper = minmax[1]
@@ -578,6 +581,7 @@ class MargeStats(ParamResults):
     For example use margeStats.names.parWithName('xxx').limits[i] to get a  :class:`~.types.ParamLimit`
     for the ith limit of parameter named xxx. By default i=0 is 68%, i=1 is 95%.  
     """
+
     def loadFromFile(self, filename):
         """
         Load from a plain text file
@@ -701,7 +705,7 @@ class MargeStats(ParamResults):
                     if shiftSigma_indep or shiftSigma_subset:
                         res += '\quad('
                         if shiftSigma_subset:
-                            # give mean shift in sigma units for subset data (reguarized to max sigma/20)
+                            # give mean shift in sigma units for subset data (regularized to max sigma/20)
                             subset_sigma = np.sqrt(abs(param.err ** 2 - refVal.err ** 2))
                             res += '%+.1f \\sigma_s' % (delta / max(subset_sigma, refVal.err / 20))
                         if shiftSigma_indep:

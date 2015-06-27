@@ -10,11 +10,12 @@ class CovMat(object):
     :ivar matrix: the covariance matrix  (square numpy array)
     :ivar paramNames: list of parameter name strings
     """
+
     def __init__(self, filename='', matrix=None, paramNames=None):
-        '''        
+        """
         :param filename: optionally, a file name to load from
-        
-        '''
+
+        """
         if not paramNames:
             paramNames = []
         self.matrix = matrix
