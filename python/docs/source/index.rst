@@ -1,11 +1,16 @@
-GetDist API
+GetDist
 ==================================
 
-GetDist is a package for analysing Monte Carlo samples, including correlated samples
-from Markov Chain Monte Carlo (MCMC). To get started see the `home page <https://github.com/cmbant/getdist/>`_ 
-or `Plot Gallery and tutorial <https://github.com/cmbant/getdist/blob/master/docs/plot_gallery.ipynb>`_.
+GetDist is a Python package for analysing and plotting Monte Carlo (or other) samples.
 
-Main high-level modules:
+.. toctree::
+   :maxdepth: 1
+
+   Introduction <intro>
+   Plot gallery and tutorial <http://getdist.readthedocs.org/en/latest/plot_gallery.html>
+   GetDist GUI program <gui>
+
+High-level modules for analysing samples and plotting:
 
 .. toctree::
    :maxdepth: 2
@@ -13,9 +18,13 @@ Main high-level modules:
    mcsamples
    plots
    
-See also :doc:`analysis_settings`.
+See also:
+
+.. toctree::
+
+	analysis_settings
    
-Other modules:
+Other main modules:
 
 .. toctree::
    :maxdepth: 1

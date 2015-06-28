@@ -10,11 +10,13 @@ GetDist
   :target: https://secure.travis-ci.org/cmbant/getdist
 .. image:: http://img.shields.io/pypi/v/GetDist.svg?style=flat
         :target: https://pypi.python.org/pypi/GetDist/
+.. image:: https://readthedocs.org/projects/getdist/badge/?version=latest
+   :target: https://getdist.readthedocs.org/en/latest
 
 Description
 ============
 
-GetDist is a package for analysing Monte Carlo samples, including correlated samples
+GetDist is a Python package for analysing Monte Carlo samples, including correlated samples
 from Markov Chain Monte Carlo (MCMC).
 
 * **Point and click GUI** - select chain files, view plots, marginalized constraints, latex tables and more
@@ -24,7 +26,8 @@ from Markov Chain Monte Carlo (MCMC).
 * **Convergence diagnostics** - including correlation length and diagonalized Gelman-Rubin statistics
 * **Latex tables** for marginalized 1D constraints
 
-See the `Plot Gallery and tutorial <https://github.com/cmbant/getdist/blob/master/docs/plot_gallery.ipynb>`_.
+See the `Plot Gallery and tutorial <http://getdist.readthedocs.org/en/latest/plot_gallery.html>`_
+and `GetDist API reference <http://getdist.readthedocs.org/en/latest/index.html>`_.
 
 
 Getting Started
@@ -118,29 +121,27 @@ Loading samples
 To load an MCSamples object from text files do::
 
 	 from getdist import loadMCSamples
-	 samples = loadMCSamples('/path/to/xxx', dist_settings={'ignore_rows':0.3})
+	 samples = loadMCSamples('/path/to/xxx', settings={'ignore_rows':0.3})
 
-Here *dist_settings* gives optional parameter settings for the analysis. *ignore_rows* is useful for MCMC chains where you want to
-discard some fraction from the start of each chain as burn in (use a number >0 to discard a fixed number of sample lines rather than a fraction).
-The MCSamples object can be passed to plot functions, or used to get many results. For example to plot marginalized parameter densities 
+Here *settings* gives optional parameter settings for the analysis. *ignore_rows* is useful for MCMC chains where you want to
+discard some fraction from the start of each chain as burn in (use a number >1 to discard a fixed number of sample lines rather than a fraction).
+The MCSamples object can be passed to plot functions, or used to get many results. For example, to plot marginalized parameter densities 
 for parameter names *x1* and *x2*::
 
     from getdist import plots
     g = plots.getSinglePlotter()
     g.plot_2d(samples, ['x1', 'x2'])
 
-For plotting, when you have many different chain files in the same directory, 
-you can work directly with the root names. For example to compare *x* and *y* constraints
+When you have many different chain files in the same directory, 
+plotting can work directly with the root file names. For example to compare *x* and *y* constraints
 from two chains with root names *xxx* and *yyy*::
 
 	from getdist import plots
-	
 	g = plots.getSinglePlotter(chain_dir='/path/to/', analysis_settings={'ignore_rows':0.3})
-
 	g.plot_2d(['xxx','yyy], ['x', 'y'])
 
 
-MCSamples objects can also be constructed directly from numpy arrays in memory, see the example in the `Plot Gallery <https://github.com/cmbant/getdist/blob/master/docs/plot_gallery.ipynb>`_.
+MCSamples objects can also be constructed directly from numpy arrays in memory, see the example in the `Plot Gallery <http://getdist.readthedocs.org/en/latest/plot_gallery.html>`_.
 
 GetDist script
 ===================
@@ -187,7 +188,7 @@ GetDist GUI
 
 Run the GetDistGUI.py script to run the graphical user interface. This requires PySide, but will run on Windows, Linux and Mac.
 It allows you to open a folder of chain files, then easily select, open, plot and compare, as well as viewing standard GetDist outputs and tables.
-See the `GUI Readme <http://cosmologist.info/cosmomc/readme_gui.html>`_.
+See the `GUI Readme <http://getdist.readthedocs.org/en/latest/gui.html>`_.
 
 
 Using with CosmoMC

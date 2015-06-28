@@ -52,7 +52,7 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, settings={}
     and (optionally) **file_root.ranges** gives hard prior parameter ranges.
 
     For a description of the various analysis settings and default values see
-    `analysis_defaults.ini <https://github.com/cmbant/getdist/blob/master/getdist/analysis_defaults.ini>`_.
+    `analysis_defaults.ini <http://getdist.readthedocs.org/en/latest/analysis_settings.html>`_.
 
     :param file_root: The root name of the files to read (no extension)
     :param ini: The name of a .ini file with analysis settings to use
@@ -108,11 +108,9 @@ class MCSamples(Chains):
     """
 
     def __init__(self, root=None, jobItem=None, ini=None, settings=None, ranges=None, **kwargs):
-        """
-        Initialize the MCSamples instance.
-        
+        """        
         For a description of the various analysis settings and default values see
-        `analysis_defaults.ini <https://github.com/cmbant/getdist/blob/master/getdist/analysis_defaults.ini>`_.
+        `analysis_defaults.ini <http://getdist.readthedocs.org/en/latest/analysis_settings.html>`_.
 
         
         :param root: A root file name when loading from file 
@@ -1034,7 +1032,7 @@ class MCSamples(Chains):
         For details see the `notes <http://cosmologist.info/notes/GetDist.pdf>`_.
 
         :param bins: numpy array of binned weights for the samples
-        :param par: A :class:`~paramnames.ParamInfo` instance for the parameter to analyse
+        :param par: A :class:`~.paramnames.ParamInfo` instance for the parameter to analyse
         :param param: index of the parameter to use
         :param mult_bias_correction_order: order of multiplicative bias correction (0 is basic Parzen kernel); by default taken from instance settings.
         :param kernel_order: order of the kernel (0 is Parzen, 1 does linear boundary correction, 2 is a higher-order kernel) 
@@ -1066,8 +1064,8 @@ class MCSamples(Chains):
         For details see the `notes <http://cosmologist.info/notes/GetDist.pdf>`_.
 
         :param bins: 2D numpy array of binned weights
-        :param parx: A :class:`~paramnames.ParamInfo` instance for the x parameter
-        :param pary: A :class:`~paramnames.ParamInfo` instance for the y parameter
+        :param parx: A :class:`~.paramnames.ParamInfo` instance for the x parameter
+        :param pary: A :class:`~.paramnames.ParamInfo` instance for the y parameter
         :param paramx: index of the x parameter
         :param paramy: index of the y parameter
         :param corr: correlation of the samples
@@ -1076,7 +1074,7 @@ class MCSamples(Chains):
         :param base_fine_bins_2D: number of bins to use for re-binning in rotated parameter space
         :param mult_bias_correction_order: multiplicative bias correction order (0 is Parzen kernel); by default taken from instance settings
         :param min_corr: minimum correlation value at which to bother de-correlating the parameters
-        :param N_eff: effective number of samples. If not specified, currently uses very crudely estimate from effective numbers in x and y separately
+        :param N_eff: effective number of samples. If not specified, currently uses crude estimate from effective numbers in x and y separately
         :return: kernel density bandwidth matrix in parameter units
         """
         if N_eff is None:
@@ -1233,20 +1231,20 @@ class MCSamples(Chains):
     def get1DDensityGridData(self, j, writeDataToFile=False, get_density=False, paramConfid=None, meanlikes=False,
                              **kwargs):
         """
-        Gets a :class:`~.densities.Density1D` instance for the marginalized 1D density of a parameter. Result is not cached.
+        Low-level function to get a :class:`~.densities.Density1D` instance for the marginalized 1D density of a parameter. Result is not cached.
 
         :param j: a name or index of the parameter
         :param writeDataToFile: True if should write to text file.
         :param get_density: return a :class:`~.densities.Density1D` instance only, does not write out or calculate mean likelihoods for plots
         :param paramConfid: optional cached :class:`ParamConfidenceData` instance
         :param meanlikes: include mean likelihoods
-        :param kwargs: optional settings to override instance settings of the same name:
+        :param kwargs: optional settings to override instance settings of the same name (see `analysis_settings`):
         
-               - *smooth_scale_1D*
-               - *boundary_correction_order*
-               - *mult_bias_correction_order*
-               - *fine_bins*
-               - *num_bins*
+               - **smooth_scale_1D**
+               - **boundary_correction_order**
+               - **mult_bias_correction_order**
+               - **fine_bins**
+               - **num_bins**
         :return: A :class:`~.densities.Density1D` instance
         """
         j = self._parAndNumber(j)[0]
@@ -1464,7 +1462,7 @@ class MCSamples(Chains):
 
         :param x: index or name of x parameter
         :param y: index or name of y parameter
-        :param kwargs: arguments for the :func:`get2DDensityGridData` function
+        :param kwargs: keyword arguments for the :func:`get2DDensityGridData` function
         :param normalized: if False, is normalized so the maximum is 1, if True, density is normalized
         :return: :class:`~.densities.Density2D` instance
         """
@@ -1477,20 +1475,20 @@ class MCSamples(Chains):
     def get2DDensityGridData(self, j, j2, writeDataToFile=False,
                              num_plot_contours=None, get_density=False, meanlikes=False, **kwargs):
         """
-        Get 2D plot marginalized density and optional additional plot data.
+        Low-level function to get 2D plot marginalized density and optional additional plot data.
 
         :param j: name or index of the x parameter
-        :param j2: name or index of the x parameter.
+        :param j2: name or index of the y parameter.
         :param writeDataToFile: True if should write data to file
         :param num_plot_contours: number of contours to calculate and return in density.contours
         :param get_density: only get the 2D marginalized density, no additional plot data
         :param meanlikes: calculate mean likelihoods as well as marginalized density (returned as array in density.likes)
-        :param kwargs: Optional arguments to override instance settings of the same name:
+        :param kwargs: optional settings to override instance settings of the same name (see `analysis_settings`):
         
-            - fine_bins_2D,
-            - boundary_correction_order
-            - mult_bias_correction_order
-            - smooth_scale_2D
+            - **fine_bins_2D**
+            - **boundary_correction_order**
+            - **mult_bias_correction_order**
+            - **smooth_scale_2D**
         :return: a :class:`~.densities.Density2D` instance
         """
         if self.needs_update: self.updateBaseStatistics()
@@ -1688,7 +1686,7 @@ class MCSamples(Chains):
 
     def _setLikeStats(self):
         """
-        Get and store LikeStats (see getLikeStats())
+        Get and store LikeStats (see :func:`MCSamples.getLikeStats`)
         """
         if self.loglikes is None:
             self.likeStats = None
@@ -1817,7 +1815,7 @@ class MCSamples(Chains):
 
         :param params: list of parameter names
         :param limit: which limit to get, 1 is the first (default 68%), 2 is the second (limits array specified by self.contours)
-        :return: list of labels, list of tex snippets
+        :return: labels, texs: a list of parameter labels, and a list of tex snippets
         """
         marge = self.getMargeStats()
         if params is None: params = marge.list()
@@ -1938,7 +1936,7 @@ class MCSamples(Chains):
 
     def getCorrelatedVariable2DPlots(self, num_plots=12, nparam=None):
         """
-        gets list of most correlated variable pair names
+        Gets a list of most correlated variable pair names.
 
         :param num_plots: The number of plots
         :param nparam: maximum number of pairs to get
@@ -1965,7 +1963,7 @@ class MCSamples(Chains):
 
     def saveAsText(self, root, chain_index=None, make_dirs=False):
         """
-        Saves samples as text file, including .ranges and .paramnames
+        Saves samples as text file, including .ranges and .paramnames.
 
         :param root: The root file name to use.
         :param chain_index: optional index to be used for the filename.
@@ -1979,7 +1977,7 @@ class MCSamples(Chains):
 
     def writeScriptPlots1D(self, filename, plotparams=None, ext=None):
         """
-        Write a script that generates a 1 dimensional plot. Only intended for use by GetDist.py script.
+        Write a script that generates a 1D plot. Only intended for use by GetDist.py script.
 
         :param filename: The filename to write to.
         :param plotparams: The list of parameters to plot (default: all)
@@ -2087,7 +2085,7 @@ class MCSamples(Chains):
 
 def GetChainRootFiles(rootdir):
     """
-    Gets the root names of all chain files in the root directory
+    Gets the root names of all chain files in a directory.
 
     :param rootdir: The root directory to check
     :return:  The root names
@@ -2100,7 +2098,7 @@ def GetChainRootFiles(rootdir):
 
 def GetRootFileName(rootdir):
     """
-    Gets the root name of chains in given directory (assuming only one set of chain files)
+    Gets the root name of chains in given directory (assuming only one set of chain files).
 
     :param rootdir: The directory to check
     :return: The root file name.

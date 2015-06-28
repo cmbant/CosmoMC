@@ -1,18 +1,21 @@
 getdist.plots
 ==================================
 
-.. module:: getdist.plots
+.. currentmodule:: getdist.plots
 
 
 .. autosummary::
-   :toctree: summaries
+   :toctree: _summaries
    :nosignatures:
 
+   getSinglePlotter
+   getSubplotPlotter
    GetDistPlotter
    GetDistPlotSettings
 
 .. automodule:: getdist.plots
    :members:
+   :exclude-members: makeList
 
 
 

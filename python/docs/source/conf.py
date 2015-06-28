@@ -16,7 +16,7 @@ import sys
 import os
 import shlex
 
-# autoclass_content = 'both'
+autoclass_content = 'both'
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -41,11 +41,13 @@ intersphinx_mapping = {'python': ('http://docs.python.org/2', None),
                        'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
                        'matplotlib': ('http://matplotlib.sourceforge.net/', None)}
 
-plot_formats = [('png', 80)]
+# plot_formats = [('png', 80)]
 plot_html_show_formats = False
 plot_html_show_source_link = False
 
 autosummary_generate = True
+
+templates_path = ['_templates']
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -58,7 +60,7 @@ source_encoding = 'utf-8-sig'
 master_doc = 'index'
 
 # General information about the project.
-project = u'GetDist API'
+project = u'GetDist'
 copyright = u'2015, Antony Lewis'
 author = u'Antony Lewis'
 
@@ -83,29 +85,8 @@ language = None
 # directories to ignore when looking for source files.
 exclude_patterns = []
 
-# The reST default role (used for this markup: `text`) to use for all
-# documents.
-# default_role = None
-
-# If true, '()' will be appended to :func: etc. cross-reference text.
-# add_function_parentheses = True
-
-# If true, the current module name will be prepended to all description
-# unit titles (such as .. function::).
-# add_module_names = True
-
-# If true, sectionauthor and moduleauthor directives will be shown in the
-# output. They are ignored by default.
-# show_authors = False
-
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
-
-# A list of ignored prefixes for module index sorting.
-# modindex_common_prefix = []
-
-# If true, keep warnings as "system message" paragraphs in the built documents.
-# keep_warnings = False
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
@@ -148,7 +129,7 @@ html_theme_options = {}
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
 # directly to the root of the documentation.
-# html_extra_path = []
+html_extra_path = ['../plot_gallery.html']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
