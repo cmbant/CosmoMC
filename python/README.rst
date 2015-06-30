@@ -19,15 +19,15 @@ Description
 GetDist is a Python package for analysing Monte Carlo samples, including correlated samples
 from Markov Chain Monte Carlo (MCMC).
 
-* **Point and click GUI** - select chain files, view plots, marginalized constraints, latex tables and more
+* **Point and click GUI** - select chain files, view plots, marginalized constraints, LaTeX tables and more
 * **Plotting library** - make custom publication-ready 1D, 2D, 3D-scatter, triangle and other plots
-* **Named parameters** - simple handling of many parameters using parameter names, including LaTex labels and prior bounds
+* **Named parameters** - simple handling of many parameters using parameter names, including LaTeX labels and prior bounds
 * **Optimized Kernel Density Estimation** - automated optimal bandwidth choice for 1D and 2D densities (Botev et al. Improved Sheather-Jones method), with boundary and bias correction
 * **Convergence diagnostics** - including correlation length and diagonalized Gelman-Rubin statistics
-* **Latex tables** for marginalized 1D constraints
+* **LaTeX tables** for marginalized 1D constraints
 
 See the `Plot Gallery and tutorial <http://getdist.readthedocs.org/en/latest/plot_gallery.html>`_
-and `GetDist API reference <http://getdist.readthedocs.org/en/latest/index.html>`_.
+and `GetDist Documentation <http://getdist.readthedocs.org/en/latest/index.html>`_.
 
 
 Getting Started
@@ -55,9 +55,9 @@ Dependencies
 * matplotlib
 * scipy
 * PySide (optional, only needed for GUI)
-* Working latex installation (for some plotting/table functions)
+* Working LaTeX installation (for some plotting/table functions)
 
-Python distributions like Anaconda have most of what you need (except for latex). To install binary backages on Linux-like systems
+Python distributions like Anaconda have most of what you need (except for LaTeX). To install binary backages on Linux-like systems
 install pacakages *py-matplotlib, py-scipy, py-pyside, texlive-latex-extra, texlive-fonts-recommended, dvipng*. 
 For example on a Mac using Python 2.7 from `MacPorts <https://www.macports.org/install.php>`_::
 
@@ -92,13 +92,13 @@ In general there are a set of plain text files of the form::
 
 where "xxx" is some root file name.
 
-The .txt files are separate chain files (there can also be just one xxx.txt file). Each row of each sample .txt files is in the format
+The .txt files are separate chain files (there can also be just one xxx.txt file). Each row of each sample .txt file is in the format
 
   *weight like param1 param2 param3* ...
 
 The *weight* gives the number of samples (or importance weight) with these parameters. *like* gives -log(likelihood), and *param1, param2...* are the values of the parameters at the sample point. The first two columns can be 1 and 0 if they are not known or used.
 
-The .paramnames file lists the names of the parameters, one per line, optionally followed by a latex label. Names cannot include spaces, and if they end in "*" they are interpreted as derived (rather than MCMC) parameters, e.g.::
+The .paramnames file lists the names of the parameters, one per line, optionally followed by a LaTeX label. Names cannot include spaces, and if they end in "*" they are interpreted as derived (rather than MCMC) parameters, e.g.::
 
  x1   x_1
  y1   y_1
