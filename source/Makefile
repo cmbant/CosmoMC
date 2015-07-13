@@ -30,7 +30,7 @@ else
 FFLAGS += -xHost
 endif
 
-ifneq (NERSC_HOST,)
+ifneq ($(NERSC_HOST),)
 #setting for Edison/Hopper on NERSC
 MPIF90C = ftn
 endif

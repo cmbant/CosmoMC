@@ -2059,7 +2059,7 @@ class GetDistPlotter(object):
 
     def add_2d_scatter(self, root, x, y, color='k', alpha=1, extra_thin=1, scatter_size=None, ax=None):
         """
-        Adds a 2D sample scatter plot to the current axes (or ax if specified).
+        Low-level function to adds a 2D sample scatter plot to the current axes (or ax if specified).
 
         :param root: The root name of the samples to use
         :param param1: name of x parameter
@@ -2077,7 +2077,7 @@ class GetDistPlotter(object):
 
     def add_3d_scatter(self, root, params, color_bar=True, alpha=1, extra_thin=1, scatter_size=None, ax=None, **kwargs):
         """
-        Adds a 3D scatter plot to the current axes (or ax if specified).
+        Low-level function to add a 3D scatter plot to the current axes (or ax if specified).
 
         :param root: The root name of the samples to use
         :param params:  list of parameters to plot
