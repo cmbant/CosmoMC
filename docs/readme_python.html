@@ -21,14 +21,17 @@ For plotting from Planck chains see the <A HREF="readme_planck.html">Planck read
 <LI><A HREF="#plotting_scripts">Plotting scripts</A>
 <LI><A HREF="#stats">Calculating statistics</A>
 <LI><A HREF="#derived">Adding and plotting new derived parameters</A>
+
 </UL>
 <A NAME="plotting_scripts">
 <h2>Plotting scripts</h2>
-The getdist.plots module (directly, or via planckStyle) is used to make plots from chain results using your own custom scripts.
-For <A HREF="readme_grids.html">grids</A> of chains, as the Planck downloads, you can also use <B>python python/makePlots.py PLA  ..</B>
-to make plots (en masse if you wish) for quick inspection of grid results.
+
+This page gives a few simple examples to get you started with plotting from Planck of CosmoMC chains. For more detailed documentation of the full plotting and sample analysis API 
+see the <A HREF="http://getdist.readthedocs.org/en/latest/">GetDist documentation</A>.
 <P>
-The sample scripts make use of <b>planckStyle</b>. This can be interchanged with <b>getdist.plots</b> if you do not want
+The getdist.plots module (directly, or via planckStyle) is used to make plots from chain results using your own custom scripts.
+<P>
+The sample scripts (under batch2/outputs) make use of <b>planckStyle</b>. This can be interchanged with <b>getdist.plots</b> if you do not want
 to use the Planck style (or some extra functions used in the batch2/output samples). Both implement the functions
 <UL>
 <LI><b>getSinglePlotter</b>, to get a plotter object suitable for single plot figures
@@ -71,56 +74,9 @@ Outputs of the two versions should look like this:<BR>
 <IMG SRC="http://cosmologist.info/cosmomc/pics/planck2015/mnu_nnu.png">
 <IMG SRC="http://cosmologist.info/cosmomc/pics/planck2015/mnu_nnu2.png">
 <P>
-See python/getdist/plots.py for the various functions and options available, and the sample scripts in batch2/outputs,
-and the sample <A HREF="https://github.com/cmbant/getdist/blob/master/docs/plot_gallery.ipynb">Plot Gallery</A>.
+See sample scripts in batch2/outputs, the <A HREF="http://getdist.readthedocs.org/en/latest/plot_gallery.html">Plot Gallery and tutorial</A>, and the full
+<A HREF="http://getdist.readthedocs.org/en/latest/">GetDist documentation</A>. Note that if you have installed CosmoMC, you don't need to separately install the GetDist python package.
 <p>
-The main functions for making single plots are:
-<pre>
-    def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False,
-                no_ylabel=False, no_ytick=False, no_zero=False, normalized=False, param_renames={}, **kwargs):
-    def plot_2d(self, roots, param1=None, param2=None, param_pair=None, shaded=False, add_legend_proxy=True, **kwargs):
-    def plot_3d(self, roots, in_params=None, params_for_plots=None, color_bar=True, line_offset=0, add_legend_proxy=True, **kwargs):
-
-    def add_legend(self, legend_labels, legend_loc=None, line_offset=0, legend_ncol=None, colored_text=False,
-                   figure=False, ax=None, label_order=None, align_right=False, fontsize=None):
-</pre>
-These functions make sets of subplots:
-<pre>
-    def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, label_order=None, nx=None,
-                 paramList=None, roots_per_param=False, share_y=None, markers=None, xlims=None, param_renames={}):
-    def plots_2d(self, roots, param1=None, params2=None, param_pairs=None, nx=None, legend_labels=None,
-                 legend_ncol=None, label_order=None, filled=False, shaded=False):
-    def triangle_plot(self, roots, in_params=None, legend_labels=None, plot_3d_with_param=None, filled=False,
-                      filled_compare=False, shaded=False, contour_args=None, contour_colors=None, contour_ls=None, contour_lws=None, line_args=None,
-                      label_order=None, legend_ncol=None, legend_loc=None, upper_roots=None, upper_kwargs={}):
-    def rectangle_plot(self, xparams, yparams, yroots=None, roots=None, plot_roots=None, plot_texts=None,
-                       ymarkers=None, xmarkers=None, param_limits={}, legend_labels=None, legend_ncol=None,
-                       label_order=None, marker_args={}, **kwargs):
-</pre>
-These functions give more fine grained control for adding things to a figure:
-<pre>
-    def make_figure(self, nplot=1, nx=None, ny=None, xstretch=1, ystretch=1):
-    def add_1d(self, root, param, plotno=0, normalized=False, **kwargs)
-    def add_2d_contours(self, root, param1=None, param2=None, plotno=0, of=None, cols=None, contour_levels=None,
-                        add_legend_proxy=True, param_pair=None, density=None, alpha=None, **kwargs):
-    def add_2d_shading(self, root, param1, param2, colormap=None, density=None):
-    def add_3d_scatter(self, root, in_params, color_bar=True, alpha=1, extra_thin=1, **ax_args):
-    def finish_plot(self, legend_labels=None, legend_loc=None, line_offset=0, legend_ncol=None, label_order=None,
-                    no_gap=False, no_extra_legend_space=False, no_tight=False):
-</pre>
-Utility function add annotation and markers to plots:
-<pre>
-    def add_x_marker(self, marker, color=None, ls=None, lw=None):
-    def add_y_marker(self, marker, color=None, ls=None, lw=None):
-    def add_y_bands(self, y, sigma, xlim=None, color='gray', ax=None, alpha1=0.15, alpha2=0.1):
-    def add_text(self, text_label, x=0.95, y=0.06, ax=None, **kwargs):
-    def add_text_left(self, text_label, x=0.05, y=0.06, ax=None, **kwargs):
-</pre>
-Finally there's the export function:
-<pre>
-    def export(self, fname=None, adir=None, watermark=None, tag=None):
-</pre>
-Plus additional function that you can find in the source code for getdist/plots.py.
 
 <A NAME="stats">
 <H2>Analysis scripts</H2>
@@ -177,7 +133,7 @@ Samples can also be loaded directly from single chains, optionally with custom s
 <pre>
 import getdist
 
-samples = getdist.loadMCSamples(r'./PLA/base/plik_HM_TT_lowTEB/base_plikHM_TT_lowTEB', dist_settings={'ignore_rows':0.3})
+samples = getdist.loadMCSamples(r'./PLA/base/plik_HM_TT_lowTEB/base_plikHM_TT_lowTEB', settings={'ignore_rows':0.3})
 </pre>
 
 <A NAME="derived"></A>
@@ -227,19 +183,11 @@ g.add_2d_contours(root, 'x', 'y', filled=True, density=density)
 
 <H3>Other scripts</H3>
 
-Multi-purpose use and utility scripts include
+Multi-purpose use and utility cosmology scripts include
 <UL>
 <LI>extractBestFitCAMB.py: for converting .minimum best-fit file to CAMB input .ini file (not all parameter combinations)
 <LI>extractBestFitParams.py: for converting .minimum best-fit file to cosmomc input params[xx] settings if you want to fix them
 <LI>makePerfectForecastDataset.py: a simple old script for simulating perfect fake CMB datasets
-<LI>getdist/inifile.py: for reading and writing .ini files
-<LI>getdist/paramnames.py: for reading paramNames files, and general objects for storing parameter info
-<LI>getdist/types.py: objects for getdist output results (.margestats) and .minimum files, and tables
-<LI>getdist/mcsamples.py: routines and objects for loading chain files and analysing in python
-<LI>getdist/chains.py: a more basic version of the above
-<LI>getdist/covscale.py: for modifying .covmat files if parameters are re-scaled
-<LI>getdist/covmat.py: object for covariance matrix and reading .covmat
-
 </UL>
 
 <A NAME="installpython"></A>
