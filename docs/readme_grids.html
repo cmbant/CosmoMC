@@ -10,7 +10,7 @@
 
 CosmoMC has a set of scripts for generating and analysing grids of parameter runs using CosmoMC and GetDist, plus a variety of utility scripts and plotting functions.
 See the <A HREF="readme_python.html">python readme</A> for how to configure python on your system.
- 
+
 <P>
 Most scripts can be run without arguments to show a list of possible input parameters.
 If you just want to use downloaded grid chains, you can use the <A HREF="readme_python.html">plotting scripts</A> and <A HREF="readme_gui.html">GetDist GUI</A> directly without reading below;
@@ -27,12 +27,12 @@ A description for a grid of models is given in a python settings file.
 This produces sets of .ini files for each run in mygrid/iniFiles, and a directory structure for storing chain results.
 <LI>Use runbatch.py to submit all the ini files produced to the queue; makeGrid will tell you what to do.
 </UL>
-You will also need to produce a submission script for your machine. See <A HREF="readme.html#jobscript">configuring job settings for your machine</A>.
+You may also need to produce a modify the supplied job submission script for your machine. See <A HREF="readme.html#jobscript">configuring job settings for your machine</A>.
 <P>
-For a more complicated example of a large grid configuration see <b>python/planck/settings_planck_latest.py</b>.
-To run with settings in subfolders do e.g. "python makeGrid.py mygrid planck.settings_planck_latest".
+For a more complicated example of a large grid configuration see <b>python/planck/settings_planck_2015.py</b>.
+To run with settings in a module (subfolders) do e.g. "python makeGrid.py mygrid planck.settings_planck_2015".
 
-Covmats for Planck are in planck_covmats folder, linked by default for grid runs.
+Covariance matrices (.covmat files) for Planck data with various parameter combinations are in planck_covmats folder, linked by default for grid runs.
 <p>
 Grid scripts take as a first argument the name of the folder containing the grid, and also many optional arguments that can be used to restrict to particular parameter or data combinations.
 Available scripts include:
@@ -40,7 +40,7 @@ Available scripts include:
 <LI><b>makeGrid.py</b>: as descried above, for setting up a grid of models. Stores the information in a "pickle" file that can then be read by the other scripts for iterating over batch items.
 <LI><b>runbatch.py</b>: submit runs to a job submission script
 <LI><b>runningJobs.py</b>: to check what is currently running and current convergence statistics.
-<LI><b>checkConverge.py</b>: after running getGridGetdist, this can be used to find chains with poor convergence
+<LI><b>checkConverge.py</b>: after running runGridGetdist, this can be used to find chains with poor convergence
 <LI><b>cleanup.py</b>: for cleaning up files (e.g. before re-running a failed chain); can also just be used to list files for runs matching input parameters
 <LI><b>runGridGetdist.py</b>: runs getdist over the grid of chain results, and generating parameter constraints (.margestats files etc). This runs the fortran getdist, and produces plot_data files for plotting; run with <b>--no_plots</b> if you don't need these (e.g. using the GetDist GUI, or python plot scripts).
 <LI><b>makeTables.py</b>: script for making latex (and hence PDF) tables from .margestats and .minimum files produced by runGridGetDist.py.

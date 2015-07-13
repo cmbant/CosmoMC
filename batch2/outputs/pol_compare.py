@@ -1,6 +1,7 @@
 import planckStyle as s
-g = s.plotter
+g = s.getSubplotPlotter()
 
+g.settings.legend_fontsize -= 3.5
 
 g.settings.lineM = ['-g', '-r', '-b', '-k', '--r', '--b']
 

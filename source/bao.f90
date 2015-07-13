@@ -129,6 +129,8 @@
         call F%Open(bao_measurements_file)
         do i=1,this%num_bao
             read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
+            if (iopb /= 0) call MpiStop('BAO_ReadIni: Error reading bao_measurements_file: ' &
+                //trim(this%name))
         end do
         call F%Close()
     end if

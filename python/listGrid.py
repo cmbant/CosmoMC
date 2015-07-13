@@ -1,10 +1,11 @@
-import batchJobArgs
+from __future__ import absolute_import
+from __future__ import print_function
+from paramgrid import batchjob_args
 
 
-Opts = batchJobArgs.batchArgs('List items in a grid', importance=True, converge=True, notExist=True)
+Opts = batchjob_args.batchArgs('List items in a grid', importance=True, converge=True, notExist=True)
 Opts.parser.add_argument('--exists', action='store_true', help='chain must exist')
 Opts.parser.add_argument('--normed', action='store_true', help='Output normed names')
-
 
 (batch, args) = Opts.parseForBatch()
 items = Opts.sortedParamtagDict(chainExist=args.exists)
@@ -16,6 +17,6 @@ for paramtag, parambatch in items:
         else:
             tag = ''
         if args.normed:
-            print jobItem.normed_name, tag
+            print(jobItem.normed_name, tag)
         else:
-            print jobItem.name, tag
+            print(jobItem.name, tag)

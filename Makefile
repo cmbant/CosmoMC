@@ -1,4 +1,11 @@
-default: all
+default: cosmomc
+
+Debug: cosmomc_debug
+Release: cosmomc
+cleanDebug: clean delete
+cleanRelease: clean delete
+
+rebuild: clean delete cosmomc
 
 cosmomc: BUILD ?= MPI
 cosmomc_debug: BUILD ?= MPI
@@ -19,3 +26,8 @@ clean:
 	cd ./source && make clean
 
 all: cosmomc getdist
+
+delete:
+	rm -f cosmomc
+	rm -f cosmomc_debug
+	rm -f getdist

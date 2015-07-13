@@ -1,0 +1,14 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/application_exit.png</file>
+        <file>images/file_add.png</file>
+        <file>images/file_export.png</file>
+        <file>images/file_open.png</file>
+        <file>images/file_remove.png</file>
+        <file>images/file_save.png</file>
+        <file>images/folder_open.png</file>
+        <file>images/help_about.png</file>
+        <file>images/view_clear.png</file>
+        <file>images/view_text.png</file>
+    </qresource>
+</RCC>

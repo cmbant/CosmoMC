@@ -1,8 +1,12 @@
-import os, re
-import batchJobArgs
-from getdist import paramNames
+from __future__ import absolute_import
+from __future__ import print_function
+import os
+import re
+from paramgrid import batchjob_args
+from getdist import paramnames
 
-Opts = batchJobArgs.batchArgs('rename parameter in all .paramnames files in grid', importance=True)
+
+Opts = batchjob_args.batchArgs('rename parameter in all .paramnames files in grid', importance=True)
 Opts.parser.add_argument('--old_new', nargs='+', help="list of oldname newname oldname2 newname2...")
 Opts.parser.add_argument('--labelNames', default=None, help=".paramnames file for new param labels")
 Opts.parser.add_argument('--map_file', help="file with rows of oldname newname label")
@@ -14,7 +18,7 @@ Opts.parser.add_argument('--confirm', action='store_true', help="true to replace
 if args.old_new and len(args.old_new) < 2: raise Exception('Must have at least one pair of parameters to rename')
 
 if args.labelNames:
-    labels = paramNames.paramNames(args.labelNames)
+    labels = paramnames.ParamNames(args.labelNames)
 else:
     labels = None
 
@@ -33,7 +37,7 @@ if args.old_new:
 for jobItem in Opts.filteredBatchItems():
     name = jobItem.chainRoot + '.paramnames'
     if os.path.exists(name):
-        names = paramNames.paramNames(name)
+        names = paramnames.ParamNames(name)
         has = False
         if mapper:
             for p in names.names:
@@ -49,7 +53,7 @@ for jobItem in Opts.filteredBatchItems():
                     has = True
                     p.label = plab.label
         if has:
-            print jobItem.chainRoot
+            print(jobItem.chainRoot)
             if args.confirm: names.saveAsText(name)
         bestfit = jobItem.chainRoot + '.minimum'
         if os.path.exists(bestfit):
@@ -82,10 +86,10 @@ for jobItem in Opts.filteredBatchItems():
                         del items[8:]
                 lines[i] = "".join(items) + "\n"
             if has:
-                print bestfit
+                print(bestfit)
                 if args.confirm: open(bestfit).write("".join(lines))
 
 if args.confirm:
-    print 'Done. Re-run getdist to update getdist outputs.'
+    print('Done. Re-run getdist to update getdist outputs.')
 else:
-    print '... run with --confirm to actually replace .paramname files'
+    print('... run with --confirm to actually replace .paramname files')

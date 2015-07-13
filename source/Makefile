@@ -8,9 +8,10 @@ MPIF90C ?= mpif90
 
 ifortErr = $(shell which ifort >/dev/null; echo $$?)
 
-#these settings for ifort 14 and higher
+#these settings for ifort 14 and higher. Earlier versions will not work.
 ifeq "$(ifortErr)" "0"
 #ifort; Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
+
 F90C     = ifort
 #use this if mpif90 is trying to use gfortran: MPIF90C = mpif90 -f90=ifort
 
@@ -29,22 +30,28 @@ else
 FFLAGS += -xHost
 endif
 
+ifneq ($(NERSC_HOST),)
+#setting for Edison/Hopper on NERSC
+MPIF90C = ftn
+endif
+
 else
-#gfortran does not yet work yet, open GCC 5 compiler bugs are
-#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60334
-#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60289
-#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60255
-#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51976
-#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=60322
-#and preferably
-#http://gcc.gnu.org/bugzilla/show_bug.cgi?id=44672
+#gfortran 5.0 and earlier will not work (many F2003 bugs)
+#gfortran 6 trunk should work, and perhaps GCC 5.2 when available; see virtual machines for up-to-date environments
 F90C = gfortran
-FFLAGS = -cpp -O3 -ffast-math -ffree-line-length-none
-DEBUGFLAGS = -cpp -Og -g -fbounds-check -fbacktrace -ffree-line-length-none
+FFLAGS = -cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4
+DEBUGFLAGS = -cpp -g -fbounds-check -fbacktrace -ffree-line-length-none -fopenmp -fmax-errors=4 -ffpe-trap=invalid,overflow,zero
 MODOUT =  -J$(OUTPUT_DIR)
 #LAPACKL = -Wl,-framework -Wl,accelerate
 #commented above is (I think) for Mac; this is standard linux (sudo apt-get install liblapack-dev)
 LAPACKL = -lblas -llapack
+
+#march native does not work on Mac, otherwise use (comment out if your cluster is inhomogeneous)
+ifneq ($(shell uname -s),Darwin)
+#native optimization does not work on Mac
+FFLAGS+=-march=native
+endif
+
 endif
 
 #use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
@@ -58,32 +65,22 @@ PRECISION ?=
 #set WMAP empty not to compile with WMAP, e.g. WMAP = /scratch/../WMAP9/likelihood_v5
 WMAP ?=
 
-#set PICO=YES to build with pico support, or set path to PICO manually
 #e.g. PICO=/path/to/pypico
-PICO ?=
-ifeq ($(PICO),YES)
-override PICO =$(shell python -c "import pypico; print pypico.get_folder()")
-endif
-
+PICO ?= $(shell python -c "import pypico; print pypico.get_folder()" 2> /dev/null)
 
 #Needed for WMAP; set from ~/.bashrc definition or edit here
 cfitsio ?=
 
-#empty not to compile with CLIK, set from ~/.bashrc
-PLANCKLIKE ?=
-
-#These is not used in public cosmomc
+#not used in public cosmomc
 NONCLIKLIKE ?=
-highL ?=
-#highL = ../highL
 
 IFLAG = -I
 INCLUDE =
 
 #clik path and library
-ifeq ($(PLANCKLIKE),cliklike)
-CLIKL = -L$(CLIKPATH)/lib -lclik_f90
-INCLUDE = $(IFLAG)$(CLIKPATH)/include
+ifneq ($(CLIK_PATH),)
+CLIKL = -L$(CLIK_PATH)/lib -lclik_f90
+INCLUDE = $(IFLAG)$(CLIK_PATH)/include
 endif
 
 ifeq ($(OUTPUT_DIR),Debug)
@@ -107,8 +104,8 @@ CALCFILES = $(OUTPUT_DIR)/Calculator_CAMB.o
 PARAMETERIZATION = $(OUTPUT_DIR)/CosmologyParameterizations.o
 
 GETDISTFLAGS = $(FFLAGS)
-F90FLAGS = $(FFLAGS) $(IFLAG)../camb $(INCLUDE)
-LINKFLAGS = -L../camb -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
+F90FLAGS = $(FFLAGS) $(IFLAG)../camb/$(OUTPUT_DIR) $(INCLUDE)
+LINKFLAGS = -L../camb/$(OUTPUT_DIR) -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
 ifneq ($(PICO),)
 CALCFILES += $(OUTPUT_DIR)/fpico_interface.o $(OUTPUT_DIR)/Calculator_PICO.o
@@ -129,28 +126,15 @@ ifneq ($(PRECISION),)
 FFLAGS += -D$(PRECISION) -DMATRIX_$(PRECISION)
 endif
 
-ifneq ($(NONCLIKLIKE),)
-FFLAGS += -DNONCLIK
-endif
-
-ifneq ($(PLANCKLIKE),)
-FFLAGS += -DCLIK
-endif
-
-ifneq ($(highL),)
-FFLAGS += -DhighL
-LINKFLAGS += -L$(highL) -lhigh
-INCLUDE += $(IFLAG)$(highL)
-endif
-
 PLANCKLIKEFILES= $(OUTPUT_DIR)/CMB_BK_Planck.o
 
-
-ifneq ($(PLANCKLIKE),)
-PLANCKLIKEFILES += $(OUTPUT_DIR)/$(PLANCKLIKE).o
+ifneq ($(CLIK_PATH),)
+FFLAGS += -DCLIK
+PLANCKLIKEFILES += $(OUTPUT_DIR)/cliklike.o
 endif
 
 ifeq ($(NONCLIKLIKE),cliklike_CamSpec)
+FFLAGS += -DNONCLIK
 PLANCKLIKEFILES +=  $(OUTPUT_DIR)/temp_like.o
 PLANCKLIKEFILES += $(OUTPUT_DIR)/cliklike_CamSpec.o
 endif
@@ -165,7 +149,7 @@ OBJFILES = $(UTILS) $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectParamNames.o 
 
 
 SUPERNOVAE = $(OUTPUT_DIR)/supernovae_Union2.o $(OUTPUT_DIR)/supernovae_SNLS.o $(OUTPUT_DIR)/supernovae_JLA.o
-#SZ = $(OUTPUT_DIR)/szcounts.o
+SZ = $(OUTPUT_DIR)/szcounts.o
 
 DATAMODULES = $(PLANCKLIKEFILES) $(OUTPUT_DIR)/mpk.o $(OUTPUT_DIR)/wigglez.o \
 	$(OUTPUT_DIR)/bao.o $(SUPERNOVAE) $(SZ) $(OUTPUT_DIR)/supernovae.o $(OUTPUT_DIR)/HST.o  $(OUTPUT_DIR)/CMB.o $(OUTPUT_DIR)/CMBlikes.o $(OUTPUT_DIR)/ElementAbundances.o
@@ -202,16 +186,21 @@ $(OUTPUT_DIR)/RandUtils.o: $(OUTPUT_DIR)/MpiUtils.o
 $(OUTPUT_DIR)/FileUtils.o: $(OUTPUT_DIR)/MpiUtils.o $(OUTPUT_DIR)/MiscUtils.o $(OUTPUT_DIR)/StringUtils.o
 $(OUTPUT_DIR)/ObjectLists.o: $(OUTPUT_DIR)/FileUtils.o
 $(OUTPUT_DIR)/IniObjects.o: $(OUTPUT_DIR)/FileUtils.o
+$(OUTPUT_DIR)/Interpolation.o: $(OUTPUT_DIR)/ObjectLists.o
+$(OUTPUT_DIR)/Matrix_utils_new.o: $(OUTPUT_DIR)/FileUtils.o
 $(OUTPUT_DIR)/ObjectParamNames.o: $(UTILS)
 $(OUTPUT_DIR)/settings.o:  $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectParamNames.o
-$(OUTPUT_DIR)/propose.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/Matrix_utils_new.o
+$(OUTPUT_DIR)/propose.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/Matrix_utils_new.o  $(OUTPUT_DIR)/GeneralTypes.o
 $(OUTPUT_DIR)/IO.o: $(OUTPUT_DIR)/settings.o
 $(OUTPUT_DIR)/samples.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/Matrix_utils_new.o
 $(OUTPUT_DIR)/GetDist.o: $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/samples.o
 
+$(OUTPUT_DIR)/CalcLike_Cosmology.o: $(OUTPUT_DIR)/calclike.o
+
+
 $(OUTPUT_DIR)/likelihood.o: $(OUTPUT_DIR)/GeneralTypes.o
 $(OUTPUT_DIR)/GeneralTypes.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/IO.o
-$(OUTPUT_DIR)/BaseParameters: $(OUTPUT_DIR)/GeneralTypes.o $(OUTPUT_DIR)/IO.o
+$(OUTPUT_DIR)/BaseParameters.o: $(OUTPUT_DIR)/GeneralTypes.o $(OUTPUT_DIR)/IO.o  $(OUTPUT_DIR)/settings.o
 $(OUTPUT_DIR)/ParamSet.o: $(OUTPUT_DIR)/BaseParameters.o $(OUTPUT_DIR)/samples.o
 $(OUTPUT_DIR)/DataLikelihoods.o: $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/ParamSet.o $(DATAMODULES)
 $(OUTPUT_DIR)/calclike.o: $(OUTPUT_DIR)/DataLikelihoods.o
@@ -223,11 +212,11 @@ $(OUTPUT_DIR)/GeneralSetup.o: $(OUTPUT_DIR)/SampleCollector.o $(OUTPUT_DIR)/Impo
 
 $(OUTPUT_DIR)/driver.o: $(OUTPUT_DIR)/GeneralSetup.o $(OUTPUT_DIR)/CosmologyConfig.o
 
-$(PARAMETERIZATION): $(OUTPUT_DIR)/ParamSet.o $(OUTPUT_DIR)/bbn.o
+$(PARAMETERIZATION): $(OUTPUT_DIR)/ParamSet.o $(OUTPUT_DIR)/bbn.o  $(OUTPUT_DIR)/Calculator_Cosmology.o
 $(OUTPUT_DIR)/Calculator_Cosmology.o: $(OUTPUT_DIR)/CosmoTheory.o
 $(OUTPUT_DIR)/CosmoTheory.o: $(OUTPUT_DIR)/CosmologyTypes.o $(OUTPUT_DIR)/likelihood.o
 $(OUTPUT_DIR)/supernovae.o:  $(OUTPUT_DIR)/Likelihood_Cosmology.o $(SUPERNOVAE)
-$(OUTPUT_DIR)/Calculator_CAMB.o: $(OUTPUT_DIR)/Calculator_Cosmology.o
+$(OUTPUT_DIR)/Calculator_CAMB.o: $(OUTPUT_DIR)/Calculator_Cosmology.o camb
 $(OUTPUT_DIR)/CosmologyTypes.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/GeneralTypes.o
 $(OUTPUT_DIR)/Likelihood_Cosmology.o: $(OUTPUT_DIR)/Calculator_Cosmology.o $(OUTPUT_DIR)/CosmoTheory.o
 $(OUTPUT_DIR)/CMBlikes.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
@@ -270,6 +259,8 @@ F90FLAGS += $(MODOUT) $(IFLAG)$(OUTPUT_DIR)/
 export FFLAGS
 export F90C
 export OUTPUT_DIR
+export IFLAG
+export MODOUT
 
 directories:
 	mkdir -p $(OUTPUT_DIR)
@@ -294,18 +285,19 @@ cosmomc_debug: directories camb $(OBJFILES)
 
 
 clean: cleancosmomc
-	rm -f ../camb/*.o ../camb/*.obj ../camb/*.mod ../camb/libcamb_$(RECOMBINATION).a
+	cd ../camb; make clean
 
 cleancosmomc:
-	rm -f $(OUTPUT_DIR)/*.o $(OUTPUT_DIR)/*.mod ./Debug/* ./Release/*  ./DebugMPI/* ./ReleaseMPI/* ../core
-
+	rm -f $(OUTPUT_DIR)/*.o $(OUTPUT_DIR)/*.mod ../core
+	rm -rf Release*
+	rm -rf Debug*
 
 getdist: directories $(DISTFILES)
 	$(F90C) -o ../getdist $(DISTFILES) $(LAPACKL) $(GETDISTFLAGS)
 
 camb:
 	cd ../camb && \
-	$(MAKE) --file=Makefile_main libcamb_$(RECOMBINATION).a \
+	$(MAKE) --file=Makefile_main libcamb OUTPUT_DIR=$(OUTPUT_DIR) \
 	RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf NONLINEAR=halofit_ppf
 
 $(highL)/libhigh.a:
@@ -313,3 +305,4 @@ $(highL)/libhigh.a:
 
 $(WMAP)/libwmap9.a:
 	cd $(WMAP); make libwmap9.a;
+

@@ -303,8 +303,8 @@
 
     do
         if (Feedback>0) print*,'minmizing all parameters'
-        allocate(this%minimize_indices(num_params_used), source=params_used)
-        allocate(this%minimize_indices_used(num_params_used), source=[(I, I=1, num_params_used)])
+        allocate(this%minimize_indices, source=params_used)
+        allocate(this%minimize_indices_used, source=[(I, I=1, num_params_used)])
 
         best_like = this%FindBestFit_indices(num_params_used,vect)
         deallocate(this%minimize_indices, this%minimize_indices_used)

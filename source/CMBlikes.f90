@@ -1019,7 +1019,7 @@
 
     subroutine AddForegrounds(this,Cls,DataParams)
     class(TCMBLikes) :: this
-    class(TMapCrossPowerSpectrum), intent(inout) :: Cls(:,:)
+    class(TMapCrossPowerSpectrum), target, intent(inout) :: Cls(:,:)
     real(mcp), intent(in) :: DataParams(:)
 
 

@@ -1,278 +1,183 @@
-# MCSamples.py
-
+from __future__ import absolute_import
+from __future__ import print_function
 import os
-import sys
 import glob
-import math
 import logging
 import copy
-import numpy as np
-from scipy.interpolate import splrep, splev
-from scipy.stats import norm
-from scipy.signal import fftconvolve
 import pickle
-from iniFile import iniFile
-from getdist.chains import chains, chainFiles, lastModified
-from getdist import ResultObjs
+import math
 import time
-# =============================================================================
+import numpy as np
+from scipy.stats import norm
+import getdist
+from getdist import chains, types, covmat, ParamInfo, IniFile
+from getdist.densities import Density1D, Density2D
+from getdist.chains import Chains, chainFiles, lastModified
+from getdist.convolve import convolve1D, convolve2D
+import getdist.kde_bandwidth as kde
+from getdist.parampriors import ParamBounds
+import six
 
-version = 5
-
-default_grid_root = None
-output_base_dir = None
-cache_dir = None
-use_plot_data = False
-default_getdist_settings = os.path.join(os.path.dirname(__file__), 'analysis_defaults.ini')
-default_plot_output = 'pdf'
-
-config_file = os.environ.get('GETDIST_CONFIG', None)
-if not config_file:
-    config_file = os.path.join(os.path.dirname(__file__), 'config.ini')
-if os.path.exists(config_file):
-    config_ini = iniFile(config_file)
-    default_grid_root = config_ini.string('default_grid_root', '')
-    output_base_dir = config_ini.string('output_base_dir', '')
-    cache_dir = config_ini.string('cache_dir', '')
-    default_getdist_settings = config_ini.string('default_getdist_settings', default_getdist_settings)
-    use_plot_data = config_ini.bool('use_plot_data', use_plot_data)
-    default_plot_output = config_ini.string('default_plot_output', default_plot_output)
-else:
-    config_ini = iniFile()
-
-def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, dist_settings={}):
-        files = chainFiles(file_root)
-        path, name = os.path.split(file_root)
-        path = cache_dir or path
-        if not os.path.exists(path): os.mkdir(path)
-        cachefile = os.path.join(path, name) + '.py_mcsamples'
-        samples = MCSamples(file_root, jobItem=jobItem)
-        samples.update_settings(ini, dist_settings)
-        if not no_cache and os.path.exists(cachefile) and lastModified(files) < os.path.getmtime(cachefile):
-            try:
-                with open(cachefile, 'rb') as inp:
-                    cache = pickle.load(inp)
-                if cache.version == version and samples.ignore_rows == cache.ignore_rows:
-                    changed = len(samples.contours) != len(cache.contours) or \
-                                np.any(np.array(samples.contours) != np.array(cache.contours))
-                    cache.update_settings(ini, dist_settings, doUpdate=changed)
-                    return cache
-            except:
-                pass
-        if not len(files): raise Exception('No chains found: ' + file_root)
-        samples.readChains(files)
-        with open(cachefile, 'wb') as output:
-                pickle.dump(samples, output, pickle.HIGHEST_PROTOCOL)
-        return samples
+pickle_version = 21
 
 
-class Ranges(object):
+class MCSamplesError(Exception):
+    """
+    An Exception that is raised when there is an error inside the MCSamples class.
+    """
+    pass
 
-    def __init__(self, fileName=None, setParamNameFile=None):
-        self.names = []
-        self.mins = {}
-        self.maxs = {}
-        if fileName is not None: self.loadFromFile(fileName)
 
-    def loadFromFile(self, fileName):
-        self.filenameLoadedFrom = os.path.split(fileName)[1]
-        f = open(fileName)
-        for line in f:
-            name, mini, maxi = self.readValues(line.strip())
-            if name:
-                self.names.append(name)
-                self.mins[name] = mini
-                self.maxs[name] = maxi
+class SettingError(MCSamplesError):
+    """
+    An Exception that indicates bad settings.
+    """
+    pass
 
-    def readValues(self, line):
-        name, mini, maxi = None, None, None
-        strings = [ s for s in line.split(" ")  if s <> '' ]
-        if len(strings) == 3:
-            name = strings[0]
-            mini = float(strings[1])
-            maxi = float(strings[2])
-        return name, mini, maxi
 
-    def listNames(self):
-        return self.names
+class ParamError(MCSamplesError):
+    """
+    An Exception that indicates a bad parameter.
+    """
+    pass
 
-    def min(self, name, error=False):
-        if self.mins.has_key(name):
-            return self.mins[name]
-        if error: raise Exception("Name not found:" + name)
-        return None
 
-    def max(self, name, error=False):
-        if self.maxs.has_key(name):
-            return self.maxs[name]
-        if error: raise Exception("Name not found:" + name)
-        return None
+def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, settings={}, dist_settings={}):
+    """
+    Loads a set of samples from a file or files.
+    
+    Sample files are plain text (*file_root.txt*) or a set of files (*file_root_1.txt*, *file_root_2.txt*, etc.).
+    
+    Auxiliary files **file_root.paramnames** gives the parameter names
+    and (optionally) **file_root.ranges** gives hard prior parameter ranges.
 
-# =============================================================================
+    For a description of the various analysis settings and default values see
+    `analysis_defaults.ini <http://getdist.readthedocs.org/en/latest/analysis_settings.html>`_.
+
+    :param file_root: The root name of the files to read (no extension)
+    :param ini: The name of a .ini file with analysis settings to use
+    :param jobItem: an optional grid jobItem instance for a CosmoMC grid output
+    :param no_cache: Indicates whether or not we should cached loaded samples in a pickle
+    :param settings: dictionary of analysis settings to override defaults
+    :param dist_settings: (old) alias for settings
+    :return: The :class:`MCSamples` instance
+    """
+    if settings and dist_settings: raise ValueError('Use settings or dist_settings')
+    if dist_settings: settings = dist_settings
+    files = chainFiles(file_root)
+    path, name = os.path.split(file_root)
+    path = getdist.cache_dir or path
+    if not os.path.exists(path): os.mkdir(path)
+    cachefile = os.path.join(path, name) + '.py_mcsamples'
+    samples = MCSamples(file_root, jobItem=jobItem, ini=ini, settings=settings)
+    allfiles = files + [file_root + '.ranges', file_root + '.paramnames', file_root + '.properties.ini']
+    if not no_cache and os.path.exists(cachefile) and lastModified(allfiles) < os.path.getmtime(cachefile):
+        try:
+            with open(cachefile, 'rb') as inp:
+                cache = pickle.load(inp)
+            if cache.version == pickle_version and samples.ignore_rows == cache.ignore_rows:
+                changed = len(samples.contours) != len(cache.contours) or \
+                          np.any(np.array(samples.contours) != np.array(cache.contours))
+                cache.updateSettings(ini=ini, settings=settings, doUpdate=changed)
+                return cache
+        except:
+            pass
+    if not len(files):
+        raise IOError('No chains found: ' + file_root)
+    samples.readChains(files)
+    samples.savePickle(cachefile)
+    return samples
+
 
 class Kernel1D(object):
-
-    def __init__(self, winw, h, boundary=False):
+    def __init__(self, winw, h):
         self.winw = winw
         self.h = h
-        Win = np.exp(-np.arange(-winw, winw + 1) ** 2 / (2.*h ** 2))
+        self.x = np.arange(-winw, winw + 1)
+        Win = np.exp(-(self.x / h) ** 2 / 2.)
         self.Win = Win / np.sum(Win)
-        if boundary: self.get1DBoundaryCorrectionFactors()
 
-    def get1DBoundaryCorrectionFactors(self):
-        # linear boundary kernel, e.g. Jones 1993, Jones and Foster 1996
-        #  www3.stat.sinica.edu.tw/statistica/oldpdf/A6n414.pdf after Eq 1b.
-        # Note odd term sign flip because here Win(X) = K(-X)
-        a0 = np.cumsum(self.Win)
-        p = np.arange(-self.winw, self.winw + 1)
-        a1 = np.cumsum(p * self.Win)
-        a2 = np.cumsum(p ** 2 * self.Win)
-        denom = a0 * a2 - a1 ** 2
-        self.xWin = p * self.Win
-        self.boundary_K = a2[self.winw:] / denom[self.winw:]
-        self.boundary_xK = a1[self.winw:] / denom[self.winw:]
-        self.a0 = a0[self.winw:]
-
-
-class Density1D(object):
-
-    def __init__(self, xmin, n, spacing, P=None):
-        self.n = n
-        self.X = xmin + np.arange(n) * float(spacing)
-        if P is not None:
-            self.P = P
-        else:
-            self.P = np.zeros(n)
-        self.spacing = float(spacing)
-
-    def InitSpline(self):
-        self.spl = splrep(self.X, self.P, s=0)
-
-    def Prob(self, x):
-        if isinstance(x, np.ndarray):
-            return splev(x, self.spl)
-        else:
-            return splev([x], self.spl)
-
-
-    def initLimitGrids(self, factor=100):
-        class InterpGrid(object): pass
-
-        g = InterpGrid()
-        g.factor = factor
-        g.bign = (self.n - 1) * factor + 1
-        vecx = self.X[0] + np.arange(g.bign) * self.spacing / factor
-        g.grid = splev(vecx, self.spl)
-
-        norm = np.sum(g.grid)
-        g.norm = norm - (0.5 * self.P[-1]) - (0.5 * self.P[0])
-
-        g.sortgrid = np.sort(g.grid)
-        g.cumsum = np.cumsum(g.sortgrid)
-        return g
-
-    def Limits(self, p, interpGrid=None):
-        g = interpGrid
-        if g is None: g = self.initLimitGrids()
-        # Return values
-        mn, mx = 0., 0.
-
-        target = (1 - p) * g.norm
-        ix = np.searchsorted(g.cumsum, target)
-        trial = g.sortgrid[ix]
-        if ix > 0:
-            d = g.cumsum[ix] - g.cumsum[ix - 1]
-            frac = (g.cumsum[ix] - target) / d
-            trial = (1 - frac) * trial + frac * g.sortgrid[ix + 1]
-#         try_t = max(grid)
-#         try_b = 0
-#         try_last = -1
-#         while True:
-#             trial = (try_b + try_t) / 2
-#             trial_sum = np.sum(grid[grid >= trial])
-#             if (trial_sum < p * norm):
-#                 try_t = (try_b + try_t) / 2
-#             else:
-#                 try_b = (try_b + try_t) / 2
-#             if (math.fabs(trial_sum / try_last - 1) < 1e-4): break
-#             try_last = trial_sum
-#         trial = (try_b + try_t) / 2
-
-        lim_bot = (g.grid[0] >= trial)
-        if (lim_bot):
-            mn = self.P[0]
-        else:
-            for i in range(g.bign):
-                if (g.grid[i] > trial):
-                    mn = self.X[0] + (i - 1) * self.spacing / g.factor
-                    break
-
-        lim_top = (g.grid[-1] >= trial)
-        if (lim_top):
-            mx = self.P[-1]
-        else:
-            indexes = range(g.bign)
-            indexes.reverse()
-            for i in indexes:
-                if (g.grid[i] > trial):
-                    mx = self.X[0] + (i - 1) * self.spacing / g.factor
-                    break
-
-        return mn, mx, lim_bot, lim_top
 
 # =============================================================================
 
-class MCSamples(chains):
+class MCSamples(Chains):
+    """
+    The main high-level class for a collection of parameter samples.
+    
+    Derives from :class:`.chains.Chains`, adding high-level functions including Kernel Density estimates, parameter ranges and custom settings.
+    """
 
-    def __init__(self, root=None, ignore_rows=0, jobItem=None, ini=None):
-        chains.__init__(self, root, jobItem=jobItem)
+    def __init__(self, root=None, jobItem=None, ini=None, settings=None, ranges=None, **kwargs):
+        """        
+        For a description of the various analysis settings and default values see
+        `analysis_defaults.ini <http://getdist.readthedocs.org/en/latest/analysis_settings.html>`_.
 
-        self.version = version
-        self.limmin = []
-        self.limmax = []
+        
+        :param root: A root file name when loading from file 
+        :param jobItem: Optional paramgrid.batchjob.jobItem instance if a member of a parameter grid
+        :param ini: a .ini file to use for custom analysis settings
+        :param settings: a dictionary of custom analysis settings
+        :param ranges: a dictionary giving any additional hard prior bounds for parameters, eg. {'x':[0, 1], 'y':[None,2]}
+        :param kwargs: keyword arguments passed to inherited classes, e.g. to manually make a samples object from sample arrays in memory:
+        
+               - **paramNamesFile**: optional name of .paramnames file with parameter names
+               - **samples**: array of parameter values for each sample, passed to :meth:`setSamples`
+               - **weights**: array of weights for samples
+               - **loglikes**: array of -log(Likelihood) for samples
+               - **names**: list of names for the parameters
+               - **labels**:  list of latex labels for the parameters
+               - **ignore_rows**:
+               
+                     - if int >=1: The number of rows to skip at the file in the beginning of the file
+                     - if float <1: The fraction of rows to skip at the beginning of the file
+               - **name_tag**: a name tag for this instance
+        """
+        Chains.__init__(self, root, jobItem=jobItem, **kwargs)
 
-        self.has_limits = []
-        self.has_limits_bot = []
-        self.has_limits_top = []
+        self.version = pickle_version
 
         self.markers = {}
 
         self.ini = ini
 
-        self.ranges = None
-        self.ReadRanges()
+        self._readRanges()
+        if ranges:
+            self.setRanges(ranges)
 
         # Other variables
-        self.no_plots = False
-        self.num_bins = 100
+        self.range_ND_contour = 1
+        self.range_confidence = 0.001
+        self.num_bins = 128
+        self.fine_bins = 1024
         self.num_bins_2D = 40
-        self.smooth_scale_1D = 0.25
-        self.smooth_scale_2D = 2
-        self.boundary_correction_method = 1
+        self.fine_bins_2D = 256
+        self.smooth_scale_1D = -1.
+        self.smooth_scale_2D = -1.
+        self.boundary_correction_order = 1
+        self.mult_bias_correction_order = 1
         self.max_corr_2D = 0.95
-        self.num_contours = 2
-        self.contours = [0.68, 0.95]
+        self.contours = np.array([0.68, 0.95])
         self.max_scatter_points = 2000
         self.credible_interval_threshold = 0.05
-        self.plot_meanlikes = False
-        self.shade_meanlikes = False
 
-        self.num_vars = 0
-        self.numsamp = 0
+        self.shade_likes_is_mean_loglikes = False
+
+        self.likeStats = None
         self.max_mult = 0
         self.mean_mult = 0
         self.plot_data_dir = ""
-        self.rootname = ""
+        if root:
+            self.rootname = os.path.basename(root)
+        else:
+            self.rootname = ""
+
         self.rootdirname = ""
-        self.meanlike = 0.
-        self.mean_loglikes = False
         self.indep_thin = 0
-        self.samples = None
-        self.ignore_rows = ignore_rows
+        self.ignore_rows = float(kwargs.get('ignore_rows', 0))
         self.subplot_size_inch = 4.0
         self.subplot_size_inch2 = self.subplot_size_inch
         self.subplot_size_inch3 = 6.0
-        self.plot_output = default_plot_output
+        self.plot_output = getdist.default_plot_output
         self.out_dir = ""
 
         self.max_split_tests = 4
@@ -280,306 +185,341 @@ class MCSamples(chains):
 
         self.corr_length_thin = 0
         self.corr_length_steps = 15
+        self.converge_test_limit = 0.95
 
         self.done_1Dbins = False
-        self.done2D = None
-
         self.density1D = dict()
 
-        self.update_settings(ini)
+        self.updateSettings(ini=ini, settings=settings)
+
+        if root and os.path.exists(root + '.properties.ini'):
+            # any settings in properties.ini override settings for this specific chain
+            self.properties = IniFile(root + '.properties.ini')
+            self._setBurnOptions(self.properties)
+            if self.properties.bool('burn_removed', False):
+                self.ignore_frac = 0.
+                self.ignore_lines = 0
+        else:
+            self.properties = None
+
+    def setRanges(self, ranges):
+        """
+        Sets the ranges parameters, e.g. hard priors on positivity etc. If a min or max value is None, then it is assumed to be unbounded.
+
+        :param ranges: A list or a tuple of [min,max] values for each parameter, 
+                       or a dictionary giving [min,max] values for specific parameter names
+        """
+        if isinstance(ranges, (list, tuple)):
+            for i, minmax in enumerate(ranges):
+                self.ranges.setRange(self.parName(i), minmax)
+        elif isinstance(ranges, dict):
+            for key, value in six.iteritems(ranges):
+                self.ranges.setRange(key, value)
+        else:
+            raise ValueError('MCSamples ranges parameter must be list or dict')
+        self.needs_update = True
 
     def parName(self, i, starDerived=False):
+        """
+        Gets the name of i'th parameter
+
+        :param i: The index of the parameter
+        :param starDerived: add a star at the end of the name if the parameter is derived
+        :return: The name of the parameter (string)
+        """
         return self.paramNames.name(i, starDerived)
 
     def parLabel(self, i):
-        return self.paramNames.names[i].label
+        """
+        Gets the latex label of the parameter
 
-    def initParameters(self, ini):
+        :param i: The index or name of a parameter.
+        :return: The parameter's label.
+        """
+        if isinstance(i, six.string_types):
+            return self.paramNames.parWithName(i).label
+        else:
+            return self.paramNames.names[i].label
 
-        self.ignore_rows = self.ini.float('ignore_rows', self.ignore_rows)
+    def _setBurnOptions(self, ini):
+        """
+        Sets the ignore_rows value from configuration.
+
+        :param ini: The :class:`.inifile.IniFile` to be used
+        """
+        ini.setAttr('ignore_rows', self)
         self.ignore_lines = int(self.ignore_rows)
         if not self.ignore_lines:
             self.ignore_frac = self.ignore_rows
         else:
             self.ignore_frac = 0
 
-        self.num_bins = ini.int('num_bins', self.num_bins)
-        self.num_bins_2D = ini.int('num_bins_2D', self.num_bins_2D)
-        self.smooth_scale_1D = ini.float('smooth_scale_1D', self.smooth_scale_1D)
-        self.smooth_scale_2D = ini.float('smooth_scale_2D', self.smooth_scale_2D)
+    def initParameters(self, ini):
+        """
+        Initializes settings.
+        Gets parameters from :class:`~.inifile.IniFile`.
 
-        if self.smooth_scale_1D > 0 and self.smooth_scale_1D > 1:
-            raise Exception('WARNING: smooth_scale_1D>1 is oversmoothed')
-        if self.smooth_scale_1D > 0 and self.smooth_scale_1D > 1.9:
-            raise Exception('smooth_scale_1D>1 is now in stdev units')
+        :param ini:  The :class:`~.inifile.IniFile` to be used
+        """
+        self._setBurnOptions(ini)
 
-        self.boundary_correction_method = ini.int('boundary_correction_method',
-                                                  getattr(self, 'boundary_correction_method', 1))
+        ini.setAttr('range_ND_contour', self)
+        ini.setAttr('range_confidence', self)
+        ini.setAttr('num_bins', self)
+        ini.setAttr('fine_bins', self)
 
-        self.no_plots = ini.bool('no_plots', False)
-        self.shade_meanlikes = ini.bool('shade_meanlikes', False)
+        ini.setAttr('num_bins_2D', self)
+        ini.setAttr('fine_bins_2D', self)
 
-        self.force_twotail = ini.bool('force_twotail', False)
+        ini.setAttr('smooth_scale_1D', self)
+        ini.setAttr('smooth_scale_2D', self)
 
-        self.plot_meanlikes = ini.bool('plot_meanlikes', self.plot_meanlikes)
+        ini.setAttr('boundary_correction_order', self, 1)
+        ini.setAttr('mult_bias_correction_order', self, 1)
 
-        self.max_scatter_points = ini.int('max_scatter_points', self.max_scatter_points)
-        self.credible_interval_threshold = ini.float('credible_interval_threshold', self.credible_interval_threshold)
+        ini.setAttr('max_scatter_points', self)
+        ini.setAttr('credible_interval_threshold', self)
 
-        self.subplot_size_inch = ini.float('subplot_size_inch' , self.subplot_size_inch)
-        self.subplot_size_inch2 = ini.float('subplot_size_inch2', self.subplot_size_inch)
-        self.subplot_size_inch3 = ini.float('subplot_size_inch3', self.subplot_size_inch)
+        ini.setAttr('subplot_size_inch', self)
+        ini.setAttr('subplot_size_inch2', self)
+        ini.setAttr('subplot_size_inch3', self)
+        ini.setAttr('plot_output', self)
 
-        self.plot_output = ini.string('plot_output', self.plot_output)
+        ini.setAttr('force_twotail', self)
+        if self.force_twotail: logging.warning('Computing two tail limits')
+        ini.setAttr('max_corr_2D', self)
 
-        self.force_twotail = ini.bool('force_twotail', False)
-        if self.force_twotail: print 'Computing two tail limits'
-
-        self.max_corr_2D = ini.float('max_corr_2D', self.max_corr_2D)
-
-        if ini and ini.hasKey('num_contours'):
-            self.contours = []
-            self.num_contours = ini.int('num_contours', 2)
-            for i in range(1, self.num_contours + 1):
-                self.contours.append(ini.float('contour' + str(i)))
+        if ini.hasKey('contours'):
+            ini.setAttr('contours', self)
+        elif ini.hasKey('num_contours'):
+            num_contours = ini.int('num_contours', 2)
+            self.contours = np.array([ini.float('contour' + str(i + 1)) for i in range(num_contours)])
         # how small the end bin must be relative to max to use two tail
         self.max_frac_twotail = []
-        for i in range(1, self.num_contours + 1):
-            max_frac = np.exp(-1.0 * math.pow(norm.ppf((1 - self.contours[i - 1]) / 2), 2) / 2)
+        for i, contour in enumerate(self.contours):
+            max_frac = np.exp(-1.0 * math.pow(norm.ppf((1 - contour) / 2), 2) / 2)
             if ini:
-                max_frac = ini.float('max_frac_twotail' + str(i), max_frac)
+                max_frac = ini.float('max_frac_twotail' + str(i + 1), max_frac)
             self.max_frac_twotail.append(max_frac)
 
+        ini.setAttr('converge_test_limit', self, self.contours[-1])
+        ini.setAttr('corr_length_thin', self)
+        ini.setAttr('corr_length_steps', self)
 
-
-    def initLimits(self, ini=None):
-
+    def _initLimits(self, ini=None):
         bin_limits = ""
         if ini: bin_limits = ini.string('all_limits', '')
 
-        nvars = len(self.paramNames.names)
-
-        self.limmin = np.zeros(nvars)
-        self.limmax = np.zeros(nvars)
-
-        self.has_limits = nvars * [False]
-        self.has_limits_bot = nvars * [False]
-        self.has_limits_top = nvars * [False]
-
         self.markers = {}
 
-        for ix, name in enumerate(self.paramNames.list()):
-            mini = self.ranges.min(name)
-            maxi = self.ranges.max(name)
-            if (mini is not None and maxi is not None and mini <> maxi):
-                self.limmin[ix] = mini
-                self.limmax[ix] = maxi
-                self.has_limits_top[ix] = True
-                self.has_limits_bot[ix] = True
-            if (bin_limits <> ''):
+        for par in self.paramNames.names:
+            if bin_limits:
                 line = bin_limits
             else:
                 line = ''
-                if ini and ini.params.has_key('limits[%s]' % name):
-                    line = ini.string('limits[%s]' % name)
-            if (line <> ''):
-                limits = [ s for s in line.split(' ') if s <> '' ]
+                if ini and 'limits[%s]' % par.name in ini.params:
+                    line = ini.string('limits[%s]' % par.name)
+            if line:
+                limits = line.split()
                 if len(limits) == 2:
-                    if limits[0] <> 'N':
-                        self.limmin[ix] = float(limits[0])
-                        self.has_limits_bot[ix] = True
-                    if limits[1] <> 'N':
-                        self.limmax[ix] = float(limits[1])
-                        self.has_limits_top[ix] = True
-            if ini and ini.params.has_key('marker[%s]' % name):
-                line = ini.string('marker[%s]' % name)
-                if (line <> ''):
-                    self.markers[name] = float(line)
+                    self.ranges.setRange(par.name, limits)
 
-    def update_settings(self, ini=None, ini_settings={}, doUpdate=True):
+            par.limmin = self.ranges.getLower(par.name)
+            par.limmax = self.ranges.getUpper(par.name)
+            par.has_limits_bot = par.limmin is not None
+            par.has_limits_top = par.limmax is not None
+
+            if ini and 'marker[%s]' % par.name in ini.params:
+                line = ini.string('marker[%s]' % par.name)
+                if line:
+                    self.markers[par.name] = float(line)
+
+    def updateSettings(self, settings=None, ini=None, doUpdate=True):
+        """
+        Updates settings from a .ini file or dictionary
+
+        :param settings: The a dict containing settings to set, taking preference over any values in ini
+        :param ini: The name of .ini file to get settings from, or an :class:`~.inifile.IniFile` instance; by default uses current settings
+        :param doUpdate: True if should update internal computed values, False otherwise (e.g. if want to make other changes first)
+        """
+        assert (settings is None or isinstance(settings, dict))
         if not ini:
             ini = self.ini
-        elif isinstance(ini, basestring):
-            ini = iniFile(ini)
+        elif isinstance(ini, six.string_types):
+            ini = IniFile(ini)
         else:
             ini = copy.deepcopy(ini)
-        if not ini: ini = iniFile(default_getdist_settings)
-        if ini_settings:
-            ini.params.update(ini_settings)
+        if not ini: ini = IniFile(getdist.default_getdist_settings)
+        if settings:
+            ini.params.update(settings)
         self.ini = ini
         if ini: self.initParameters(ini)
-        if doUpdate and self.samples: self.updateChainBaseStatistics()
+        if doUpdate and self.samples is not None: self.updateBaseStatistics()
 
     def readChains(self, chain_files):
-        # Used for by plotting scripts and gui
+        """
+        Loads samples from a list of files, removing burn in, deleting fixed parameters, and combining into one self.samples array
 
+        :param chain_files: The list of file names to read
+        :return: self.
+        """
         self.loadChains(self.root, chain_files)
 
-        if self.ignore_frac and  (not self.jobItem or
-                    (not self.jobItem.isImportanceJob and not self.jobItem.isBurnRemoved())):
+        if self.ignore_frac and (not self.jobItem or
+                                     (not self.jobItem.isImportanceJob and not self.jobItem.isBurnRemoved())):
             self.removeBurnFraction(self.ignore_frac)
+            if chains.print_load_details: print('Removed %s as burn in' % self.ignore_frac)
+        else:
+            if chains.print_load_details: print('Removed no burn in')
 
         self.deleteFixedParams()
 
         # Make a single array for chains
         self.makeSingle()
 
-        self.updateChainBaseStatistics()
+        self.updateBaseStatistics()
 
         return self
 
-    def updateChainBaseStatistics(self):
+    def updateBaseStatistics(self):
+        """
+        Updates basic computed statistics (means, covariance etc), e.g. after a change in samples or weights
 
-        super(MCSamples, self).updateChainBaseStatistics()
-        self.initLimits(self.ini)
+        :return: self
+        """
+        super(MCSamples, self).updateBaseStatistics()
+        mult_max = (self.mean_mult * self.numrows) / min(self.numrows // 2, 500)
+        outliers = np.sum(self.weights > mult_max)
+        if outliers != 0:
+            logging.warning('outlier fraction %s ', float(outliers) / self.numrows)
 
-        self.ComputeMultiplicators()
+        self.indep_thin = 0
+        self._setCov()
+        self.done_1Dbins = False
+        self.density1D = dict()
 
-        # Compute statistics values
-        self.ComputeStats()
-
-        self.GetCovMatrix()
-
-        # Find best fit, and mean likelihood
-        self.GetChainLikeSummary()
-
-        # Init arrays for 1D densities
-        self.Init1DDensity()
+        self._initLimits(self.ini)
 
         # Get ND confidence region
-        self.GetConfidenceRegion()
+        self._setLikeStats()
+        return self
 
-    def AdjustPriors(self):
-        sys.exit('You need to write the AdjustPriors function in MCSamples.py first!')
-        # print "Adjusting priors"
-        # ombh2 = self.samples[0]  # ombh2 prior
-        # chisq = (ombh2 - 0.0213)**2/0.001**2
-        # self.weights *= np.exp(-chisq/2)
-        # self.loglikes += chisq/2
-
-    def MapParameters(self, invars):
-        sys.exit('Need to write MapParameters routine first')
-
-    def CoolChain(self, cool):
-        print 'Cooling chains by ', cool
-        MaxL = np.max(self.loglikes)
-        newL = self.loglikes * cool
-        newW = self.weights * np.exp(-(newL - self.loglikes) - (MaxL * (1 - cool)))
-        self.weights = np.hstack(newW)
-        self.loglikes = np.hstack(newL)
-
-    def DeleteZeros(self):
-        indexes = np.where(self.weights == 0)
-        self.weights = np.delete(self.weights, indexes)
-        self.loglikes = np.delete(self.loglikes, indexes)
-        self.samples = np.delete(self.samples, indexes, axis=0)
-
-
-    def MakeSingleSamples(self, filename="", single_thin=None):
+    def makeSingleSamples(self, filename="", single_thin=None):
         """
         Make file of weight-1 samples by choosing samples
         with probability given by their weight.
+
+        :param filename: The filename to write to, Leave empty if no output file is needed
+        :param single_thin: factor to thin by; if not set generates as many samples as it can
+        :return: numpy array of selected weight-1 samples
         """
         if single_thin is None:
-            single_thin = max(1, self.numsamp / self.max_mult / self.max_scatter_points)
+            single_thin = max(1, self.norm / self.max_mult / self.max_scatter_points)
         rand = np.random.random_sample(self.numrows)
-        maxmult = np.max(self.weights)
 
         if filename:
-            textFileHandle = open(filename, 'w')
-            for i, r in enumerate(rand):
-                if (r <= self.weights[i] / maxmult / single_thin):
-                    textFileHandle.write("%16.7E" % (1.0))
-                    textFileHandle.write("%16.7E" % (self.loglikes[i]))
-                    for j in range(self.num_vars):
-                        textFileHandle.write("%16.7E" % (self.samples[i][j]))
-                    textFileHandle.write("\n")
-            textFileHandle.close()
+            with open(filename, 'w') as f:
+                for i, r in enumerate(rand):
+                    if r <= self.weights[i] / self.max_mult / single_thin:
+                        f.write("%16.7E" % 1.0)
+                        f.write("%16.7E" % (self.loglikes[i]))
+                        for j in range(self.n):
+                            f.write("%16.7E" % (self.samples[i][j]))
+                        f.write("\n")
         else:
             # return data
-            return self.samples[rand <= self.weights / (maxmult * single_thin)]
+            return self.samples[rand <= self.weights / (self.max_mult * single_thin)]
 
-    def WriteThinData(self, fname, thin_ix, cool):
+    def writeThinData(self, fname, thin_ix, cool=1):
+        """
+        Writes samples at thin_ix to file
+
+        :param fname: The filename to write to.
+        :param thin_ix: Indices of the samples to write
+        :param cool: if not 1, cools the samples by this factor
+        """
         nparams = self.samples.shape[1]
-        if(cool <> 1): print 'Cooled thinned output with temp: ', cool
+        if cool != 1: logging.info('Cooled thinned output with temp: %s', cool)
         MaxL = np.max(self.loglikes)
-        textFileHandle = open(fname, 'w')
-        i = 0
-        for thin in thin_ix:
-            if (cool <> 1):
-                newL = self.loglikes[thin] * cool
-                textFileHandle.write("%16.7E" % (
+        with open(fname, 'w') as f:
+            i = 0
+            for thin in thin_ix:
+                if cool != 1:
+                    newL = self.loglikes[thin] * cool
+                    f.write("%16.7E" % (
                         np.exp(-(newL - self.loglikes[thin]) - MaxL * (1 - cool))))
-                textFileHandle.write("%16.7E" % (newL))
-                for j in nparams:
-                    textFileHandle.write("%16.7E" % (self.samples[i][j]))
-            else:
-                textFileHandle.write("%f" % (1.))
-                textFileHandle.write("%f" % (self.loglikes[thin]))
-                for j in nparams:
-                    textFileHandle.write("%16.7E" % (self.samples[i][j]))
-            i += 1
+                    f.write("%16.7E" % newL)
+                    for j in nparams:
+                        f.write("%16.7E" % (self.samples[i][j]))
+                else:
+                    f.write("%f" % 1.)
+                    f.write("%f" % (self.loglikes[thin]))
+                    for j in nparams:
+                        f.write("%16.7E" % (self.samples[i][j]))
+                i += 1
+        print('Wrote ', len(thin_ix), ' thinned samples')
 
-        textFileHandle.close()
-        print  'Wrote ', len(thin_ix), ' thinned samples'
+    def getCovMat(self):
+        """
+        Gets the CovMat instance containing covariance matrix for all the non-derived parameters
+        (for example useful for subsequent MCMC runs to orthogonalize the parameters)
 
-    # ThinData(self, fac) => chains.thin_indices(factor)
-
-    def GetCovMatrix(self):
-        nparam = self.paramNames.numParams()
-        paramVecs = [ self.samples[:, i] for i in range(nparam) ]
-        fullcov = self.cov(paramVecs)
+        :return: A :class:`~.covmat.CovMat` object holding the covariance
+        """
         nparamNonDerived = self.paramNames.numNonDerived()
-        self.covmatrix = fullcov[:nparamNonDerived, :nparamNonDerived]
-        self.corrmatrix = self.corr(paramVecs, cov=fullcov)
+        return covmat.CovMat(matrix=self.fullcov[:nparamNonDerived, :nparamNonDerived],
+                             paramNames=self.paramNames.list()[:nparamNonDerived])
 
     def writeCovMatrix(self, filename=None):
+        """
+        Writes the covrariance matrix of non-derived parameters to a file.
+
+        :param filename: The filename to write to; default is file_root.covmat
+        """
         filename = filename or self.rootdirname + ".covmat"
-        nparamNonDerived = self.paramNames.numNonDerived()
-        with open(filename, "w") as textFileHandle:
-            textFileHandle.write("# %s\n" % (" ".join(self.paramNames.list()[:nparamNonDerived])))
-            for i in range(nparamNonDerived):
-                for j in range(nparamNonDerived):
-                    textFileHandle.write("%17.7E" % self.covmatrix[i][j])
-                textFileHandle.write("\n")
+        self.getCovMat().saveToFile(filename)
 
-    def writeCorrMatrix(self, filename=None):
+    def writeCorrelationMatrix(self, filename=None):
+        """
+        Write the correlation matrix to a file
+
+        :param filename: The file to write to, If none writes to file_root.corr
+        """
         filename = filename or self.rootdirname + ".corr"
-        np.savetxt(filename, self.corrmatrix, fmt="%17.7E")
+        np.savetxt(filename, self.getCorrelationMatrix(), fmt="%15.7E")
 
+    def getFractionIndices(self, weights, n):
+        """
+        Calculates the indices of weights that split the weights into sets of equal 1/n fraction of the total weight
 
-    def GetFractionIndices(self, weights, n):
-        nrows = weights.shape[0]
-        numsamp = np.sum(weights)
-
-        tot = 0
-        aim = numsamp / n
-        num = 0
-
-        fraction_indices = []
-        fraction_indices.append(0)
-
-        for i in range(nrows):
-            tot = tot + weights[i]
-            if (tot > aim):
-                num = num + 1
-                fraction_indices.append(i)
-                if (num == n): break
-                aim = aim + numsamp / n
-
-        fraction_indices.append(nrows)
+        :param weights: array of weights
+        :param n: number of groups to split in to
+        :return: array of indices of the boundary rows in the weights array
+        """
+        cumsum = np.cumsum(weights)
+        fraction_indices = np.append(np.searchsorted(cumsum, np.linspace(0, 1, n, endpoint=False) * self.norm),
+                                     self.weights.shape[0])
         return fraction_indices
 
-
-    def PCA(self, params, param_map, normparam=None, writeDataToFile=False, conditional_params=[]):
+    def PCA(self, params, param_map=None, normparam=None, writeDataToFile=False, filename=None, conditional_params=[]):
         """
-        Perform principle component analysis. In other words,
+        Perform principle component analysis (PCA). In other words,
         get eigenvectors and eigenvalues for normalized variables
-        with optional (log) mapping.
-        """
+        with optional (log modulus) mapping to find power law fits.
 
-        print 'Doing PCA for ', len(params), ' parameters'
-        if len(conditional_params): print 'conditional %u fixed parameters' % len(conditional_params)
+        :param params: List of names of the parameters to use
+        :param param_map: A transformation to apply to parameter values;
+                        A list or string containing either N (no transformation) or L (for log transform) for each parameter.
+                        By default uses log if no parameter values cross zero
+
+        :param normparam: optional name of parameter to normalize result (i.e. this parameter will have unit power)
+        :param writeDataToFile: True if should write the output to file.
+        :param filename: The filename to write, by default root_name.PCA.
+        :param conditional_params: optional list of parameters to treat as fixed, i.e. for PCA conditional on fixed values of these parameters
+        :return: a string description of the output of the PCA
+        """
+        logging.info('Doing PCA for %s parameters', len(params))
+        if len(conditional_params): logging.info('conditional %u fixed parameters', len(conditional_params))
 
         PCAtext = 'PCA for parameters:\n'
 
@@ -592,28 +532,37 @@ class MCSamples(chains):
         if normparam:
             if normparam in params:
                 normparam = params.index(normparam)
-            else: normparam = -1
-        else: normparam = -1
+            else:
+                normparam = -1
+        else:
+            normparam = -1
 
         n = len(indices)
-        corrmatrix = np.zeros((n, n))
-        PCdata = self.samples[:, indices]
+        PCdata = self.samples[:, indices].copy()
         PClabs = []
 
         PCmean = np.zeros(n)
         sd = np.zeros(n)
         newmean = np.zeros(n)
         newsd = np.zeros(n)
+        if param_map is None:
+            param_map = ''
+            for par in self.paramNames.parsWithNames(params):
+                self._initParamRanges(par.name)
+                if par.param_max < 0 or par.param_min < par.param_max - par.param_min:
+                    param_map += 'N'
+                else:
+                    param_map += 'L'
 
         doexp = False
         for i, parix in enumerate(indices):
             if i < nparams:
                 label = self.parLabel(parix)
-                if (param_map[i] == 'L'):
+                if param_map[i] == 'L':
                     doexp = True
                     PCdata[:, i] = np.log(PCdata[:, i])
                     PClabs.append("ln(" + label + ")")
-                elif (param_map[i] == 'M'):
+                elif param_map[i] == 'M':
                     doexp = True
                     PCdata[:, i] = np.log(-1.0 * PCdata[:, i])
                     PClabs.append("ln(-" + label + ")")
@@ -621,32 +570,32 @@ class MCSamples(chains):
                     PClabs.append(label)
                 PCAtext += "%10s :%s\n" % (str(parix + 1), str(PClabs[i]))
 
-            PCmean[i] = np.sum(self.weights * PCdata[:, i]) / self.norm
-            PCdata[:, i] = PCdata[:, i] - PCmean[i]
-            sd[i] = np.sqrt(np.sum(self.weights * np.power(PCdata[:, i], 2)) / self.norm)
-            if (sd[i] <> 0): PCdata[:, i] = PCdata[:, i] / sd[i]
+            PCmean[i] = np.dot(self.weights, PCdata[:, i]) / self.norm
+            PCdata[:, i] -= PCmean[i]
+            sd[i] = np.sqrt(np.dot(self.weights, PCdata[:, i] ** 2) / self.norm)
+            if sd[i] != 0: PCdata[:, i] /= sd[i]
 
         PCAtext += "\n"
         PCAtext += 'Correlation matrix for reduced parameters\n'
-        for i, parix in enumerate(indices):
-            corrmatrix[i][i] = 1
+        correlationMatrix = np.ones((n, n))
+        for i in range(n):
             for j in range(i):
-                corrmatrix[j][i] = np.sum(self.weights * PCdata[:, i] * PCdata[:, j]) / self.norm
-                corrmatrix[i][j] = corrmatrix[j][i]
+                correlationMatrix[j][i] = np.dot(self.weights, PCdata[:, i] * PCdata[:, j]) / self.norm
+                correlationMatrix[i][j] = correlationMatrix[j][i]
         for i in range(nparams):
             PCAtext += '%12s :' % params[i]
             for j in range(n):
-                PCAtext += '%8.4f' % corrmatrix[j][i]
+                PCAtext += '%8.4f' % correlationMatrix[j][i]
             PCAtext += '\n'
 
         if len(conditional_params):
-            u = np.linalg.inv(corrmatrix)
-            u = u[np.ix_(range(len(params)), range(len(params)))]
+            u = np.linalg.inv(correlationMatrix)
+            u = u[np.ix_(list(range(len(params))), list(range(len(params))))]
             u = np.linalg.inv(u)
             n = nparams
             PCdata = PCdata[:, :nparams]
         else:
-            u = corrmatrix
+            u = correlationMatrix
         evals, evects = np.linalg.eig(u)
         isorted = evals.argsort()
         u = np.transpose(evects[:, isorted])  # redefining u
@@ -663,10 +612,10 @@ class MCSamples(chains):
             PCAtext += '%3i:' % (indices[j] + 1)
             for i in range(n):
                 isort = isorted[i]
-                '%8.4f' % (evects[j][isort])
+                PCAtext += '%8.4f' % (evects[j][isort])
             PCAtext += '\n'
 
-        if (normparam <> -1):
+        if normparam != -1:
             # Set so parameter normparam has exponent 1
             for i in range(n):
                 u[i, :] = u[i, :] / u[i, normparam] * sd[normparam]
@@ -679,7 +628,7 @@ class MCSamples(chains):
         nrows = PCdata.shape[0]
         for i in range(nrows):
             PCdata[i, :] = np.dot(u, PCdata[i, :])
-            if (doexp): PCdata[i, :] = np.exp(PCdata[i, :])
+            if doexp: PCdata[i, :] = np.exp(PCdata[i, :])
 
         PCAtext += '\n'
         PCAtext += 'Principle components\n'
@@ -689,31 +638,28 @@ class MCSamples(chains):
             PCAtext += 'PC%i (e-value: %f)\n' % (i + 1, evals[isort])
             for j in range(n):
                 label = self.parLabel(indices[j])
-                if (param_map[j] in ['L', 'M']):
+                if param_map[j] in ['L', 'M']:
                     expo = "%f" % (1.0 / sd[j] * u[i][j])
-                    if (param_map[j] == "M"):
+                    if param_map[j] == "M":
                         div = "%f" % (-np.exp(PCmean[j]))
                     else:
                         div = "%f" % (np.exp(PCmean[j]))
                     PCAtext += '[%f]  (%s/%s)^{%s}\n' % (u[i][j], label, div, expo)
                 else:
                     expo = "%f" % (sd[j] / u[i][j])
-                    if (doexp):
+                    if doexp:
                         PCAtext += '[%f]   exp((%s-%f)/%s)\n' % (u[i][j], label, PCmean[j], expo)
                     else:
                         PCAtext += '[%f]   (%s-%f)/%s)\n' % (u[i][j], label, PCmean[j], expo)
 
-            newmean[i] = np.sum(self.weights * PCdata[:, i]) / self.norm
-            newsd[i] = np.sqrt(np.sum(self.weights * np.power(PCdata[:, i] - newmean[i], 2)) / self.norm)
+            newmean[i] = self.mean(PCdata[:, i])
+            newsd[i] = np.sqrt(self.mean((PCdata[:, i] - newmean[i]) ** 2))
             PCAtext += '          = %f +- %f\n' % (newmean[i], newsd[i])
-            PCAtext += 'ND limits: %9.3f%9.3f%9.3f%9.3f\n' % (
-                    np.min(PCdata[0:self.ND_cont1, i]), np.max(PCdata[0:self.ND_cont1, i]),
-                    np.min(PCdata[0:self.ND_cont2, i]), np.max(PCdata[0:self.ND_cont2, i]))
             PCAtext += '\n'
 
         # Find out how correlated these components are with other parameters
         PCAtext += 'Correlations of principle components\n'
-        l = [ "%8i" % i for i in range(1, n + 1) ]
+        l = ["%8i" % i for i in range(1, n + 1)]
         PCAtext += '%s\n' % ("".join(l))
 
         for i in range(n):
@@ -722,696 +668,921 @@ class MCSamples(chains):
         for j in range(n):
             PCAtext += 'PC%2i' % (j + 1)
             for i in range(n):
-                PCAtext += '%8.3f' % (
-                        np.sum(self.weights * PCdata[:, i] * PCdata[:, j]) / self.norm)
+                PCAtext += '%8.3f' % (self.mean(PCdata[:, i] * PCdata[:, j]))
             PCAtext += '\n'
 
-        for j in range(self.num_vars):
+        for j in range(self.n):
             PCAtext += '%4i' % (j + 1)
             for i in range(n):
                 PCAtext += '%8.3f' % (
-                        np.sum(self.weights * PCdata[:, i]
-                               * (self.samples[:, j] - self.means[j]) / self.sddev[j]) / self.norm)
+                    np.sum(self.weights * PCdata[:, i]
+                           * (self.samples[:, j] - self.means[j]) / self.sddev[j]) / self.norm)
 
             PCAtext += '   (%s)\n' % (self.parLabel(j))
 
         if writeDataToFile:
-            filename = self.rootdirname + ".PCA"
-            with open(filename, "w") as f:
+            with open(filename or self.rootdirname + ".PCA", "w") as f:
                 f.write(PCAtext)
-        else:
-            return PCAtext
+        return PCAtext
 
-    def ComputeMultiplicators(self):
-        self.mean_mult = self.norm / self.numrows
-        self.max_mult = (self.mean_mult * self.numrows) / min(self.numrows / 2, 500)
-        outliers = len(self.weights[np.where(self.weights > self.max_mult)])
-        if (outliers <> 0):
-            print 'outlier fraction ', float(outliers) / self.numrows
-        self.max_mult = np.max(self.weights)
-        self.numsamp = np.sum(self.weights)
-
-
-    def GetUsedColsChains(self):
-        if not hasattr(self, 'chains') or len(self.chains) == 0: return
-        nparams = self.chains[0].coldata.shape[1] - 2
-        isused = np.zeros(nparams, dtype=bool)
-        for ix in range(nparams):
-            isused[ix] = not np.all(self.chains[0].coldata[:, ix + 2] == self.chains[0].coldata[0][ix + 2])
-        return isused
-
-    def DoConvergeTests(self, limfrac, quick=True):
+    def getNumSampleSummaryText(self):
         """
-        Do convergence tests. This is run before combining into one set of samples
+        Returns a summary text describing numbers of parameters and samples, 
+        and various measures of the effective numbers of samples.
+
+        :return: The summary text as a string.
         """
-        if not hasattr(self, 'chains'): return
+        lines = 'using %s rows, %s parameters; mean weight %s, tot weight %s\n' % (
+            self.numrows, self.paramNames.numParams(), self.mean_mult, self.norm)
+        if self.indep_thin != 0:
+            lines += 'Approx indep samples (N/corr length): %s\n' % (round(self.norm / self.indep_thin))
+        lines += 'Equiv number of single samples (sum w)/max(w): %s\n' % (round(self.norm / self.max_mult))
+        lines += 'Effective number of weighted samples (sum w)^2/sum(w^2): %s\n' % (
+            int(self.norm ** 2 / np.dot(self.weights, self.weights)))
+        return lines
 
-        isused = self.GetUsedColsChains()
+    def getConvergeTests(self, test_confidence=0.95, writeDataToFile=False,
+                         what=['MeanVar', 'GelmanRubin', 'SplitTest', 'RafteryLewis', 'CorrLengths'],
+                         filename=None, feedback=False):
+        """
+        Do convergence tests.
 
-        # Weights
-        weights = np.hstack((chain.coldata[:, 0] for chain in self.chains))
+        :param test_confidence: confidence limit to test for convergence (two-tail, only applies to some tests)
+        :param writeDataToFile: True if should write output to a file
+        :param what: The tests to run. Should be a list of any of the following:
+        
+            - 'MeanVar': Gelman-Rubin sqrt(var(chain mean)/mean(chain var)) test in individual parameters (multiple chains only)
+            - 'GelmanRubin':  Gelman-Rubin test for the worst orthogonalized parameter (multiple chains only)
+            - 'SplitTest': Crude test for variation in confidence limits when samples are split up into subsets
+            - 'RafteryLewis': `Raftery-Lewis test <http://www.stat.washington.edu/tech.reports/raftery-lewis2.ps>`_ (integer weight samples only)
+            - 'CorrLengths': Sample correlation lengths
+        :param filename: The filename to write to, default is file_root.converge
+        :param feedback: If set to True, Prints the output as well as returning it.
+        :return: text giving the output of the tests
+        """
+        lines = ''
+        nparam = self.n
 
-        # Get statistics for individual chains, and do split tests on the samples
+        chainlist = self.getSeparateChains()
+        num_chains_used = len(chainlist)
+        if num_chains_used > 1 and feedback:
+            print('Number of chains used = ', num_chains_used)
+        for chain in chainlist: chain.setDiffs()
+        parForm = self.paramNames.parFormat()
+        parNames = [parForm % self.parName(j) for j in range(nparam)]
+        limits = np.array([1 - (1 - test_confidence) / 2, (1 - test_confidence) / 2])
 
-        fname = self.rootdirname + '.converge'
-        textFileHandle = open(fname, 'w')
+        if 'CorrLengths' in what:
+            lines += "Parameter autocorrelation lengths (effective number of samples N_eff = tot weight/weight length)\n"
+            lines += "\n"
+            lines += parForm % "" + '%15s %15s %15s\n' % ('Weight Length', 'Sample length', 'N_eff')
+            maxoff = np.min([chain.weights.size // 10 for chain in chainlist])
+            maxN = 0
+            for j in range(nparam):
+                corr = np.zeros(maxoff + 1)
+                for chain in chainlist:
+                    corr += chain.getAutocorrelation(j, maxoff, normalized=False) * chain.norm
+                corr /= self.norm * self.vars[j]
+                ix = np.argmin(corr > 0.05 * corr[0])
+                N = corr[0] + 2 * np.sum(corr[1:ix])
+                maxN = max(N, maxN)
+                form = '%15.2E'
+                if self.mean_mult > 1: form = '%15.2f'
+                lines += parNames[j] + form % N + ' %15.2f %15i\n' % (N / self.mean_mult, self.norm / N)
+            self.indep_thin = maxN
+            lines += "\n"
 
-        num_chains_used = len(self.chains)
-        if (num_chains_used > 1):
-            print 'Number of chains used = ', num_chains_used
-
-        nparam = self.paramNames.numParams()
-        for chain in self.chains: chain.getCov(nparam)
-        mean = np.zeros(nparam)
-        norm = np.sum([chain.norm for chain in self.chains])
-        nrows = np.sum([ chain.coldata.shape[0] for chain in self.chains ])
-        for chain in self.chains:
-            mean = mean + chain.means[0:nparam] * chain.norm
-        mean /= norm
-
-        fullmean = np.zeros(nparam)
-        for j in range(nparam):
-            for chain in self.chains:
-                fullmean[j] += np.sum(chain.coldata[:, 0] * chain.coldata[:, j + 2]) / norm
-
-        fullvar = np.zeros(nparam)
-        for j in range(nparam):
-            for chain in self.chains:
-                fullvar[j] += np.sum(chain.coldata[:, 0] * np.power(chain.coldata[:, j + 2] - fullmean[j], 2)) / norm
-
-        if (num_chains_used > 1):
-            textFileHandle.write(" \n")
-            textFileHandle.write(" Variance test convergence stats using remaining chains\n")
-            textFileHandle.write(" param var(chain mean)/mean(chain var)\n")
-            textFileHandle.write(" \n")
+        if num_chains_used > 1 and 'MeanVar' in what:
+            lines += "\n"
+            lines += "mean convergence stats using remaining chains\n"
+            lines += "param sqrt(var(chain mean)/mean(chain var))\n"
+            lines += "\n"
 
             between_chain_var = np.zeros(nparam)
             in_chain_var = np.zeros(nparam)
-            chain_means = np.zeros((num_chains_used, nparam))
+            for chain in chainlist:
+                between_chain_var += (chain.means - self.means) ** 2
+            between_chain_var /= (num_chains_used - 1)
 
-            # norm = np.sum([chain.norm for chain in self.chains])
             for j in range(nparam):
-                if not isused[j]: continue
-
                 # Get stats for individual chains - the variance of the means over the mean of the variances
-                for i in range(num_chains_used):
-                    chain = self.chains[i]
-                    chain_means[i][j] = np.sum(chain.coldata[:, 0] * chain.coldata[:, j + 2]) / chain.norm
-                    between_chain_var[j] += np.power(chain_means[i][j] - mean[j], 2)
-                    in_chain_var[j] += np.sum(chain.coldata[:, 0] * np.power(chain.coldata[:, j + 2] - chain_means[i][j], 2))
+                for chain in chainlist:
+                    in_chain_var[j] += np.dot(chain.weights, chain.diffs[j] ** 2)
 
-                between_chain_var[j] /= (num_chains_used - 1)
-                in_chain_var[j] /= norm
-                label = self.parLabel(j)
-                textFileHandle.write("%3i%13.5f  %s\n" % (j + 1, between_chain_var[j] / in_chain_var[j], label))
+                in_chain_var[j] /= self.norm
+                lines += parNames[j] + "%10.4f  %s\n" % (
+                    math.sqrt(between_chain_var[j] / in_chain_var[j]), self.parLabel(j))
+            lines += "\n"
 
-        nparam = self.paramNames.numNonDerived()
-        covmat_dimension = nparam
-        if (num_chains_used > 1) and (covmat_dimension > 0):
-            # Assess convergence in the var(mean)/mean(var) in the worst eigenvalue
-            # c.f. Brooks and Gelman 1997
+        nparamMC = self.paramNames.numNonDerived()
+        if num_chains_used > 1 and nparamMC > 0 and 'GelmanRubin' in what:
 
-            meanscov = np.zeros((nparam, nparam))
-            cov = np.zeros((nparam, nparam))
+            D = self.getGelmanRubinEigenvalues(chainlist=chainlist)
+            if D is not None:
+                self.GelmanRubin = np.max(D)
+                lines += "var(mean)/mean(var) for eigenvalues of covariance of means of orthonormalized parameters\n"
+                for jj, Di in enumerate(D):
+                    lines += "%3i%13.5f\n" % (jj + 1, Di)
+                GRSummary = " var(mean)/mean(var), remaining chains, worst e-value: R-1 = %13.5F" % self.GelmanRubin
+            else:
+                self.GelmanRubin = None
+                GRSummary = logging.warning('Gelman-Rubin covariance not invertible (parameter not moved?)')
+            if feedback: print(GRSummary)
+            lines += "\n"
 
+        if 'SplitTest' in what:
+            # Do tests for robustness under using splits of the samples
+            # Return the rms ([change in upper/lower quantile]/[standard deviation])
+            # when data split into 2, 3,.. sets
+            lines += "Split tests: rms_n([delta(upper/lower quantile)]/sd) n={2,3,4}, limit=%.0f%%:\n" % (
+                100 * self.converge_test_limit)
+            lines += "i.e. mean sample splitting change in the quantiles in units of the st. dev.\n"
+            lines += "\n"
+
+            frac_indices = []
+            for i in range(self.max_split_tests - 1):
+                frac_indices.append(self.getFractionIndices(self.weights, i + 2))
             for j in range(nparam):
-                for k in range(nparam):
-                    meanscov[k, j] = 0.
-                    cov[k, j] = 0.
-                    for i in range(num_chains_used):
-                        chain = self.chains[i]
-                        cov[k, j] += np.sum(
-                            chain.coldata[:, 0] *
-                            (chain.coldata[:, j + 2] - chain_means[i][j]) *
-                            (chain.coldata[:, k + 2] - chain_means[i][k]))
-                        meanscov[k, j] += (chain_means[i][j] - mean[j]) * (chain_means[i][k] - mean[k])
-                    meanscov[j, k] = meanscov[k, j]
-                    cov[j, k] = cov[k, j]
+                split_tests = np.zeros((self.max_split_tests - 1, 2))
+                confids = self.confidence(self.samples[:, j], limits)
+                for ix, frac in enumerate(frac_indices):
+                    split_n = 2 + ix
+                    for f1, f2 in zip(frac[:-1], frac[1:]):
+                        split_tests[ix, :] += (self.confidence(self.samples[:, j], limits, start=f1,
+                                                               end=f2) - confids) ** 2
 
-            meanscov[:, :] /= (num_chains_used - 1)
-            cov[:, :] /= norm
+                    split_tests[ix, :] = np.sqrt(split_tests[ix, :] / split_n) / self.sddev[j]
+                for endb, typestr in enumerate(['upper', 'lower']):
+                    lines += parNames[j]
+                    for ix in range(self.max_split_tests - 1):
+                        lines += "%9.4f" % (split_tests[ix, endb])
+                    lines += " %s\n" % typestr
+            lines += "\n"
 
-            invertible = np.isfinite(np.linalg.cond(cov))
-            if (invertible):
-                R = np.linalg.inv(np.linalg.cholesky(cov))
-                D = np.linalg.eigvalsh(np.dot(R, meanscov).dot(R.T))
-                GelmanRubin = max(np.real(D))
+        class LoopException(Exception):
+            pass
 
-                textFileHandle.write("\n")
-                textFileHandle.write("var(mean)/mean(var) for eigenvalues of covariance of means of orthonormalized parameters\n")
-                for jj in range(nparam):
-                    textFileHandle.write("%3i%13.5f\n" % (jj + 1, D[jj]))
-                print " var(mean)/mean(var), remaining chains, worst e-value: R-1 = %13.5F\n" % GelmanRubin
-            else:
-                print 'WARNING: Gelman-Rubin covariance not invertible'
+        if np.all(np.abs(self.weights - self.weights.astype(np.int)) < 1e-4 / self.max_mult):
+            if 'RafteryLewis' in what:
+                # Raftery and Lewis method
+                # See http://www.stat.washington.edu/tech.reports/raftery-lewis2.ps
+                # Raw non-importance sampled chains only
+                thin_fac = np.empty(num_chains_used, dtype=np.int)
+                epsilon = 0.001
 
-        textFileHandle.write("\n")
-
-        if quick: return
-
-        # Do tests for robustness under using splits of the samples
-        # Return the rms ([change in upper/lower quantile]/[standard deviation])
-        # when data split into 2, 3,.. sets
-        textFileHandle.write("Split tests: rms_n([delta(upper/lower quantile)]/sd) n={2,3,4}:\n")
-        textFileHandle.write("i.e. mean sample splitting change in the quantiles in units of the st. dev.\n")
-        textFileHandle.write("\n")
-
-        # Need these values here
-        self.weights = np.hstack((chain.coldata[:, 0] for chain in self.chains))
-        self.norm = np.sum(self.weights)
-
-        raise Exception('Converge tests not updated yet (and very slow)')
-
-        split_tests = {}
-        nparam = self.paramNames.numParams()
-        for j in range(nparam):
-            if not isused[j]: continue
-            coldata = np.hstack((chain.coldata[:, j + 2] for chain in self.chains))
-            for endb in [0, 1]:
-                for split_n in range(2, self.max_split_tests + 1):
-                    frac = self.GetFractionIndices(self.weights, split_n)
-                    split_tests[split_n] = 0.
-                    confid = self.confidence(coldata, (1 - limfrac) / 2., endb == 0)
-                    for i in range(split_n):
-                        split_tests[split_n] = split_tests[split_n] + math.pow(self.confidence(coldata[frac[i]:frac[i + 1]], (1 - limfrac) / 2., endb == 0, start=frac[i], end=frac[i + 1]) - confid, 2)
-
-                    split_tests[split_n] = math.sqrt(split_tests[split_n] / split_n / fullvar[j])
-                if (endb == 0):
-                    typestr = 'upper'
-                else:
-                    typestr = 'lower'
-
-                textFileHandle.write("%3i" % (j + 1))
-                for split_n in range(2, self.max_split_tests + 1):
-                    textFileHandle.write("%9.4f" % (split_tests[split_n]))
-                label = self.parLabel(j)
-                textFileHandle.write("  %s %s\n" % (label, typestr))
-
-
-        # Now do Raftery and Lewis method
-        # See http://www.stat.washington.edu/tech.reports/raftery-lewis2.ps
-        # Raw non-importance sampled chains only
-        thin_fac = np.zeros(num_chains_used)
-
-        tran = np.zeros((2, 2, 2), dtype=np.int)
-        tran2 = np.zeros((2, 2), dtype=np.int)
-
-        epsilon = 0.001
-
-        if (np.all(np.abs(weights - np.round(np.where(weights > 0.6, weights, 0.6))) < 1e-4)):
-
-            nburn = np.zeros(num_chains_used, dtype=np.int)
-            markov_thin = np.zeros(num_chains_used, dtype=np.int)
-            hardest = -1
-            hardestend = 0
-            for ix in range(num_chains_used):
-                chain = self.chains[ix]
-                thin_fac[ix] = int(round(np.max(chain.coldata[:, 0])))
-
-                for j in range(covmat_dimension):
-                    coldata = np.hstack((chain.coldata[:, j] for chain in self.chains))
-                    if (self.force_twotail or not self.has_limits[j]):
-                        for endb in [0, 1]:
+                nburn = np.zeros(num_chains_used, dtype=np.int)
+                markov_thin = np.zeros(num_chains_used, dtype=np.int)
+                hardest = -1
+                hardestend = 0
+                for ix, chain in enumerate(chainlist):
+                    thin_fac[ix] = int(round(np.max(chain.weights)))
+                    try:
+                        for j in range(nparamMC):
                             # Get binary chain depending on whether above or below confidence value
-                            u = self.confidence(chain.coldata[:, j], (1 - limfrac) / 2, endb == 0)
-                            while(True):
-                                thin_ix = self.thin_indices(thin_fac[ix])
-                                thin_rows = len(thin_ix)
-                                if (thin_rows < 2): break
-                                binchain = np.ones(thin_rows)
-                                indexes = np.where(coldata[thin_ix] >= u)
-                                binchain[indexes] = 0
+                            confids = self.confidence(chain.samples[:, j], limits, weights=chain.weights)
+                            for endb in [0, 1]:
+                                u = confids[endb]
+                                while True:
+                                    thin_ix = self.thin_indices(thin_fac[ix], chain.weights)
+                                    thin_rows = len(thin_ix)
+                                    if thin_rows < 2: break
+                                    binchain = np.ones(thin_rows, dtype=np.int)
+                                    binchain[chain.samples[thin_ix, j] >= u] = 0
+                                    indexes = binchain[:-2] * 4 + binchain[1:-1] * 2 + binchain[2:]
+                                    # Estimate transitions probabilities for 2nd order process
+                                    tran = np.bincount(indexes, minlength=8).reshape((2, 2, 2))
+                                    # tran[:, :, :] = 0
+                                    # for i in range(2, thin_rows):
+                                    #                                        tran[binchain[i - 2]][binchain[i - 1]][binchain[i]] += 1
 
-                                tran[:, :, :] = 0
-                                # Estimate transitions probabilities for 2nd order process
-                                for i in range(2, thin_rows):
-                                    tran[binchain[i - 2]][binchain[i - 1]][binchain[i]] += 1
+                                    # Test whether 2nd order is better than Markov using BIC statistic
+                                    g2 = 0
+                                    for i1 in [0, 1]:
+                                        for i2 in [0, 1]:
+                                            for i3 in [0, 1]:
+                                                if tran[i1][i2][i3] != 0:
+                                                    fitted = float(
+                                                        (tran[i1][i2][0] + tran[i1][i2][1]) *
+                                                        (tran[0][i2][i3] + tran[1][i2][i3])) \
+                                                             / float(tran[0][i2][0] + tran[0][i2][1] +
+                                                                     tran[1][i2][0] + tran[1][i2][1])
+                                                    focus = float(tran[i1][i2][i3])
+                                                    g2 += math.log(focus / fitted) * focus
+                                    g2 *= 2
 
-                                # Test whether 2nd order is better than Markov using BIC statistic
-                                g2 = 0
-                                for i1 in [0, 1]:
-                                    for i2 in [0, 1]:
-                                        for i3 in [0, 1]:
-                                            if (tran[i1][i2][i3] <> 0):
-                                                fitted = float(
-                                                    (tran[i1][i2][0] + tran[i1][i2][1]) *
-                                                    (tran[0][i2][i3] + tran[1][i2][i3])) \
-                                                / float(tran[0][i2][0] + tran[0][i2][1] +
-                                                        tran[1][i2][0] + tran[1][i2][1])
-                                                focus = float(tran[i1][i2][i3])
-                                                g2 += math.log(focus / fitted) * focus
-                                g2 = g2 * 2
+                                    if g2 - math.log(float(thin_rows - 2)) * 2 < 0: break
+                                    thin_fac[ix] += 1
 
-                                if (g2 - math.log(float(thin_rows - 2)) * 2 < 0): break
-                                thin_fac[ix] += 1
+                                # Get Markov transition probabilities for binary processes
+                                if np.sum(tran[:, 0, 1]) == 0 or np.sum(tran[:, 1, 0]) == 0:
+                                    thin_fac[ix] = 0
+                                    raise LoopException()
 
-                            # Get Markov transition probabilities for binary processes
-                            if (np.sum(tran[:, 0, 1]) == 0 or np.sum(tran[:, 1, 0]) == 0):
-                                thin_fac[ix] = 0
-                                # goto 203
+                                alpha = np.sum(tran[:, 0, 1]) / float(np.sum(tran[:, 0, 0]) + np.sum(tran[:, 0, 1]))
+                                beta = np.sum(tran[:, 1, 0]) / float(np.sum(tran[:, 1, 0]) + np.sum(tran[:, 1, 1]))
+                                probsum = alpha + beta
+                                tmp1 = math.log(probsum * epsilon / max(alpha, beta)) / math.log(abs(1.0 - probsum))
+                                if int(tmp1 + 1) * thin_fac[ix] > nburn[ix]:
+                                    nburn[ix] = int(tmp1 + 1) * thin_fac[ix]
+                                    hardest = j
+                                    hardestend = endb
 
-                            alpha = np.sum(tran[:, 0, 1]) / float(np.sum(tran[:, 0, 0]) + np.sum(tran[:, 0, 1]))
-                            beta = np.sum(tran[:, 1, 0]) / float(np.sum(tran[:, 1, 0]) + np.sum(tran[:, 1, 1]))
-                            probsum = alpha + beta
-                            tmp1 = math.log(probsum * epsilon / max(alpha, beta)) / math.log(abs(1.0 - probsum))
-                            if (int(tmp1 + 1) * thin_fac[ix] > nburn[ix]):
-                                nburn[ix] = int(tmp1 + 1) * thin_fac[ix]
-                                hardest = j
-                                hardestend = endb
+                        markov_thin[ix] = thin_fac[ix]
 
-                markov_thin[ix] = thin_fac[ix]
+                        # Get thin factor to have independent samples rather than Markov
+                        hardest = max(hardest, 0)
+                        u = self.confidence(self.samples[:, hardest], (1 - test_confidence) / 2, hardestend == 0)
 
-                # Get thin factor to have independent samples rather than Markov
-                hardest = max(hardest, 0)
-                u = self.confidence(chain.coldata[:, hardest], (1 - limfrac) / 2, hardestend == 0)
-                thin_fac[ix] += 1
+                        while True:
+                            thin_ix = self.thin_indices(thin_fac[ix], chain.weights)
+                            thin_rows = len(thin_ix)
+                            if thin_rows < 2: break
+                            binchain = np.ones(thin_rows, dtype=np.int)
+                            binchain[chain.samples[thin_ix, hardest] >= u] = 0
+                            indexes = binchain[:-1] * 2 + binchain[1:]
+                            # Estimate transitions probabilities for 2nd order process
+                            tran2 = np.bincount(indexes, minlength=4).reshape(2, 2)
+                            # tran2[:, :] = 0
+                            # for i in range(1, thin_rows):
+                            # tran2[binchain[i - 1]][binchain[i]] += 1
 
-                while(True):
-                    thin_ix = self.thin_indices_chain(chain.coldata[:, 0], thin_fac[ix])
-                    thin_rows = len(thin_ix)
-                    if (thin_rows < 2): break
-                    binchain = np.ones(thin_rows)
+                            # Test whether independence is better than Markov using BIC statistic
+                            g2 = 0
+                            for i1 in [0, 1]:
+                                for i2 in [0, 1]:
+                                    if tran2[i1][i2] != 0:
+                                        fitted = float(
+                                            (tran2[i1][0] + tran2[i1][1]) *
+                                            (tran2[0][i2] + tran2[1][i2])) / float(thin_rows - 1)
+                                        focus = float(tran2[i1][i2])
+                                        if fitted <= 0 or focus <= 0:
+                                            print('Raftery and Lewis estimator had problems')
+                                            return
+                                        g2 += np.log(focus / fitted) * focus
+                            g2 *= 2
 
-                    coldata = np.hstack((chain.coldata[:, hardest] for chain in self.chains))
-                    coldata = coldata[thin_ix]
-                    indexes = np.where(coldata >= u)
-                    binchain[indexes] = 0
+                            if g2 - np.log(float(thin_rows - 1)) < 0: break
 
-                    tran2[:, :] = 0
-                    # Estimate transitions probabilities for 2nd order process
-                    for i in range(1, thin_rows):
-                        tran2[binchain[i - 1]][binchain[i]] += 1
+                            thin_fac[ix] += 1
+                    except LoopException:
+                        pass
+                    except:
+                        thin_fac[ix] = 0
+                    if thin_fac[ix] and thin_rows < 2: thin_fac[ix] = 0
 
-                    # Test whether independence is better than Markov using BIC statistic
-                    g2 = 0
-                    for i1 in [0, 1]:
-                        for i2 in [0, 1]:
-                            if (tran2[i1][i2] <> 0):
-                                fitted = float(
-                                    (tran2[i1][0] + tran2[i1][1]) *
-                                    (tran2[0][i2] + tran2[1][i2])) / float(thin_rows - 1)
-                                focus = float(tran2[i1][i2])
-                                if (fitted <= 0 or focus <= 0):
-                                    print 'Raftery and Lewis estimator had problems'
-                                    return
-                                g2 += math.log(focus / fitted) * focus
-                    g2 = g2 * 2
+                lines += "Raftery&Lewis statistics\n"
+                lines += "\n"
+                lines += "chain  markov_thin  indep_thin    nburn\n"
 
-                    if (g2 - math.log(float(thin_rows - 1)) < 0): break
+                for ix in range(num_chains_used):
+                    if thin_fac[ix] == 0:
+                        lines += "%4i      Failed/not enough samples\n" % ix
+                    else:
+                        lines += "%4i%12i%12i%12i\n" % (
+                            ix, markov_thin[ix], thin_fac[ix], nburn[ix])
 
-                    thin_fac[ix] += 1
-# goto 203
-                if (thin_rows < 2): thin_fac[ix] = 0
+                self.RL_indep_thin = np.max(thin_fac)
 
-            textFileHandle.write("\n")
-            textFileHandle.write("Raftery&Lewis statistics\n")
-            textFileHandle.write("\n")
-            textFileHandle.write("chain  markov_thin  indep_thin    nburn\n")
+                if feedback:
+                    if not np.all(thin_fac != 0):
+                        print('RL: Not enough samples to estimate convergence stats')
+                    else:
+                        print('RL: Thin for Markov: ', np.max(markov_thin))
+                        print('RL: Thin for indep samples:  ', str(self.RL_indep_thin))
+                        print('RL: Estimated burn in steps: ', np.max(nburn), ' (',
+                              int(round(np.max(nburn) / self.mean_mult)), ' rows)')
+                lines += "\n"
 
-            # Computation of mean_mult
-            self.mean_mult = norm / nrows
-
-            for ix in range(num_chains_used):
-                if (thin_fac[ix] == 0):
-                    textFileHandle.write("%4i      Not enough samples\n" % ix)
+            if 'CorrSteps' in what:
+                # Get correlation lengths. We ignore the fact that there are jumps between chains, so slight underestimate
+                lines += "Parameter auto-correlations as function of step separation\n"
+                lines += "\n"
+                if self.corr_length_thin != 0:
+                    autocorr_thin = self.corr_length_thin
                 else:
-                    textFileHandle.write("%4i%12i%12i%12i" % (
-                            ix, markov_thin[ix], thin_fac[ix], nburn[ix]))
+                    if self.indep_thin == 0:
+                        autocorr_thin = 20
+                    elif self.indep_thin <= 30:
+                        autocorr_thin = 5
+                    else:
+                        autocorr_thin = int(5 * (self.indep_thin / 30))
 
-            if (not np.all(thin_fac != 0)):
-                print 'RL: Not enough samples to estimate convergence stats'
-            else:
-                print 'RL: Thin for Markov: ', np.max(markov_thin)
-                self.indep_thin = np.max(thin_fac)
-                print 'RL: Thin for indep samples:  ', str(self.indep_thin)
-                print 'RL: Estimated burn in steps: ', np.max(nburn), ' (', int(round(np.max(nburn) / self.mean_mult)), ' rows)'
+                thin_ix = self.thin_indices(autocorr_thin)
+                thin_rows = len(thin_ix)
+                maxoff = int(min(self.corr_length_steps, thin_rows // (2 * num_chains_used)))
 
-            # Get correlation lengths
-            textFileHandle.write("\n")
-            textFileHandle.write("Parameter auto-correlations as function of step separation\n")
-            textFileHandle.write("\n")
-            if (self.corr_length_thin <> 0):
-                autocorr_thin = self.corr_length_thin
-            else:
-                if (self.indep_thin == 0):
-                    autocorr_thin = 20
-                elif (self.indep_thin <= 30):
-                    autocorr_thin = 5
-                else:
-                    autocorr_thin = 5 * (self.indep_thin / 30)
-
-            thin_ix = self.thin_indices(autocorr_thin)
-            thin_rows = len(thin_ix)
-            maxoff = int(min(self.corr_length_steps, thin_rows / (autocorr_thin * num_chains_used)))
-
-            corrs = np.zeros([maxoff, nparam])
-            for off in range(maxoff):
-                for i in range(off, thin_rows):
-                    for j in range(nparam):
-                        if not isused[j]: continue
-                        coldata = np.hstack((chain.coldata[:, j] for chain in self.chains))
-                        corrs[off][j] += (coldata[thin_ix[i]] - fullmean[j]) * (coldata[thin_ix[i - off]] - fullmean[j])
-                for j in range(nparam):
-                    if not isused[j]: continue
-                    corrs[off][j] /= (thin_rows - off) / fullvar[j]
-
-            if (maxoff > 0):
-                for i in range(maxoff):
-                    textFileHandle.write("%8i" % ((i + 1) * autocorr_thin))
-                textFileHandle.write("\n")
-                for j in range(nparam):
-                    if (isused[j]):
-                        label = self.parLabel(j)
-                        textFileHandle.write("%3i" % j + 1)
+                if maxoff > 0:
+                    if False:
+                        # ignore ends of chains
+                        corrs = np.zeros([maxoff, nparam])
+                        for j in range(nparam):
+                            diff = self.samples[thin_ix, j] - self.means[j]
+                            for off in range(1, maxoff + 1):
+                                corrs[off - 1][j] = np.dot(diff[off:], diff[:-off]) / (thin_rows - off) / self.vars[j]
+                        lines += parForm % ""
                         for i in range(maxoff):
-                            textFileHandle.write("%8.3f" % corrs[i][j])
-                        textFileHandle.write("%s\n" % label)
-        textFileHandle.close()
+                            lines += "%8i" % ((i + 1) * autocorr_thin)
+                        lines += "\n"
+                        for j in range(nparam):
+                            label = self.parLabel(j)
+                            lines += parNames[j]
+                            for i in range(maxoff):
+                                lines += "%8.3f" % corrs[i][j]
+                            lines += " %s\n" % label
+                    else:
+                        corrs = np.zeros([maxoff, nparam])
+                        for chain in chainlist:
+                            thin_ix = chain.thin_indices(autocorr_thin)
+                            thin_rows = len(thin_ix)
+                            maxoff = min(maxoff, thin_rows // autocorr_thin)
+                            for j in range(nparam):
+                                diff = chain.diffs[j][thin_ix]
+                                for off in range(1, maxoff + 1):
+                                    corrs[off - 1][j] += np.dot(diff[off:], diff[:-off]) / (thin_rows - off) / \
+                                                         self.vars[j]
+                        corrs /= len(chainlist)
 
+                        lines += parForm % ""
+                        for i in range(maxoff):
+                            lines += "%8i" % ((i + 1) * autocorr_thin)
+                        lines += "\n"
+                        for j in range(nparam):
+                            label = self.parLabel(j)
+                            lines += parNames[j]
+                            for i in range(maxoff):
+                                lines += "%8.3f" % corrs[i][j]
+                            lines += " %s\n" % label
 
-    def initParamRanges(self, j, paramConfid=None):
+        if writeDataToFile:
+            with open(filename or (self.rootdirname + '.converge'), 'w') as f:
+                f.write(lines)
+        return lines
 
-        # Return values
-        smooth_1D, end_edge = 0, 0
+    def _get1DNeff(self, par, param):
+        N_eff = getattr(par, 'N_eff_kde', None)
+        if N_eff is None:
+            par.N_eff_kde = self.getEffectiveSamplesGaussianKDE(param, scale=par.sigma_range)
+            N_eff = par.N_eff_kde
+        return N_eff
 
+    def getAutoBandwidth1D(self, bins, par, param, mult_bias_correction_order=None, kernel_order=1, N_eff=None):
+        """
+        Get optimized kernel density bandwidth (in units the range of the bins)
+        Based on optimal Improved Sheather-Jones bandwidth for basic Parzen kernel, then scaled if higher-order method being used.
+        For details see the `notes <http://cosmologist.info/notes/GetDist.pdf>`_.
+
+        :param bins: numpy array of binned weights for the samples
+        :param par: A :class:`~.paramnames.ParamInfo` instance for the parameter to analyse
+        :param param: index of the parameter to use
+        :param mult_bias_correction_order: order of multiplicative bias correction (0 is basic Parzen kernel); by default taken from instance settings.
+        :param kernel_order: order of the kernel (0 is Parzen, 1 does linear boundary correction, 2 is a higher-order kernel) 
+        :param N_eff: effective number of samples. If not specified estimated using weights, autocorrelations, and fiducial bandwidth
+        :return: kernel density bandwidth (in units the range of the bins)
+        """
+        if N_eff is None:
+            N_eff = self._get1DNeff(par, param)
+        h = kde.gaussian_kde_bandwidth_binned(bins, Neff=N_eff)
+        par.kde_h = h
+        m = mult_bias_correction_order
+        if m is None: m = self.mult_bias_correction_order
+        if kernel_order > 1: m = max(m, 1)
+        if m:
+            # higher order method
+            # e.g.  http://biomet.oxfordjournals.org/content/82/2/327.full.pdf+html
+            # some prefactors given in  http://eprints.whiterose.ac.uk/42950/6/taylorcc2%5D.pdf
+            # Here we just take unit prefactor relative to Gaussian
+            # and rescale the optimal h for standard KDE to accounts for higher order scaling
+            # Should be about 1.3 x larger for Gaussian, but smaller in some other cases
+            return h * N_eff ** (1. / 5 - 1. / (4 * m + 5))
+        else:
+            return h
+
+    def getAutoBandwidth2D(self, bins, parx, pary, paramx, paramy, corr, rangex, rangey, base_fine_bins_2D,
+                           mult_bias_correction_order=None, min_corr=0.2, N_eff=None):
+        """
+        Get optimized kernel density bandwidth matrix in parameter units, using Improved Sheather Jones method in sheared parameters.
+        For details see the `notes <http://cosmologist.info/notes/GetDist.pdf>`_.
+
+        :param bins: 2D numpy array of binned weights
+        :param parx: A :class:`~.paramnames.ParamInfo` instance for the x parameter
+        :param pary: A :class:`~.paramnames.ParamInfo` instance for the y parameter
+        :param paramx: index of the x parameter
+        :param paramy: index of the y parameter
+        :param corr: correlation of the samples
+        :param rangex: scale in the x parameter
+        :param rangey: scale in the y parameter
+        :param base_fine_bins_2D: number of bins to use for re-binning in rotated parameter space
+        :param mult_bias_correction_order: multiplicative bias correction order (0 is Parzen kernel); by default taken from instance settings
+        :param min_corr: minimum correlation value at which to bother de-correlating the parameters
+        :param N_eff: effective number of samples. If not specified, currently uses crude estimate from effective numbers in x and y separately
+        :return: kernel density bandwidth matrix in parameter units
+        """
+        if N_eff is None:
+            N_eff = max(self._get1DNeff(parx, paramx), self._get1DNeff(pary, paramy))  # todo: write _get2DNeff
+        logging.debug('%s %s AutoBandwidth2D: N_eff=%s, corr=%s', parx.name, pary.name, N_eff, corr)
+        has_limits = parx.has_limits or pary.has_limits
+        do_correlated = not parx.has_limits or not pary.has_limits
+
+        if min_corr < abs(corr) <= self.max_corr_2D and do_correlated:
+            # 'shear' the data so fairly uncorrelated, making sure shear keeps any bounds on one parameter unchanged
+            # the binning step will rescale to make roughly isotropic as assumed by the 2D kernel optimizer psi_{ab} derivatives
+            i, j = paramx, paramy
+            imax, imin = None, None
+            if parx.has_limits_bot:
+                imin = parx.range_min
+            if parx.has_limits_top:
+                imax = parx.range_max
+            if pary.has_limits:
+                i, j = j, i
+                if pary.has_limits_bot:
+                    imin = pary.range_min
+                if pary.has_limits_top:
+                    imax = pary.range_max
+
+            cov = self.getCov(pars=[i, j])
+            S = np.linalg.cholesky(cov)
+            ichol = np.linalg.inv(S)
+            S *= ichol[0, 0]
+            r = ichol[1, :] / ichol[0, 0]
+            p1 = self.samples[:, i]
+            p2 = r[0] * self.samples[:, i] + r[1] * self.samples[:, j]
+
+            bin1, R1 = kde.bin_samples(p1, nbins=base_fine_bins_2D, range_min=imin, range_max=imax)
+            bin2, R2 = kde.bin_samples(p2, nbins=base_fine_bins_2D)
+            rotbins, _ = self._make2Dhist(bin1, bin2, base_fine_bins_2D, base_fine_bins_2D)
+            opt = kde.KernelOptimizer2D(rotbins, N_eff, 0, do_correlation=not has_limits)
+            hx, hy, c = opt.get_h()
+            hx *= R1
+            hy *= R2
+            kernelC = S.dot(np.array([[hx ** 2, hx * hy * c], [hx * hy * c, hy ** 2]])).dot(S.T)
+            hx, hy, c = np.sqrt(kernelC[0, 0]), np.sqrt(kernelC[1, 1]), kernelC[0, 1] / np.sqrt(
+                kernelC[0, 0] * kernelC[1, 1])
+            if pary.has_limits:
+                hx, hy = hy, hx
+                # print 'derotated pars', hx, hy, c
+        elif abs(corr) > self.max_corr_2D or not do_correlated and corr > 0.8:
+            c = max(min(corr, self.max_corr_2D), -self.max_corr_2D)
+            hx = parx.sigma_range / N_eff ** (1. / 6)
+            hy = pary.sigma_range / N_eff ** (1. / 6)
+        else:
+            opt = kde.KernelOptimizer2D(bins, N_eff, corr, do_correlation=not has_limits)
+            hx, hy, c = opt.get_h()
+            hx *= rangex
+            hy *= rangey
+
+        if mult_bias_correction_order is None: mult_bias_correction_order = self.mult_bias_correction_order
+        logging.debug('hx/sig, hy/sig, corr =%s, %s, %s', hx / parx.err, hy / pary.err, c)
+        if mult_bias_correction_order:
+            scale = 1.1 * N_eff ** (1. / 6 - 1. / (2 + 4 * (1 + mult_bias_correction_order)))
+            hx *= scale
+            hy *= scale
+            logging.debug('hx/sig, hy/sig, corr, scale =%s, %s, %s, %s', hx / parx.err, hy / pary.err, c, scale)
+        return hx, hy, c
+
+    def _initParamRanges(self, j, paramConfid=None):
+        if isinstance(j, six.string_types): j = self.index[j]
         paramVec = self.samples[:, j]
+        return self._initParam(self.paramNames.names[j], paramVec, self.means[j], self.sddev[j], paramConfid)
 
-        self.param_min[j] = np.min(paramVec)
-        self.param_max[j] = np.max(paramVec)
+    def _initParam(self, par, paramVec, mean=None, sddev=None, paramConfid=None):
+        if mean is None: mean = paramVec.mean()
+        if sddev is None: sddev = paramVec.std()
+        par.err = sddev
+        par.mean = mean
+        par.param_min = np.min(paramVec)
+        par.param_max = np.max(paramVec)
         paramConfid = paramConfid or self.initParamConfidenceData(paramVec)
-        self.range_min[j] = min(self.ND_limit_bot[1, j], self.confidence(paramConfid, 0.001, upper=False))
-        self.range_max[j] = max(self.ND_limit_top[1, j], self.confidence(paramConfid, 0.001, upper=True))
-
-        width = (self.range_max[j] - self.range_min[j]) / (self.num_bins + 1)
-        if (width == 0):
-            return width, smooth_1D, end_edge
-
-        logging.debug("Smooth scale ... ")
-        if self.smooth_scale_1D <= 0:
-            # Automatically set smoothing scale from rule of thumb for Gaussian, e.g. see
-            # http://en.wikipedia.org/wiki/Kernel_density_estimation
-            # 1/5 power is insensitive so just use v crude estimate of effective number
-            opt_width = 1.06 / math.pow(max(1.0, self.numsamp / self.max_mult), 0.2) * self.sddev[j]
-            smooth_1D = opt_width / width * abs(self.smooth_scale_1D)
-            if smooth_1D < 0.5:
-                print 'Warning: num_bins not large enough for optimal density - ' + self.parName(j)
-            smooth_1D = max(1.0, smooth_1D)
-        elif self.smooth_scale_1D < 1.0:
-            smooth_1D = self.smooth_scale_1D * self.sddev[j] / width
-            if smooth_1D < 1:
-                print 'Warning: num_bins not large enough to well sample smoothed density - ' + self.parName(j)
+        # sigma_range is estimate related to shape of structure in the distribution = std dev for Gaussian
+        # search for peaks using quantiles, e.g. like simplified version of Janssen 95 (http://dx.doi.org/10.1080/10485259508832654)
+        confid_points = np.linspace(0.1, 0.9, 9)
+        confids = self.confidence(paramConfid,
+                                  np.array([self.range_confidence, 1 - self.range_confidence] + list(confid_points)))
+        par.range_min, par.range_max = confids[0:2]
+        confids[1:-1] = confids[2:]
+        confids[0] = par.param_min
+        confids[-1] = par.param_max
+        diffs = confids[4:] - confids[:-4]
+        scale = np.min(diffs) / 1.049
+        if np.all(diffs > par.err * 1.049) and np.all(diffs < scale * 1.5):
+            # very flat, can use bigger
+            par.sigma_range = scale
         else:
-            smooth_1D = self.smooth_scale_1D
+            par.sigma_range = min(par.err, scale)
+        if self.range_ND_contour >= 0 and self.likeStats:
+            if self.range_ND_contour >= par.ND_limit_bot.size:
+                raise SettingError("range_ND_contour should be -1 (off), or 0, 1 for first or second contour level")
+            par.range_min = min(max(par.range_min - par.err, par.ND_limit_bot[self.range_ND_contour]), par.range_min)
+            par.range_max = max(max(par.range_max + par.err, par.ND_limit_top[self.range_ND_contour]), par.range_max)
 
-        end_edge = int(round(smooth_1D * 2))
+        smooth_1D = par.sigma_range * 0.4
 
-        logging.debug("Limits ... ")
-        if self.has_limits_bot[j]:
-            if ((self.range_min[j] - self.limmin[j] > (width * end_edge)) and
-                 (self.param_min[j] - self.limmin[j] > (width * smooth_1D))):
+        if par.has_limits_bot:
+            if par.range_min - par.limmin > 2 * smooth_1D and par.param_min - par.limmin > smooth_1D:
                 # long way from limit
-                self.has_limits_bot[j] = False
+                par.has_limits_bot = False
             else:
-                self.range_min[j] = self.limmin[j]
+                par.range_min = par.limmin
 
-        if self.has_limits_top[j]:
-            if ((self.limmax[j] - self.range_max[j] > (width * end_edge)) and
-                (self.limmax[j] - self.param_max[j] > (width * smooth_1D))):
-                self.has_limits_top[j] = False
+        if par.has_limits_top:
+            if par.limmax - par.range_max > 2 * smooth_1D and par.limmax - par.param_max > smooth_1D:
+                par.has_limits_top = False
             else:
-                self.range_max[j] = self.limmax[j]
-        self.has_limits[j] = self.has_limits_top[j] or self.has_limits_bot[j]
+                par.range_max = par.limmax
 
-        if self.has_limits_top[j]:
-            self.center[j] = self.range_max[j]
-        else:
-            self.center[j] = self.range_min[j]
+        if not par.has_limits_bot:
+            par.range_min -= smooth_1D * 2
 
-        self.ix_min[j] = int(round((self.range_min[j] - self.center[j]) / width))
-        self.ix_max[j] = int(round((self.range_max[j] - self.center[j]) / width))
+        if not par.has_limits_top:
+            par.range_max += smooth_1D * 2
 
-        if not self.has_limits_bot[j]: self.ix_min[j] -= end_edge
-        if not self.has_limits_top[j]: self.ix_max[j] += end_edge
+        par.has_limits = par.has_limits_top or par.has_limits_bot
 
-        return width, smooth_1D, end_edge
+        return par
 
+    def _binSamples(self, paramVec, par, num_fine_bins, borderfrac=0.1):
 
-    def Get1DDensity(self, j, writeDataToFile=False, get_density=False, paramConfid=None):
+        # High resolution density (sampled many times per smoothing scale). First and last bins are half width
 
-        logging.debug("1D density for %s (%i)" % (self.parName(j), j))
+        border = (par.range_max - par.range_min) * borderfrac
+        binmin = min(par.param_min, par.range_min)
+        if not par.has_limits_bot:
+            binmin -= border
+        binmax = max(par.param_max, par.range_max)
+        if not par.has_limits_top:
+            binmax += border
+        fine_width = (binmax - binmin) / (num_fine_bins - 1)
+        ix = ((paramVec - binmin) / fine_width + 0.5).astype(np.int)
+        return ix, fine_width, binmin, binmax
 
-        paramVec = self.samples[:, j]
-        width, smooth_1D, end_edge = self.initParamRanges(j, paramConfid)
+    def get1DDensity(self, name, **kwargs):
+        """
+        Returns a :class:`~.densities.Density1D` instance for parameter with given name. Result is cached.
 
-        if width == 0: raise Exception("width is 0 in Get1DDensity")
+        :param name: name of the parameter
+        :param kwargs: arguments for :func:`~MCSamples.get1DDensityGridData`
+        :return: A :class:`~.densities.Density1D` instance for parameter with given name
+        """
+        if self.needs_update: self.updateBaseStatistics()
+        if not kwargs:
+            density = self.density1D.get(name, None)
+            if density is not None: return density
+        return self.get1DDensityGridData(name, get_density=True, **kwargs)
 
-        # Using index mapping for f90 arrays with non standard indexes.
+    def get1DDensityGridData(self, j, writeDataToFile=False, get_density=False, paramConfid=None, meanlikes=False,
+                             **kwargs):
+        """
+        Low-level function to get a :class:`~.densities.Density1D` instance for the marginalized 1D density of a parameter. Result is not cached.
 
-        # In f90, binsraw(ix_min(j):ix_max(j))
-        binsraw = np.zeros(self.ix_max[j] - self.ix_min[j] + 1)
+        :param j: a name or index of the parameter
+        :param writeDataToFile: True if should write to text file.
+        :param get_density: return a :class:`~.densities.Density1D` instance only, does not write out or calculate mean likelihoods for plots
+        :param paramConfid: optional cached :class:`ParamConfidenceData` instance
+        :param meanlikes: include mean likelihoods
+        :param kwargs: optional settings to override instance settings of the same name (see `analysis_settings`):
+        
+               - **smooth_scale_1D**
+               - **boundary_correction_order**
+               - **mult_bias_correction_order**
+               - **fine_bins**
+               - **num_bins**
+        :return: A :class:`~.densities.Density1D` instance
+        """
+        j = self._parAndNumber(j)[0]
+        if j is None: return None
 
-        fine_fac = 10
-        winw = int(round(2.5 * fine_fac * smooth_1D))
-        fine_edge = winw + fine_fac * end_edge
-        fine_width = width / fine_fac
+        par = self._initParamRanges(j, paramConfid)
+        num_bins = kwargs.get('num_bins', self.num_bins)
+        smooth_scale_1D = kwargs.get('smooth_scale_1D', self.smooth_scale_1D)
+        boundary_correction_order = kwargs.get('boundary_correction_order', self.boundary_correction_order)
+        mult_bias_correction_order = kwargs.get('mult_bias_correction_order', self.mult_bias_correction_order)
+        fine_bins = kwargs.get('fine_bins', self.fine_bins)
 
-        imin = int(round((self.param_min[j] - self.center[j]) / fine_width))
-        imax = int(round((self.param_max[j] - self.center[j]) / fine_width))
-        imin = min(self.ix_min[j] * fine_fac, imin)
-        imax = max(self.ix_max[j] * fine_fac, imax)
+        paramrange = par.range_max - par.range_min
+        if paramrange == 0: raise MCSamplesError('Parameter range is zero: ' + par.name)
+        width = paramrange / (num_bins - 1)
 
-        # In f90, finebins(imin-fine_edge:imax+fine_edge)
-        fine_min = imin - fine_edge
-        finebins = np.zeros((imax + fine_edge) - fine_min + 1)
+        bin_indices, fine_width, binmin, binmax = self._binSamples(self.samples[:, j], par, fine_bins)
+        bins = np.bincount(bin_indices, weights=self.weights, minlength=fine_bins)
 
-        if self.plot_meanlikes:
-            # In f90, finebinlikes(imin-fine_edge:imax+fine_edge)
-            finebinlikes = np.zeros((imax + fine_edge) - fine_min + 1)
-
-        # vectorized code
-        ix2 = np.round((paramVec - self.center[j]) / width).astype(np.int)
-        minix = np.min(ix2)
-        counts = np.bincount(ix2 - minix, weights=self.weights)
-        if minix < self.ix_min[j]:
-            off = self.ix_min[j] - minix
-            alen = min(len(counts) - off, len(binsraw))
-            binsraw[:alen] = counts[off:off + alen]
-        else:
-            off = minix - self.ix_min[j]
-            alen = min(len(binsraw) - off, len(counts))
-            binsraw[off:off + alen] = counts[:alen]
-
-        ix2 = np.round((paramVec - self.center[j]) / fine_width).astype(np.int)
-        minix = np.min(ix2)
-        counts = np.bincount(ix2 - minix, weights=self.weights)
-        finebins[minix - fine_min:minix - fine_min + len(counts)] = counts
-        if self.plot_meanlikes:
-            if self.mean_loglikes:
+        if meanlikes:
+            if self.shade_likes_is_mean_loglikes:
                 w = self.weights * self.loglikes
             else:
-                w = self.weights * np.exp(self.meanlike - self.loglikes)
-            counts = np.bincount(ix2 - minix, weights=w)
-            finebinlikes[minix - fine_min:minix - fine_min + len(counts)] = counts
+                w = self.weights * np.exp((self.mean_loglike - self.loglikes))
+            finebinlikes = np.bincount(bin_indices, weights=w, minlength=fine_bins)
 
-        if self.ix_min[j] <> self.ix_max[j]:
-            # account for underweighting near edges
-            if (not self.has_limits_bot[j] and binsraw[end_edge - 1] == 0 and
-                 binsraw[end_edge] > np.max(binsraw) / 15):
-                self.EdgeWarning(j)
-            if (not self.has_limits_top[j] and binsraw[self.ix_max[j] - end_edge + 1 - self.ix_min[j]] == 0 and
-                 binsraw[self.ix_max[j] - end_edge + 1 - self.ix_min[j]] > np.max(binsraw) / 15):
-                self.EdgeWarning(j)
+        if smooth_scale_1D <= 0:
+            # Set automatically.
+            smooth_1D = self.getAutoBandwidth1D(bins, par, j, mult_bias_correction_order, boundary_correction_order) \
+                        * (binmax - binmin) * abs(smooth_scale_1D) / fine_width
+        elif smooth_scale_1D < 1.0:
+            smooth_1D = smooth_scale_1D * par.err / fine_width
+        else:
+            smooth_1D = smooth_scale_1D * width / fine_width
 
-        has_prior = self.has_limits_bot[j] or self.has_limits_top[j]
-        Kernel = Kernel1D(winw, fine_fac * smooth_1D, boundary=has_prior)
+        if smooth_1D < 2:
+            logging.warning('fine_bins not large enough to well sample smoothing scale - ' + par.name)
 
-        if has_prior and self.boundary_correction_method == 0:
-            # In f90, prior_mask(imin-fine_edge:imax+fine_edge)
-            prior_mask = np.ones((imax + fine_edge) - fine_min + 1)
-            if self.has_limits_bot[j]:
-                index = (self.ix_min[j] * fine_fac) - fine_min
-                prior_mask[ index ] = 0.5
-                prior_mask[ : index ] = 0
-            if self.has_limits_top[j]:
-                index = (self.ix_max[j] * fine_fac) - fine_min
-                prior_mask[ index ] = 0.5
-                prior_mask[ index + 1 : ] = 0
+        smooth_1D = min(max(1., smooth_1D), fine_bins // 2)
 
-        # High resolution density (sampled many times per smoothing scale)
-        if self.has_limits_bot[j]: imin = self.ix_min[j] * fine_fac
-        if self.has_limits_top[j]: imax = self.ix_max[j] * fine_fac
-        conv = np.convolve(finebins[imin - winw - fine_min:imax + winw + 1 - fine_min], Kernel.Win, 'valid')
+        logging.debug("%s 1D sigma_range, std: %s, %s; smooth_1D_bins: %s ", par.name, par.sigma_range, par.err,
+                      smooth_1D)
 
-        density1D = Density1D(self.center[j] + imin * fine_width, imax - imin + 1, fine_width, P=conv)
-#        density1D.X = self.center[j] + np.arange(imin, imax + 1) * fine_width
-        if self.boundary_correction_method == 1:
-            if self.has_limits_bot[j]:
-                for i in range(winw):
-                    normed = density1D.P[i] / Kernel.a0[i]
-                    xP = np.dot(Kernel.xWin, finebins[imin + i - winw - fine_min:imin + i + winw + 1 - fine_min])
-                    corrected = density1D.P[i] * Kernel.boundary_K[i] + xP * Kernel.boundary_xK[i]
-                    density1D.P[i] = normed * np.exp(corrected / normed - 1)
-            if self.has_limits_top[j]:
-                for i in range(imax - winw + 1, imax + 1):
-                    normed = density1D.P[i - imin] / Kernel.a0[imax - i]
-                    istart, iend = (i - winw) - fine_min, (i + winw + 1) - fine_min
-                    xP = np.dot(Kernel.xWin, finebins[istart:iend])
-                    corrected = density1D.P[i - imin] * Kernel.boundary_K[imax - i] \
-                                 - xP * Kernel.boundary_xK[imax - i]
-                    density1D.P[i - imin] = normed * np.exp(corrected / normed - 1)
-        elif has_prior and self.boundary_correction_method == 0:
-            for i in range(imin, imax + 1):
-                if density1D.P[i - imin] > 0:
-                    # correct for normalization of window where it is cut by prior boundaries
-                    istart, iend = (i - winw) - fine_min, (i + winw + 1) - fine_min
-                    edge_fac = 1 / np.dot(Kernel.Win, prior_mask[istart:iend])
-                    density1D.P[i - imin] *= edge_fac
+        winw = min(int(round(2.5 * smooth_1D)), fine_bins // 2 - 2)
+        Kernel = Kernel1D(winw, smooth_1D)
 
-        maxbin = np.max(density1D.P)
-        if maxbin == 0:
-            raise Exception('no samples in bin, param: ' + self.parName(j))
-        density1D.P /= maxbin
+        cache = {}
+        conv = convolve1D(bins, Kernel.Win, 'same', cache=cache)
+        fine_x = np.linspace(binmin, binmax, fine_bins)
+        density1D = Density1D(fine_x, P=conv, view_ranges=[par.range_min, par.range_max])
 
-        density1D.InitSpline()
-        self.density1D[self.parName(j)] = density1D
+        if meanlikes: rawbins = conv.copy()
+
+        if par.has_limits and boundary_correction_order >= 0:
+            # correct for cuts allowing for normalization over window
+            prior_mask = np.ones(fine_bins + 2 * winw)
+            if par.has_limits_bot:
+                prior_mask[winw] = 0.5
+                prior_mask[: winw] = 0
+            if par.has_limits_top:
+                prior_mask[-winw] = 0.5
+                prior_mask[-winw:] = 0
+            a0 = convolve1D(prior_mask, Kernel.Win, 'valid', cache=cache)
+            ix = np.nonzero(a0 * density1D.P)
+            a0 = a0[ix]
+            normed = density1D.P[ix] / a0
+            if boundary_correction_order == 0:
+                density1D.P[ix] = normed
+            elif boundary_correction_order <= 2:
+                # linear boundary kernel, e.g. Jones 1993, Jones and Foster 1996
+                # www3.stat.sinica.edu.tw/statistica/oldpdf/A6n414.pdf after Eq 1b, expressed for general prior mask
+                # cf arXiv:1411.5528
+                xWin = Kernel.Win * Kernel.x
+                a1 = convolve1D(prior_mask, xWin, 'valid', cache=cache)[ix]
+                a2 = convolve1D(prior_mask, xWin * Kernel.x, 'valid', cache=cache)[ix]
+                xP = convolve1D(bins, xWin, 'same', cache=cache)[ix]
+                if boundary_correction_order == 1:
+                    corrected = (density1D.P[ix] * a2 - xP * a1) / (a0 * a2 - a1 ** 2)
+                else:
+                    # quadratic correction
+                    a3 = convolve1D(prior_mask, xWin * Kernel.x ** 2, 'valid', cache=cache)[ix]
+                    a4 = convolve1D(prior_mask, xWin * Kernel.x ** 3, 'valid', cache=cache)[ix]
+                    x2P = convolve1D(bins, xWin * Kernel.x, 'same', cache=cache)[ix]
+                    denom = a4 * a2 * a0 - a4 * a1 ** 2 - a2 ** 3 - a3 ** 2 * a0 + 2 * a1 * a2 * a3
+                    A = a4 * a2 - a3 ** 2
+                    B = a2 * a3 - a4 * a1
+                    C = a3 * a1 - a2 ** 2
+                    corrected = (density1D.P[ix] * A + xP * B + x2P * C) / denom
+                density1D.P[ix] = normed * np.exp(np.minimum(corrected / normed, 4) - 1)
+            else:
+                raise SettingError('Unknown boundary_correction_order (expected 0, 1, 2)')
+        elif boundary_correction_order == 2:
+            # higher order kernel
+            # eg. see http://www.jstor.org/stable/2965571
+            xWin2 = Kernel.Win * Kernel.x ** 2
+            x2P = convolve1D(bins, xWin2, 'same', cache=cache)
+            a2 = np.sum(xWin2)
+            a4 = np.dot(xWin2, Kernel.x ** 2)
+            corrected = (density1D.P * a4 - a2 * x2P) / (a4 - a2 ** 2)
+            ix = density1D.P > 0
+            density1D.P[ix] *= np.exp(np.minimum(corrected[ix] / density1D.P[ix], 2) - 1)
+
+        if mult_bias_correction_order:
+            prior_mask = np.ones(fine_bins)
+            if par.has_limits_bot:
+                prior_mask[0] *= 0.5
+            if par.has_limits_top:
+                prior_mask[-1] *= 0.5
+            a0 = convolve1D(prior_mask, Kernel.Win, 'same', cache=cache)
+            for _ in range(mult_bias_correction_order):
+                # estimate using flattened samples to remove second order biases
+                # mostly good performance, see http://www.jstor.org/stable/2965571 method 3,1 for first order
+                prob1 = density1D.P.copy()
+                prob1[prob1 == 0] = 1
+                fine = bins / prob1
+                conv = convolve1D(fine, Kernel.Win, 'same', cache=cache)
+                density1D.setP(density1D.P * conv)
+                density1D.P /= a0
+
+        density1D.normalize('max', in_place=True)
+        if not kwargs: self.density1D[par.name] = density1D
 
         if get_density: return density1D
 
-        logZero = 1e30
-        if not self.no_plots:
-            bincounts = density1D.P[self.ix_min[j] * fine_fac - imin:self.ix_max[j] * fine_fac - imin + 1:fine_fac]
-            if self.plot_meanlikes:
-                # In f90, binlikes(ix_min(j):ix_max(j))
-                rawbins = conv[self.ix_min[j] * fine_fac - imin:self.ix_max[j] * fine_fac - imin + 1:fine_fac]
-                binlikes = np.zeros(self.ix_max[j] - self.ix_min[j] + 1)
-                if self.mean_loglikes: binlikes[:] = logZero
+        if meanlikes:
+            ix = density1D.P > 0
+            finebinlikes[ix] /= density1D.P[ix]
+            binlikes = convolve1D(finebinlikes, Kernel.Win, 'same', cache=cache)
+            binlikes[ix] *= density1D.P[ix] / rawbins[ix]
+            if self.shade_likes_is_mean_loglikes:
+                maxbin = np.min(binlikes)
+                binlikes = np.where((binlikes - maxbin) < 30, np.exp(-(binlikes - maxbin)), 0)
+                binlikes[rawbins == 0] = 0
+            binlikes /= np.max(binlikes)
+            density1D.likes = binlikes
+        else:
+            density1D.likes = None
 
-                # Output values for plots
-                for ix2 in range(self.ix_min[j], self.ix_max[j] + 1):
-                    if rawbins[ix2 - self.ix_min[j]] > 0:
-                        istart, iend = (ix2 * fine_fac - winw) - fine_min, (ix2 * fine_fac + winw + 1) - fine_min
-                        binlikes[ix2 - self.ix_min[j]] = np.dot(Kernel.Win, finebinlikes[istart:iend]) / rawbins[ix2 - self.ix_min[j]]
+        if writeDataToFile:
+            # get thinner grid over restricted range for plotting
+            x = par.range_min + np.arange(num_bins) * width
+            bincounts = density1D.Prob(x)
 
-                if self.mean_loglikes:
-                    maxbin = min(binlikes)
-                    binlikes = np.where((binlikes - maxbin) < 30, np.exp(-(binlikes - maxbin)), 0)
-
-            x = self.center[j] + np.arange(self.ix_min[j], self.ix_max[j] + 1) * width
-            if self.plot_meanlikes:
-                maxbin = np.max(binlikes)
-                likes = binlikes / maxbin
+            if meanlikes:
+                likeDensity = Density1D(fine_x, P=binlikes)
+                likes = likeDensity.Prob(x)
             else:
                 likes = None
-            if writeDataToFile:
-                logging.debug("Write data to file ...")
 
-                fname = self.rootname + "_p_" + self.parName(j)
-                filename = os.path.join(self.plot_data_dir, fname + ".dat")
-                with open(filename, 'w') as f:
-                    for xval, binval in zip(x, bincounts):
+            fname = self.rootname + "_p_" + par.name
+            filename = os.path.join(self.plot_data_dir, fname + ".dat")
+            with open(filename, 'w') as f:
+                for xval, binval in zip(x, bincounts):
+                    f.write("%16.7E%16.7E\n" % (xval, binval))
+
+            if meanlikes:
+                filename_like = os.path.join(self.plot_data_dir, fname + ".likes")
+                with open(filename_like, 'w') as f:
+                    for xval, binval in zip(x, likes):
                         f.write("%16.7E%16.7E\n" % (xval, binval))
 
-                if self.plot_meanlikes:
-                    filename_like = os.path.join(self.plot_data_dir, fname + ".likes")
-                    with open(filename_like, 'w') as f:
-                        for xval, binval in zip(x, likes):
-                            f.write("%16.7E%16.7E\n" % (xval, binval))
-            else:
-                return x, bincounts, likes
+            density = Density1D(x, bincounts)
+            density.likes = likes
+            return density
+        else:
+            return density1D
 
-        return None, None, None
+    def _setEdgeMask2D(self, parx, pary, prior_mask, winw, alledge=False):
+        if parx.has_limits_bot:
+            prior_mask[:, winw] /= 2
+            prior_mask[:, :winw] = 0
+        if parx.has_limits_top:
+            prior_mask[:, -winw] /= 2
+            prior_mask[:, -winw:] = 0
+        if pary.has_limits_bot:
+            prior_mask[winw, :] /= 2
+            prior_mask[:winw:] = 0
+        if pary.has_limits_top:
+            prior_mask[-winw, :] /= 2
+            prior_mask[-winw:, :] = 0
+        if alledge:
+            prior_mask[:, :winw] = 0
+            prior_mask[:, -winw:] = 0
+            prior_mask[:winw:] = 0
+            prior_mask[-winw:, :] = 0
 
+    def _getScaleForParam(self, par):
+        # Also ensures that the 1D limits are initialized
+        density = self.get1DDensity(par)
+        mn, mx, lim_bot, lim_top = density.getLimits(0.5, accuracy_factor=1)
+        if lim_bot or lim_top:
+            scale = (mx - mn) / 0.675
+        else:
+            scale = (mx - mn) / (2 * 0.675)
+        return scale
 
-    def get2DContourLevels(self, bins2D, num_plot_contours=None):
-        norm = np.sum(bins2D)
-        ncontours = self.num_contours
-        if num_plot_contours: ncontours = min(num_plot_contours, ncontours)
-        contour_levels = np.zeros(ncontours)
-        for ix1 in range(ncontours):
-            try_t = np.max(bins2D)
-            try_b = 0
-            lasttry = -1
-            while True:
-                try_sum = np.sum(bins2D[np.where(bins2D < (try_b + try_t) / 2)])
-                if (try_sum > (1 - self.contours[ix1]) * norm):
-                    try_t = (try_b + try_t) / 2
-                else:
-                    try_b = (try_b + try_t) / 2
-                if (try_sum == lasttry): break
-                lasttry = try_sum
-            contour_levels[ix1] = (try_b + try_t) / 2
-        return contour_levels
+    def _parAndNumber(self, name):
+        if isinstance(name, ParamInfo): name = name.name
+        if isinstance(name, six.string_types):
+            name = self.index.get(name, None)
+            if name is None: return None, None
+        if isinstance(name, six.integer_types):
+            return name, self.paramNames.names[name]
+        raise ParamError("Unknown parameter type %s" % name)
 
-    def Get2DPlotData(self, j, j2, writeDataToFile=False, num_plot_contours=None):
+    def _make2Dhist(self, ixs, iys, xsize, ysize):
+        flatix = ixs + iys * xsize
+        # note arrays are indexed y,x
+        return np.bincount(flatix, weights=self.weights,
+                           minlength=xsize * ysize).reshape((ysize, xsize)), flatix
+
+    def get2DDensity(self, x, y, normalized=False, **kwargs):
         """
-        Get 2D plot data.
+        Returns a :class:`~.densties.Density2D` instance with marginalized 2D density.
+
+        :param x: index or name of x parameter
+        :param y: index or name of y parameter
+        :param kwargs: keyword arguments for the :func:`get2DDensityGridData` function
+        :param normalized: if False, is normalized so the maximum is 1, if True, density is normalized
+        :return: :class:`~.densities.Density2D` instance
         """
-        fine_fac_base = 5
+        if self.needs_update: self.updateBaseStatistics()
+        density = self.get2DDensityGridData(x, y, get_density=True, **kwargs)
+        if normalized:
+            density.normalize(in_place=True)
+        return density
 
-        has_prior = self.has_limits[j] or self.has_limits[j2]
+    def get2DDensityGridData(self, j, j2, writeDataToFile=False,
+                             num_plot_contours=None, get_density=False, meanlikes=False, **kwargs):
+        """
+        Low-level function to get 2D plot marginalized density and optional additional plot data.
 
-        corr = self.corrmatrix[j2][j]
+        :param j: name or index of the x parameter
+        :param j2: name or index of the y parameter.
+        :param writeDataToFile: True if should write data to file
+        :param num_plot_contours: number of contours to calculate and return in density.contours
+        :param get_density: only get the 2D marginalized density, no additional plot data
+        :param meanlikes: calculate mean likelihoods as well as marginalized density (returned as array in density.likes)
+        :param kwargs: optional settings to override instance settings of the same name (see `analysis_settings`):
+        
+            - **fine_bins_2D**
+            - **boundary_correction_order**
+            - **mult_bias_correction_order**
+            - **smooth_scale_2D**
+        :return: a :class:`~.densities.Density2D` instance
+        """
+        if self.needs_update: self.updateBaseStatistics()
+        start = time.time()
+        j, parx = self._parAndNumber(j)
+        j2, pary = self._parAndNumber(j2)
+        if j is None or j2 is None: return None
+
+        self._initParamRanges(j)
+        self._initParamRanges(j2)
+
+        base_fine_bins_2D = kwargs.get('fine_bins_2D', self.fine_bins_2D)
+        boundary_correction_order = kwargs.get('boundary_correction_order', self.boundary_correction_order)
+        mult_bias_correction_order = kwargs.get('mult_bias_correction_order', self.mult_bias_correction_order)
+        smooth_scale_2D = float(kwargs.get('smooth_scale_2D', self.smooth_scale_2D))
+
+        has_prior = parx.has_limits or pary.has_limits
+
+        corr = self.getCorrelationMatrix()[j2][j]
+        if corr == 1: logging.warning('Parameters are 100%% correlated: %s, %s', parx.name, pary.name)
+
+        logging.debug('Doing 2D: %s - %s', parx.name, pary.name)
+        logging.debug('sample x_err, y_err, correlation: %s, %s, %s', parx.err, pary.err, corr)
+
         # keep things simple unless obvious degeneracy
-        if abs(corr) < 0.3: corr = 0.
-        corr = max(-self.max_corr_2D, corr)
-        corr = min(self.max_corr_2D, corr)
+        if abs(self.max_corr_2D) > 1: raise SettingError('max_corr_2D cannot be >=1')
+        if abs(corr) < 0.1: corr = 0.
 
         # for tight degeneracies increase bin density
-        nbin2D = min(4 * self.num_bins_2D, int(round(self.num_bins_2D / (1 - abs(corr)))))
+        angle_scale = max(0.2, np.sqrt(1 - min(self.max_corr_2D, abs(corr)) ** 2))
 
-        widthx = (self.range_max[j] - self.range_min[j]) / (nbin2D + 1)
-        widthy = (self.range_max[j2] - self.range_min[j2]) / (nbin2D + 1)
-        smooth_scale = (self.smooth_scale_2D * nbin2D) / self.num_bins_2D
-        fine_fac = max(2, int(round(fine_fac_base / smooth_scale)))
+        nbin2D = int(round(self.num_bins_2D / angle_scale))
+        fine_bins_2D = base_fine_bins_2D
+        if corr:
+            scaled = 192 * int(3 / angle_scale) // 3
+            if base_fine_bins_2D < scaled and int(1 / angle_scale) > 1:
+                fine_bins_2D = scaled
 
-        ixmin = int(round((self.range_min[j] - self.center[j]) / widthx))
-        ixmax = int(round((self.range_max[j] - self.center[j]) / widthx))
+        ixs, finewidthx, xbinmin, xbinmax = self._binSamples(self.samples[:, j], parx, fine_bins_2D)
+        iys, finewidthy, ybinmin, ybinmax = self._binSamples(self.samples[:, j2], pary, fine_bins_2D)
 
-        iymin = int(round((self.range_min[j2] - self.center[j2]) / widthy))
-        iymax = int(round((self.range_max[j2] - self.center[j2]) / widthy))
+        xsize = fine_bins_2D
+        ysize = fine_bins_2D
 
-        if not self.has_limits_bot[j]: ixmin -= 1
-        if not self.has_limits_bot[j2]: iymin -= 1
-        if not self.has_limits_top[j]: ixmax += 1
-        if not self.has_limits_top[j2]: iymax += 1
+        histbins, flatix = self._make2Dhist(ixs, iys, xsize, ysize)
 
-        widthj = widthx / fine_fac
-        widthj2 = widthy / fine_fac
-        winw = int(round(2 * fine_fac * smooth_scale))
+        if meanlikes:
+            likeweights = self.weights * np.exp(self.mean_loglike - self.loglikes)
+            finebinlikes = np.bincount(flatix, weights=likeweights,
+                                       minlength=xsize * ysize).reshape((ysize, xsize))
 
-        ix1s = np.round((self.samples[:, j] - self.center[j]) / widthj).astype(np.int)
-        ix2s = np.round((self.samples[:, j2] - self.center[j2]) / widthj2).astype(np.int)
-        imin = min(ixmin * fine_fac, np.min(ix1s)) - winw
-        imax = max(ixmax * fine_fac, np.max(ix1s)) + winw
-        jmin = min(iymin * fine_fac, np.min(ix2s)) - winw
-        jmax = max(iymax * fine_fac, np.max(ix2s)) + winw
+        # smooth_x and smooth_y should be in rotated bin units
+        if smooth_scale_2D < 0:
+            rx, ry, corr = self.getAutoBandwidth2D(histbins, parx, pary, j, j2, corr, xbinmax - xbinmin,
+                                                   ybinmax - ybinmin,
+                                                   base_fine_bins_2D,
+                                                   mult_bias_correction_order=mult_bias_correction_order)
 
-        finebins = np.zeros((jmax - jmin + 1, imax - imin + 1))
-        if self.shade_meanlikes:
-            finebinlikes = np.zeros((jmax - jmin + 1, imax - imin + 1))
-            likeweights = self.weights * np.exp(self.meanlike - self.loglikes)
+            rx = rx * abs(smooth_scale_2D) / finewidthx
+            ry = ry * abs(smooth_scale_2D) / finewidthy
+        elif smooth_scale_2D < 1.0:
+            rx = smooth_scale_2D * parx.err / finewidthx
+            ry = smooth_scale_2D * pary.err / finewidthy
+        else:
+            rx = smooth_scale_2D * fine_bins_2D / nbin2D
+            ry = smooth_scale_2D * fine_bins_2D / nbin2D
 
-        for i, (ix1, ix2) in enumerate(zip(ix1s - imin, ix2s - jmin)):
-            finebins[ix2][ix1] += self.weights[i]
-            if self.shade_meanlikes:
-                finebinlikes[ix2][ix1] += likeweights[i]
-        # In f90, Win(-winw:winw,-winw:winw)
-        Win = np.zeros(((2 * winw) + 1, (2 * winw) + 1))
-        indexes = range(-winw, winw + 1)
-        signorm = (2 * (fine_fac * smooth_scale) ** 2 * (1 - corr ** 2))
-        for ix1 in indexes:
-            for ix2 in indexes:
-                Win[ix2 - (-winw)][ix1 - (-winw)] = np.exp(-(ix1 ** 2 + ix2 ** 2 - 2 * corr * ix1 * ix2) / signorm)
+        smooth_scale = float(max(rx, ry))
+        logging.debug('corr, rx, ry: %s, %s, %s', corr, rx, ry)
 
+        if smooth_scale < 2:
+            logging.warning('fine_bins_2D not large enough for optimal density')
 
-        bins2D = fftconvolve(finebins[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
-                                       ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin],
-                              Win, 'valid')[::fine_fac, ::fine_fac]
-        del finebins
-        if self.shade_meanlikes:
-            bin2Dlikes = fftconvolve(finebinlikes[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
-                                       ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin],
-                              Win, 'valid')[::fine_fac, ::fine_fac]
+        winw = int(round(2.5 * smooth_scale))
+
+        Cinv = np.linalg.inv(np.array([[ry ** 2, rx * ry * corr], [rx * ry * corr, rx ** 2]]))
+        ix1, ix2 = np.mgrid[-winw:winw + 1, -winw:winw + 1]
+        Win = np.exp(-(ix1 ** 2 * Cinv[0, 0] + ix2 ** 2 * Cinv[1, 1] + 2 * Cinv[1, 0] * ix1 * ix2) / 2)
+        Win /= np.sum(Win)
+
+        logging.debug('time 2D binning and bandwidth: %s ; bins: %s', time.time() - start, fine_bins_2D)
+        start = time.time()
+        cache = {}
+        convolvesize = xsize + 2 * winw + Win.shape[0]
+        bins2D = convolve2D(histbins, Win, 'same', largest_size=convolvesize, cache=cache)
+
+        if meanlikes:
+            bin2Dlikes = convolve2D(finebinlikes, Win, 'same', largest_size=convolvesize, cache=cache)
+            if mult_bias_correction_order:
+                ix = bin2Dlikes > 0
+                finebinlikes[ix] /= bin2Dlikes[ix]
+                likes2 = convolve2D(finebinlikes, Win, 'same', largest_size=convolvesize, cache=cache)
+                likes2[ix] *= bin2Dlikes[ix]
+                bin2Dlikes = likes2
             del finebinlikes
             mx = 1e-4 * np.max(bins2D)
             bin2Dlikes[bins2D > mx] /= bins2D[bins2D > mx]
@@ -1419,446 +1590,519 @@ class MCSamples(chains):
         else:
             bin2Dlikes = None
 
-        if has_prior:
-            # simple boundary correction by normalization
-            prior_mask = np.ones((jmax - jmin + 1, imax - imin + 1))
-            if self.has_limits_bot[j]:
-                prior_mask[:, (ixmin * fine_fac) - imin] /= 2
-                prior_mask[:, :(ixmin * fine_fac) - imin] = 0
-            if self.has_limits_top[j]:
-                prior_mask[:, (ixmax * fine_fac) - imin] /= 2
-                prior_mask[:, (ixmax * fine_fac) + 1 - imin:] = 0
+        if has_prior and boundary_correction_order >= 0:
+            # Correct for edge effects
+            prior_mask = np.ones((ysize + 2 * winw, xsize + 2 * winw))
+            self._setEdgeMask2D(parx, pary, prior_mask, winw)
+            a00 = convolve2D(prior_mask, Win, 'valid', largest_size=convolvesize, cache=cache)
+            ix = a00 * bins2D > np.max(bins2D) * 1e-8
+            a00 = a00[ix]
+            normed = bins2D[ix] / a00
+            if boundary_correction_order == 1:
+                # linear boundary correction
+                indexes = np.arange(-winw, winw + 1)
+                y = np.empty(Win.shape)
+                for i in range(Win.shape[0]):
+                    y[:, i] = indexes
+                winx = Win * indexes
+                winy = Win * y
+                a10 = convolve2D(prior_mask, winx, 'valid', largest_size=convolvesize, cache=cache)[ix]
+                a01 = convolve2D(prior_mask, winy, 'valid', largest_size=convolvesize, cache=cache)[ix]
+                a20 = convolve2D(prior_mask, winx * indexes, 'valid', largest_size=convolvesize, cache=cache)[ix]
+                a02 = convolve2D(prior_mask, winy * y, 'valid', largest_size=convolvesize, cache=cache)[ix]
+                a11 = convolve2D(prior_mask, winy * indexes, 'valid', largest_size=convolvesize, cache=cache)[ix]
+                xP = convolve2D(histbins, winx, 'same', largest_size=convolvesize, cache=cache)[ix]
+                yP = convolve2D(histbins, winy, 'same', largest_size=convolvesize, cache=cache)[ix]
+                denom = (a20 * a01 ** 2 + a10 ** 2 * a02 - a00 * a02 * a20 + a11 ** 2 * a00 - 2 * a01 * a10 * a11)
+                A = a11 ** 2 - a02 * a20
+                Ax = a10 * a02 - a01 * a11
+                Ay = a01 * a20 - a10 * a11
+                corrected = (bins2D[ix] * A + xP * Ax + yP * Ay) / denom
+                bins2D[ix] = normed * np.exp(np.minimum(corrected / normed, 4) - 1)
+            elif boundary_correction_order == 0:
+                # simple boundary correction by normalization
+                bins2D[ix] = normed
+            else:
+                raise SettingError('unknown boundary_correction_order (expected 0 or 1)')
 
-            if self.has_limits_bot[j2]:
-                prior_mask[(iymin * fine_fac) - jmin, :] /= 2
-                prior_mask[:(iymin * fine_fac) - jmin, :] = 0
-            if self.has_limits_top[j2]:
-                prior_mask[(iymax * fine_fac) - jmin, :] /= 2
-                prior_mask[(iymax * fine_fac) + 1 - jmin:, :] = 0
+        if mult_bias_correction_order:
+            prior_mask = np.ones((ysize + 2 * winw, xsize + 2 * winw))
+            self._setEdgeMask2D(parx, pary, prior_mask, winw, alledge=True)
+            a00 = convolve2D(prior_mask, Win, 'valid', largest_size=convolvesize, cache=cache)
+            for _ in range(mult_bias_correction_order):
+                box = histbins.copy()  # careful with cache in convolve2D.
+                ix2 = bins2D > np.max(bins2D) * 1e-8
+                box[ix2] /= bins2D[ix2]
+                bins2D *= convolve2D(box, Win, 'same', largest_size=convolvesize, cache=cache)
+                bins2D /= a00
 
-            denom = fftconvolve(prior_mask[iymin * fine_fac - winw - jmin:iymax * fine_fac + winw + 1 - jmin,
-                                       ixmin * fine_fac - winw - imin:ixmax * fine_fac + winw + 1 - imin],
-                              Win, 'valid')[::fine_fac, ::fine_fac]
-            norm = np.sum(Win)
-            bins2D[denom > 0] *= norm / denom[denom > 0]
+        x = np.linspace(xbinmin, xbinmax, xsize)
+        y = np.linspace(ybinmin, ybinmax, ysize)
 
-        bins2D = bins2D / np.max(bins2D)
+        density = Density2D(x, y, bins2D,
+                            view_ranges=[(parx.range_min, parx.range_max), (pary.range_min, pary.range_max)])
+        density.normalize('max', in_place=True)
+        if get_density: return density
+
+        ncontours = len(self.contours)
+        if num_plot_contours: ncontours = min(num_plot_contours, ncontours)
+        contours = self.contours[:ncontours]
+
+        logging.debug('time 2D convolutions: %s', time.time() - start)
 
         # Get contour containing contours(:) of the probability
-        contour_levels = self.get2DContourLevels(bins2D, num_plot_contours)
+        density.contours = density.getContourLevels(contours)
 
-        bins2D[np.where(bins2D < 1e-30)] = 0
+        # now make smaller num_bins grid between ranges for plotting
+        # x = parx.range_min + np.arange(nbin2D + 1) * widthx
+        # y = pary.range_min + np.arange(nbin2D + 1) * widthy
+        # bins2D = density.Prob(x, y)
+        # bins2D[bins2D < 1e-30] = 0
+
+        if meanlikes:
+            bin2Dlikes /= np.max(bin2Dlikes)
+            density.likes = bin2Dlikes
+        else:
+            density.likes = None
 
         if writeDataToFile:
-            # note store things in confusing traspose form
-            name = self.parName(j)
-            name2 = self.parName(j2)
-            plotfile = self.rootname + "_2D_%s_%s" % (name, name2)
+            # note store things in confusing transpose form
+            # if meanlikes:
+            # filedensity = Density2D(x, y, bin2Dlikes)
+            #                bin2Dlikes = filedensity.Prob(x, y)
+
+            plotfile = self.rootname + "_2D_%s_%s" % (parx.name, pary.name)
             filename = os.path.join(self.plot_data_dir, plotfile)
-            with open(filename, 'w') as f:
-                for ix1 in range(ixmin, ixmax + 1):
-                    for ix2 in range(iymin, iymax + 1):
-                        f.write("%16.7E" % (bins2D[ix2 - iymin][ix1 - ixmin]))
-                    f.write("\n")
+            np.savetxt(filename, bins2D.T, "%16.7E")
+            np.savetxt(filename + "_y", x, "%16.7E")
+            np.savetxt(filename + "_x", y, "%16.7E")
+            np.savetxt(filename + "_cont", np.atleast_2d(density.contours), "%16.7E")
+            if meanlikes:
+                np.savetxt(filename + "_likes", bin2Dlikes.T, "%16.7E")
+                #       res = Density2D(x, y, bins2D)
+                #       res.contours = density.contours
+                #       res.likes = bin2Dlikes
+        return density
 
-            with open(filename + "_y", 'w') as f:
-                for i in range(ixmin, ixmax + 1):
-                    f.write("%16.7E\n" % (self.center[j] + i * widthx))
-
-            with open(filename + "_x", 'w') as f:
-                for i in range(iymin, iymax + 1):
-                    f.write("%16.7E\n" % (self.center[j2] + i * widthy))
-
-            with open(filename + "_cont", 'w') as f:
-                s_levels = [ "%16.7E" % level for level in contour_levels ]
-                f.write("%s\n" % (" ".join(s_levels)))
-
-            if self.shade_meanlikes:
-                with open(filename + "_likes", 'w') as f:
-                    maxbin = np.max(bin2Dlikes)
-                    for ix1 in range(ixmin, ixmax + 1):
-                        for ix2 in range(iymin, iymax + 1):
-                            f.write("%16.7E" % (bin2Dlikes[ix2 - iymin][ix1 - ixmin] / maxbin))
-                        f.write("\n")
-        else:
-            y = self.center[j2] + np.arange(iymin, iymax + 1) * widthy
-            x = self.center[j] + np.arange(ixmin, ixmax + 1) * widthx
-            return bins2D, bin2Dlikes, contour_levels, x, y
-
-
-    def EdgeWarning(self, i):
-        name = self.parName(i)
-        print 'Warning: sharp edge in parameter %s - check limits[%s] or limits%i' % (name, name, i + 1)
-
-    def GetChainLikeSummary(self, toStdOut=False):
-        text = ""
-        maxlike = np.max(self.loglikes)
-        text += "Best fit sample -log(Like) = %f\n" % maxlike
-        if ((self.loglikes[self.numrows - 1] - maxlike) < 30):
-            self.meanlike = np.log(np.sum(np.exp(self.loglikes - maxlike) * self.weights) / self.norm) + maxlike
-            text += "Ln(mean 1/like) = %f\n" % (self.meanlike)
-        self.meanlike = np.sum(self.loglikes * self.weights) / self.norm
-        text += "mean(-Ln(like)) = %f\n" % (self.meanlike)
-        self.meanlike = -np.log(np.sum(np.exp(-(self.loglikes - maxlike)) * self.weights) / self.norm) + maxlike
-        text += "-Ln(mean like)  = %f\n" % (self.meanlike)
-        if toStdOut:
-            print text
-        else:
-            return text
-
-
-    def ComputeStats(self):
+    def _setLikeStats(self):
         """
-        Compute mean and std dev.
+        Get and store LikeStats (see :func:`MCSamples.getLikeStats`)
         """
-        nparam = self.samples.shape[1]
-        self.means = np.zeros(nparam)
-        self.sddev = np.zeros(nparam)
-        for i in range(nparam): self.means[i] = self.mean(self.samples[:, i])
-        for i in range(nparam): self.sddev[i] = self.std(self.samples[:, i])
+        if self.loglikes is None:
+            self.likeStats = None
+            return None
+        m = types.LikeStats()
+        bestfit_ix = np.argmin(self.loglikes)
+        maxlike = self.loglikes[bestfit_ix]
+        m.logLike_sample = maxlike
+        if np.max(self.loglikes) - maxlike < 30:
+            m.logMeanInvLike = np.log(self.mean(np.exp(self.loglikes - maxlike))) + maxlike
+        else:
+            m.logMeanInvLike = None
 
-    def Init1DDensity(self):
-        self.done_1Dbins = False
-        self.density1D = dict()
-        nparam = self.samples.shape[1]
-        self.param_min = np.zeros(nparam)
-        self.param_max = np.zeros(nparam)
-        self.range_min = np.zeros(nparam)
-        self.range_max = np.zeros(nparam)
-        self.center = np.zeros(nparam)
-        self.ix_min = np.zeros(nparam, dtype=np.int)
-        self.ix_max = np.zeros(nparam, dtype=np.int)
-        #
-        self.marge_limits_bot = np.ndarray([self.num_contours, nparam], dtype=bool)
-        self.marge_limits_top = np.ndarray([self.num_contours, nparam], dtype=bool)
+        m.meanLogLike = self.mean_loglike
+        m.logMeanLike = -np.log(self.mean(np.exp(-(self.loglikes - maxlike)))) + maxlike
+        m.names = self.paramNames.names
 
-    def GetConfidenceRegion(self):
-                # Sort data in order of likelihood of points
-        # self.SortByLikelihood()
+        # get N-dimensional confidence region
         indexes = self.loglikes.argsort()
         cumsum = np.cumsum(self.weights[indexes])
-        self.ND_cont1 = np.searchsorted(cumsum, self.norm * self.contours[0])
-        self.ND_cont2 = np.searchsorted(cumsum, self.norm * self.contours[1])
+        m.ND_cont1, m.ND_cont2 = np.searchsorted(cumsum, self.norm * self.contours[0:2])
 
-        self.ND_limit_top = np.empty((2, self.num_vars))
-        self.ND_limit_bot = np.empty((2, self.num_vars))
-        for j in range(self.num_vars):
-            region1 = self.samples[indexes[:self.ND_cont1], j]
-            region2 = self.samples[indexes[:self.ND_cont2], j]
-            self.ND_limit_bot[0, j] = np.min(region1)
-            self.ND_limit_bot[1, j] = np.min(region2)
-            self.ND_limit_top[0, j] = np.max(region1)
-            self.ND_limit_top[1, j] = np.max(region2)
+        for j, par in enumerate(self.paramNames.names):
+            region1 = self.samples[indexes[:m.ND_cont1], j]
+            region2 = self.samples[indexes[:m.ND_cont2], j]
+            par.ND_limit_bot = np.array([np.min(region1), np.min(region2)])
+            par.ND_limit_top = np.array([np.max(region1), np.max(region2)])
+            par.bestfit_sample = self.samples[bestfit_ix][j]
 
-    def ReadRanges(self):
-        ranges_file = self.root + '.ranges'
-        if (os.path.isfile(ranges_file)):
-            self.ranges = Ranges(ranges_file)
-        else:
-            print "No file %s" % ranges_file
+        self.likeStats = m
+        return m
+
+    def _readRanges(self):
+        if self.root:
+            ranges_file = self.root + '.ranges'
+            if os.path.isfile(ranges_file):
+                self.ranges = ParamBounds(ranges_file)
+                return
+        self.ranges = ParamBounds()
 
     def getBounds(self):
-        upper = dict()
-        lower = dict()
-        for i, name in enumerate(self.paramNames.list()):
-            if self.has_limits_bot[i]:
-                lower[name] = self.limmin[i]
-            if self.has_limits_top[i]:
-                upper[name] = self.limmax[i]
-        return lower, upper
+        """
+        Returns the bounds in the form of a :class:`~.parampriors.ParamBounds` instance, for example for determining plot ranges
+        
+        Bounds are not  the same as self.ranges, as if samples are not near the range boundary, the bound is set to None
 
-    def writeBounds(self, filename):
-        lower, upper = self.getBounds()
-        with open(filename, 'w') as f:
-            for i, name in enumerate(self.paramNames.list()):
-                if (self.has_limits_bot[i] or self.has_limits_top[i]):
-                    valMin = lower.get(name)
-                    if (valMin):
-                        lim1 = "%15.7E" % valMin
-                    else:
-                        lim1 = "    N"
-                    valMax = upper.get(name)
-                    if (valMax is not None):
-                        lim2 = "%15.7E" % valMax
-                    else:
-                        lim2 = "    N"
-                    f.write("%22s%17s%17s\n" % (name, lim1, lim2))
+        :return: a :class:`~.parampriors.ParamBounds` instance
+        """
+        bounds = ParamBounds()
+        bounds.names = self.paramNames.list()
+        for par in self.paramNames.names:
+            if par.has_limits_bot:
+                bounds.lower[par.name] = par.limmin
+            if par.has_limits_top:
+                bounds.upper[par.name] = par.limmax
+        return bounds
 
+    def getUpper(self, name):
+        """
+        Return the upper limit of the parameter with the given name.
 
-    def getMargeStats(self):
-        self.Do1DBins()
-        m = ResultObjs.margeStats()
+        :param name: parameter name
+        :return: The upper limit if name exists, None otherwise.
+        """
+        par = self.paramNames.parWithName(name)
+        if par:
+            return par.limmax
+        return None
+
+    def getLower(self, name):
+        """
+        Return the lower limit of the parameter with the given name.
+
+        :param name: parameter name
+        :return: The lower limit if name exists, None otherwise.
+        """
+        par = self.paramNames.parWithName(name)
+        if par:
+            return par.limmin
+        return None
+
+    def getMargeStats(self, include_bestfit=False):
+        """
+        Returns a :class:`~.types.MargeStats` object with marginalized 1D parameter constraints
+
+        :param include_bestfit: if True, set best fit values by loading from root_name.minimum file (assuming it exists)
+        :return: A :class:`~.types.MargeStats` instance
+        """
+        self._setDensitiesandMarge1D()
+        m = types.MargeStats()
         m.hasBestFit = False
         m.limits = self.contours
         m.names = self.paramNames.names
+        if include_bestfit:
+            bf_file = self.root + '.minimum'
+            if os.path.exists(bf_file):
+                return types.BestFit(bf_file)
+            else:
+                raise MCSamplesError(
+                    'Best fit can only be included if loaded from file and file_root.minimum exists (cannot be calculated from samples)')
         return m
 
-    def saveMargeStats(self):
-        self.getMargeStats().saveAsText(self.rootdirname + '.margestats')
+    def getLikeStats(self):
+        """
+        Get best fit sample and n-D confidence limits, and various likelihood based statistics
 
+        :return: a :class:`~.types.LikeStats` instance storing N-D limits for parameter i in result.names[i].ND_limit_top, 
+                 result.names[i].ND_limit_bot, and best-fit sample value in result.names[i].bestfit_sample
+        """
+        return self.likeStats or self._setLikeStats()
 
-    # Pass weights as parameter (for chain only)
-    def thin_indices_chain(self, weights, factor):
-        thin_ix = []
-        tot = 0
-        i = 0
-        numrows = len(weights)
-        mult = weights[i]
-        if abs(round(mult) - mult) > 1e-4:
-                raise Exception('Can only thin with integer weights')
+    def getTable(self, columns=1, include_bestfit=False, **kwargs):
+        """
+        Creates and returns a :class:`~.types.ResultTable` instance.
 
-        while i < numrows:
-            if (mult + tot < factor):
-                tot += mult
-                i += 1
-                if i < numrows: mult = weights[i]
+        :param columns: number of columns in the table
+        :param include_bestfit: True if should include the bestfit parameter values (assuming set)
+        :param kwargs: arguments for :class:`~.types.ResultTable` constructor.
+        :return: A :class:`~.types.ResultTable` instance
+        """
+        return types.ResultTable(columns, [self.getMargeStats(include_bestfit)], **kwargs)
+
+    def getLatex(self, params=None, limit=1):
+        """
+        Get tex snippet for constraints on a list of parameters
+
+        :param params: list of parameter names
+        :param limit: which limit to get, 1 is the first (default 68%), 2 is the second (limits array specified by self.contours)
+        :return: labels, texs: a list of parameter labels, and a list of tex snippets
+        """
+        marge = self.getMargeStats()
+        if params is None: params = marge.list()
+
+        formatter = types.NoLineTableFormatter()
+        texs = []
+        labels = []
+        for par in params:
+            tex = marge.texValues(formatter, par, limit=limit)
+            if tex is not None:
+                texs.append(tex[0])
+                labels.append(marge.parWithName(par).getLabel())
             else:
-                thin_ix.append(i)
-                if mult == factor - tot:
-                    i += 1
-                    if i < numrows: mult = weights[i]
-                else:
-                    mult -= (factor - tot)
-                tot = 0
-        return thin_ix
+                texs.append(None)
+                labels.append(None)
 
+        return labels, texs
 
-    def Do1DBins(self, max_frac_twotail=None, writeDataToFile=False):
+    def getInlineLatex(self, param, limit=1):
+        r"""
+        Get snippet like: A=x\\pm y. Will adjust appropriately for one and two tail limits.
+
+        :param param: The name of the parameter
+        :param limit: which limit to get, 1 is the first (default 68%), 2 is the second (limits array specified by self.contours)
+        :return: The tex snippet.
+        """
+        labels, texs = self.getLatex([param], limit)
+        if not texs[0][0] in ['<', '>']:
+            return labels[0] + ' = ' + texs[0]
+        else:
+            return labels[0] + ' ' + texs[0]
+
+    def _setDensitiesandMarge1D(self, max_frac_twotail=None, writeDataToFile=False, meanlikes=False):
+        """
+        Get all the 1D densities; result is cached.
+
+        :param max_frac_twotail: optional override for self.max_frac_twotail
+        :param writeDataToFile: True if should write to file
+        :param meanlikes: include mean likelihoods
+        """
         if self.done_1Dbins: return
-        if max_frac_twotail is None:
-            max_frac_twotail = self.max_frac_twotail
 
-        for j in range(self.num_vars):
+        for j in range(self.n):
             paramConfid = self.initParamConfidenceData(self.samples[:, j])
-            self.Get1DDensity(j, writeDataToFile, get_density=not writeDataToFile, paramConfid=paramConfid)
-            self.setMargeLimits(j, max_frac_twotail, paramConfid=paramConfid)
+            self.get1DDensityGridData(j, writeDataToFile, get_density=not writeDataToFile, paramConfid=paramConfid,
+                                      meanlikes=meanlikes)
+            self._setMargeLimits(self.paramNames.names[j], paramConfid, max_frac_twotail)
+
         self.done_1Dbins = True
 
+    def _setMargeLimits(self, par, paramConfid, max_frac_twotail=None, density1D=None):
+        """
+        Get limits, one or two tail depending on whether posterior
+        goes to zero at the limits or not
 
-
-    def setMargeLimits(self, j, max_frac_twotail, paramConfid=None):
-
-        # Get limits, one or two tail depending on whether posterior
-        # goes to zero at the limits or not
-        density1D = self.density1D[self.parName(j)]
-        par = self.paramNames.names[j]
-        par.mean = self.means[j]
-        par.err = self.sddev[j]
+        :param par:  The :class:`~.paramnames.ParamInfo` to set limits for
+        :param paramConfid: :class:`~.chains.ParamConfidenceData` instance
+        :param max_frac_twotail: optional override for self.max_frac_twotail
+        :param density1D: any existing density 1D instance to use
+        """
+        if max_frac_twotail is None:
+            max_frac_twotail = self.max_frac_twotail
         par.limits = []
+        density1D = density1D or self.get1DDensity(par.name)
         interpGrid = None
-        paramConfid = paramConfid or self.initParamConfidenceData(self.samples[:, j])
-        for ix1 in range(self.num_contours):
+        for ix1, contour in enumerate(self.contours):
 
-            self.marge_limits_bot[ix1][j] = self.has_limits_bot[j] and \
-                (not self.force_twotail) and (density1D.P[0] > max_frac_twotail[ix1])
-            self.marge_limits_top[ix1][j] = self.has_limits_top[j] and \
-                (not self.force_twotail) and (density1D.P[-1] > max_frac_twotail[ix1])
+            marge_limits_bot = par.has_limits_bot and \
+                               not self.force_twotail and density1D.P[0] > max_frac_twotail[ix1]
+            marge_limits_top = par.has_limits_top and \
+                               not self.force_twotail and density1D.P[-1] > max_frac_twotail[ix1]
 
-            if not self.marge_limits_bot[ix1][j] or not self.marge_limits_top[ix1][j]:
+            if not marge_limits_bot or not marge_limits_top:
                 # give limit
                 if not interpGrid: interpGrid = density1D.initLimitGrids()
-                tail_limit_bot, tail_limit_top, marge_bot, marge_top = density1D.Limits(self.contours[ix1], interpGrid)
-                self.marge_limits_bot[ix1][j] = marge_bot
-                self.marge_limits_top[ix1][j] = marge_top
+                tail_limit_bot, tail_limit_top, marge_limits_bot, marge_limits_top = density1D.getLimits(contour,
+                                                                                                         interpGrid)
+                limfrac = 1 - contour
 
-                limfrac = 1 - self.contours[ix1]
-
-                if (self.marge_limits_bot[ix1][j]):
+                if marge_limits_bot:
                     # fix to end of prior range
-                    tail_limit_bot = self.range_min[j]
-                elif (self.marge_limits_top[ix1][j]):
+                    tail_limit_bot = par.range_min
+                elif marge_limits_top:
                     # 1 tail limit
                     tail_limit_bot = self.confidence(paramConfid, limfrac, upper=False)
                 else:
                     # 2 tail limit
                     tail_confid_bot = self.confidence(paramConfid, limfrac / 2, upper=False)
 
-                if (self.marge_limits_top[ix1][j]):
-                    tail_limit_top = self.range_max[j]
-                elif (self.marge_limits_bot[ix1][j]):
+                if marge_limits_top:
+                    tail_limit_top = par.range_max
+                elif marge_limits_bot:
                     tail_limit_top = self.confidence(paramConfid, limfrac, upper=True)
                 else:
                     tail_confid_top = self.confidence(paramConfid, limfrac / 2, upper=True)
 
-                if ((not self.marge_limits_bot[ix1][j]) and  (not self.marge_limits_top[ix1][j])):
+                if not marge_limits_bot and not marge_limits_top:
                     # Two tail, check if limits are at very different density
                     if (math.fabs(density1D.Prob(tail_confid_top) -
-                                   density1D.Prob(tail_confid_bot))
-                        < self.credible_interval_threshold):
+                                      density1D.Prob(tail_confid_bot)) < self.credible_interval_threshold):
                         tail_limit_top = tail_confid_top
                         tail_limit_bot = tail_confid_bot
 
                 lim = [tail_limit_bot, tail_limit_top]
             else:
                 # no limit
-                lim = [self.range_min[j], self.range_max[j]]
+                lim = [par.range_min, par.range_max]
 
-            if (self.marge_limits_bot[ix1][j] and self.marge_limits_top[ix1][j]):
+            if marge_limits_bot and marge_limits_top:
                 tag = 'none'
-            elif (self.marge_limits_bot[ix1][j]):
+            elif marge_limits_bot:
                 tag = '>'
-            elif (self.marge_limits_top[ix1][j]):
+            elif marge_limits_top:
                 tag = '<'
             else:
                 tag = 'two'
-            par.limits.append(ResultObjs.paramLimit(lim, tag))
+            par.limits.append(types.ParamLimit(lim, tag))
 
+    def getCorrelatedVariable2DPlots(self, num_plots=12, nparam=None):
+        """
+        Gets a list of most correlated variable pair names.
 
-    def GetCust2DPlots(self, num_cust2D_plots):
-
+        :param num_plots: The number of plots
+        :param nparam: maximum number of pairs to get
+        :return: list of [x,y] pair names
+        """
+        nparam = nparam or self.paramNames.numNonDerived()
         try_t = 1e5
         x, y = 0, 0
         cust2DPlots = []
-        for j in range(num_cust2D_plots):
+        correlationMatrix = self.correlationMatrix
+        for _ in range(num_plots):
             try_b = -1e5
-            for ix1 in range(self.num_vars):
-                for ix2 in range(ix1 + 1, self.num_vars):
-                    if (abs(self.corrmatrix[ix1][ix2]) < try_t) and \
-                            (abs(self.corrmatrix[ix1][ix2]) > try_b) :
-                        try_b = abs(self.corrmatrix[ix1][ix2])
+            for ix1 in range(nparam):
+                for ix2 in range(ix1 + 1, nparam):
+                    if try_b < abs(correlationMatrix[ix1][ix2]) < try_t:
+                        try_b = abs(correlationMatrix[ix1][ix2])
                         x, y = ix1, ix2
-            if (try_b == -1e5):
-                num_cust2D_plots = j - 1
+            if try_b == -1e5:
                 break
             try_t = try_b
             cust2DPlots.append([self.parName(x), self.parName(y)])
 
         return cust2DPlots
 
+    def saveAsText(self, root, chain_index=None, make_dirs=False):
+        """
+        Saves samples as text file, including .ranges and .paramnames.
 
-    # Write functions
+        :param root: The root file name to use.
+        :param chain_index: optional index to be used for the filename.
+        :param make_dirs: True if should create the directories
+        """
+        super(MCSamples, self).saveAsText(root, chain_index, make_dirs)
+        if not chain_index:
+            self.ranges.saveToFile(root + '.ranges')
 
-    def WriteScriptPlots1D(self, filename, plotparams=None, ext=None):
-        ext = ext or self.plot_output
-        textFileHandle = open(filename, 'w')
-        textInit = WritePlotFileInit()
-        textFileHandle.write(textInit % (
-                self.plot_data_dir, self.subplot_size_inch,
-                self.out_dir, self.rootname))
+    # Write functions for GetDist.py
+
+    def writeScriptPlots1D(self, filename, plotparams=None, ext=None):
+        """
+        Write a script that generates a 1D plot. Only intended for use by GetDist.py script.
+
+        :param filename: The filename to write to.
+        :param plotparams: The list of parameters to plot (default: all)
+        :param ext: The extension for the filename, Default if None
+        """
         text = 'markers=' + str(self.markers) + '\n'
         if plotparams:
             text += 'g.plots_1d(roots,[' + ",".join(['\'' + par + '\'' for par in plotparams]) + '], markers=markers)'
         else:
-            text += 'g.plots_1d(roots, markers=markers)\n'
-        textFileHandle.write(text)
-        textExport = WritePlotFileExport()
-        fname = self.rootname + '.' + ext
-        textFileHandle.write(textExport % (fname))
-        textFileHandle.close()
+            text += 'g.plots_1d(roots, markers=markers)'
+        self._WritePlotFile(filename, self.subplot_size_inch, text, '', ext)
 
+    def writeScriptPlots2D(self, filename, plot_2D_param=None, cust2DPlots=[], writeDataToFile=False, ext=None,
+                           shade_meanlikes=False):
+        """
+        Write script that generates a 2 dimensional plot. Only intended for use by GetDist.py script.
 
-    def WriteScriptPlots2D(self, filename, plot_2D_param, cust2DPlots, plots_only, ext=None):
-        ext = ext or self.plot_output
-        self.done2D = np.ndarray([self.num_vars, self.num_vars], dtype=bool)
-        self.done2D[:, :] = False
-
-        textFileHandle = open(filename, 'w')
-        textInit = WritePlotFileInit()
-        textFileHandle.write(textInit % (
-                self.plot_data_dir, self.subplot_size_inch2,
-                self.out_dir, self.rootname))
-        textFileHandle.write('pairs=[]\n')
+        :param filename: The filename to write to.
+        :param plot_2D_param: parameter to plot other variables against 
+        :param cust2DPlots: list of parts of parameter names to plot
+        :param writeDataToFile: True if should write to file
+        :param ext: The extension for the filename, Default if None
+        :param shade_meanlikes: shade by mean likelihoods
+        :return: A dictionary indexed by pairs of parameters where 2D densities have been calculated
+        """
+        done2D = {}
+        text = 'pairs=[]\n'
         plot_num = 0
-        if cust2DPlots: cuts = [par1 + '__' + par2 for par1, par2 in cust2DPlots]
+        if len(cust2DPlots):
+            cuts = [par1 + '__' + par2 for par1, par2 in cust2DPlots]
         for j, par1 in enumerate(self.paramNames.list()):
-            if (self.ix_min[j] <> self.ix_max[j]):
-                if plot_2D_param or cust2DPlots:
-                    if par1 == plot_2D_param: continue
-                    j2min = 0
-                else:
-                    j2min = j + 1
+            if plot_2D_param or cust2DPlots:
+                if par1 == plot_2D_param: continue
+                j2min = 0
+            else:
+                j2min = j + 1
 
-                for j2 in range(j2min, self.num_vars):
-                    par2 = self.parName(j2)
-                    if (self.ix_min[j2] <> self.ix_max[j2]):
-                        if plot_2D_param and par2 <> plot_2D_param: continue
-                        if cust2DPlots and (par1 + '__' + par2) not in cuts: continue
-                        plot_num += 1
-                        self.done2D[j][j2] = True
-                        if not plots_only: self.Get2DPlotData(j, j2, writeDataToFile=True)
-                        textFileHandle.write("pairs.append(['%s','%s'])\n" % (par1, par2))
-        textFileHandle.write('g.plots_2d(roots,param_pairs=pairs)\n')
-        textExport = WritePlotFileExport()
-        fname = self.rootname + '_2D.' + ext
-        textFileHandle.write(textExport % (fname))
-        textFileHandle.close()
-        print 'Produced ', plot_num, ' 2D plots'
+            for j2 in range(j2min, self.n):
+                par2 = self.parName(j2)
+                if plot_2D_param and par2 != plot_2D_param: continue
+                if len(cust2DPlots) and (par1 + '__' + par2) not in cuts: continue
+                plot_num += 1
+                done2D[(par1, par2)] = True
+                if writeDataToFile:
+                    self.get2DDensityGridData(j, j2, writeDataToFile=True, meanlikes=shade_meanlikes)
+                text += "pairs.append(['%s','%s'])\n" % (par1, par2)
+        text += 'g.plots_2d(roots,param_pairs=pairs)'
+        self._WritePlotFile(filename, self.subplot_size_inch2, text, '_2D', ext)
+        return done2D
 
+    def writeScriptPlotsTri(self, filename, triangle_params, ext=None):
+        """
+        Write a script that generates a triangle plot. Only intended for use by GetDist.py script.
 
-    def WriteScriptPlotsTri(self, filename, triangle_params, ext=None):
-        ext = ext or self.plot_output
-        textFileHandle = open(filename, 'w')
-        textInit = WritePlotFileInit()
-        textFileHandle.write(textInit % (
-                self.plot_data_dir, self.subplot_size_inch,
-                self.out_dir, self.rootname))
-        text = 'g.triangle_plot(roots, %s)\n' % triangle_params
-        textFileHandle.write(text)
-        textExport = WritePlotFileExport()
-        fname = self.rootname + '_tri.' + ext
-        textFileHandle.write(textExport % (fname))
-        textFileHandle.close()
+        :param filename: The filename to write to.
+        :param triangle_params: list of parameter names to plot
+        :param ext: The extension for the filename, Default if None
+        """
+        text = 'g.triangle_plot(roots, %s)' % triangle_params
+        self._WritePlotFile(filename, self.subplot_size_inch, text, '_tri', ext)
 
+    def writeScriptPlots3D(self, filename, plot_3D, ext=None):
+        """
+        Writes a script that generates a 3D (coloured-scatter) plot. Only intended for use by GetDist.py script.
 
-    def WriteScriptPlots3D(self, filename, plot_3D, ext=None):
-        ext = ext or self.plot_output
-        textFileHandle = open(filename, 'w')
-        textInit = WritePlotFileInit()
-        textFileHandle.write(textInit % (
-                self.plot_data_dir, self.subplot_size_inch3,
-                self.out_dir, self.rootname))
-        textFileHandle.write('sets=[]\n')
-        text = ""
-        for v1, v2, v3 in plot_3D:
-            text += "sets.append(['%s','%s','%s'])\n" % (v1, v2, v3)
-        text += 'g.plots_3d(roots,sets)\n'
-        textFileHandle.write(text)
-        fname = self.rootname + '_3D.' + ext
-        textExport = WritePlotFileExport()
-        textFileHandle.write(textExport % (fname))
-        textFileHandle.close()
+        :param filename: The filename to write to
+        :param plot_3D: list of [x,y,z] parameters for the 3 Dimensional plots
+        :param ext: The extension for the filename, Default if None
+        """
+        text = 'sets=[]\n'
+        for pars in plot_3D:
+            text += "sets.append(['%s','%s','%s'])\n" % tuple(pars)
+        text += 'g.plots_3d(roots,sets)'
+        self._WritePlotFile(filename, self.subplot_size_inch3, text, '_3D', ext)
 
+    def _WritePlotFile(self, filename, subplot_size, text, tag, ext=None):
+        """
+        Write plot file. 
+        Used by other functions
 
-    def WriteGlobalLikelihood(self, filename):
-        bestfit_ix = 0  # Since we have sorted the lines
-        textFileHandle = open(filename, 'w')
-        textInit = self.GetChainLikeSummary(toStdOut=False)
-        textFileHandle.write(textInit)
-        textFileHandle.write("\n")
-        textFileHandle.write('param  bestfit        lower1         upper1         lower2         upper2\n')
-        for j in range(self.num_vars):
-            best = self.samples[bestfit_ix][j]
-            label = self.parLabel(j)
-            textFileHandle.write('%5i%15.7E%15.7E%15.7E%15.7E%15.7E   %s\n' % (j + 1, best,
-                self.ND_limit_bot[0, j], self.ND_limit_top[0, j], self.ND_limit_bot[1, j], self. ND_limit_top[1, j], label))
-        textFileHandle.close()
+        :param filename: The filename to write to
+        :param subplot_size: The size of the subplot.
+        :param text: The text to write after the headers.
+        :param tag: Tag used for the filename the created file will export to.
+        :param ext: The extension for the filename, Default if None
+        """
+        with open(filename, 'w') as f:
+            f.write("import getdist.plots as plots, os\n")
+            if self.plot_data_dir:
+                f.write("g=plots.GetDistPlotter(plot_data=r'%s')\n" % self.plot_data_dir)
+            else:
+                f.write("g=plots.GetDistPlotter(chain_dir=r'%s')\n" % os.path.dirname(self.root))
 
-
-def WritePlotFileInit():
-    text = """import GetDistPlots, os
-g=GetDistPlots.GetDistPlotter(plot_data='%s')
-g.settings.setWithSubplotSize(%f)
-outdir='%s'
-roots=['%s']
-"""
-    return text
-
-def WritePlotFileExport():
-    text = "g.export(os.path.join(outdir,'%s'))\n"
-    return text
+            f.write("g.settings.setWithSubplotSize(%s)\n" % subplot_size)
+            f.write("roots = ['%s']\n" % self.rootname)
+            f.write(text + '\n')
+            ext = ext or self.plot_output
+            fname = self.rootname + tag + '.' + ext
+            f.write("g.export(os.path.join(r'%s',r'%s'))\n" % (self.out_dir, fname))
 
 
 # ==============================================================================
 
-# Usefull functions
+# Useful functions
 
 def GetChainRootFiles(rootdir):
+    """
+    Gets the root names of all chain files in a directory.
+
+    :param rootdir: The root directory to check
+    :return:  The root names
+    """
     pattern = os.path.join(rootdir, '*.paramnames')
     files = [os.path.splitext(f)[0] for f in glob.glob(pattern)]
     files.sort()
     return files
 
+
 def GetRootFileName(rootdir):
+    """
+    Gets the root name of chains in given directory (assuming only one set of chain files).
+
+    :param rootdir: The directory to check
+    :return: The root file name.
+    """
     rootFileName = ""
     pattern = os.path.join(rootdir, '*_*.txt')
     chain_files = glob.glob(pattern)
@@ -1868,6 +2112,5 @@ def GetRootFileName(rootdir):
         rindex = chain_file0.rindex('_')
         rootFileName = chain_file0[:rindex]
     return rootFileName
-
 
 # ==============================================================================

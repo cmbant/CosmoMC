@@ -1838,6 +1838,8 @@
     real(mcp) :: converge_test_limit
     Type (TTextFile) FileMatlab, File2D, File3d, FileTri, LikeFile
     integer c
+    character(LEN=:), allocatable :: contours_in
+    Type(TStringLIst) ContourList
 
     NameMapping%nnames = 0
 
@@ -2103,12 +2105,29 @@
 
     rootdirname = concat(out_dir,rootname)
 
-    num_contours = Ini%Read_Int('num_contours',2)
+    contours_in = Ini%Read_String( 'contours' )
     contours_str = ''
+    if (contours_in /= '') then
+        call ContourList%SetFromString(contours_in)
+        num_contours = ContourList%Count
+        do i=1, num_contours
+            contours_in = ContourList%Item(i)
+            read(contours_in,*) contours(i)
+            if (i>1) then
+                contours_str = contours_str // '; '// ContourList%Item(i)
+            else
+                contours_str = ContourList%Item(i)
+            end if
+        end do
+    else
+        num_contours = Ini%Read_Int('num_contours',2)
+        do i=1, num_contours
+            contours(i) = Ini%Read_Double(numcat('contour',i))
+            if (i>1) contours_str = contours_str // '; '
+            contours_str = contours_str // Ini%Read_String(numcat('contour',i))
+        end do
+    end if
     do i=1, num_contours
-        contours(i) = Ini%Read_Double(numcat('contour',i))
-        if (i>1) contours_str = contours_str // '; '
-        contours_str = contours_str // Ini%Read_String(numcat('contour',i))
         max_frac_twotail(i) = Ini%Read_Double(numcat('max_frac_twotail',i), exp(-dinvnorm((1-contours(i))/2)**2/2))
     end do
     if (.not. no_tests) then
@@ -2236,7 +2255,7 @@
         else  !Not single column chain files (usual cosmomc format)
             !This increments nrows by number read in
             if (.not. IO_ReadChainRows(in_root, chain_ix, chain_num, int(ignorerows),nrows,ncols,max_rows, &
-                coldata,samples_are_chains)) then
+                coldata,samples_are_chains, chain_num==ReadAllChainsNum)) then
             num_chains_used = num_chains_used - 1
             if (chain_num==ReadAllChainsNum) then
                 chain_num = chain_ix-1

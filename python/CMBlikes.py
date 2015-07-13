@@ -1,9 +1,15 @@
 # Load CosmoMC format .dataset files with lensing likelihood data
 # AL July 2014
-
+# note this is not well tested with final published versions of likelihoods
+# Does not handle calibration parameter
+from __future__ import absolute_import
+from __future__ import print_function
+from matplotlib import pyplot as plt
 import os
-import iniFile
-from pylab import *
+import numpy as np
+import sys
+from getdist import IniFile
+
 
 def readTextCommentColumns(fname, cols):
         with open(fname) as f:
@@ -11,14 +17,14 @@ def readTextCommentColumns(fname, cols):
             if x[0] != '#': raise Exception('No Comment')
         incols = x[1:].split()
         colnums = [incols.index(col) for col in cols]
-        return loadtxt(fname, usecols=colnums, unpack=True)
+        return np.loadtxt(fname, usecols=colnums, unpack=True)
 
 def readWithHeader(fname):
         with open(fname) as f:
             x = f.readline().strip()
             if x[0] != '#': raise Exception('No Comment')
             x = x[1:].split()
-        return x, loadtxt(fname)
+        return x, np.loadtxt(fname)
 
 class ClsArray(object):
         # Store arrays of cls: self.cls_array[i,j] is zero based array of correlation of field i with j
@@ -34,7 +40,7 @@ class ClsArray(object):
             if cols is None:
                 cols, dat = readWithHeader(filename)
             else:
-                dat = loadtxt(filename)
+                dat = np.loadtxt(filename)
             Lix = cols.index('L')
             L = dat[:, Lix]
             self.lmin = L[0]
@@ -77,7 +83,7 @@ class BinWindows(object):
             for b in range(self.nbins):
                 with open(froot + stem + '_window/window%u.dat' % (b + 1), 'w') as f:
                     for L in np.arange(self.lmin[b], self.lmax[b] + 1):
-                        f.write("%5u " + "%10e"*len(self.cols_in) + "\n" % (L, self.binning_matrix[b, :, L]))
+                        f.write(("%5u " + "%10e" * len(self.cols_in) + "\n") % (L, self.binning_matrix[b, :, L]))
 
 
 class DatasetLikelihood(object):
@@ -114,12 +120,12 @@ class DatasetLikelihood(object):
                 i1 = self.field_index[pair[0]]
                 i2 = self.field_index[pair[1]]
 
-                if (i1 < 0 or i2 < 0): continue
-                if (i2 > i1): i1, i2 = i2, i1
+                if i1 < 0 or i2 < 0: continue
+                if i2 > i1: i1, i2 = i2, i1
                 ix = 0
                 for ii in range(self.nfields):
                     for jj in range(ii + 1):
-                        if (ii == i1 and jj == i2): cols[i] = ix
+                        if ii == i1 and jj == i2: cols[i] = ix
                         ix += 1
             return cols
 
@@ -140,17 +146,17 @@ class DatasetLikelihood(object):
                 window = np.loadtxt(windows % (b + 1))
                 Err = False
                 for i, L in enumerate(window[:, 0].astype(int)):
-                    if (L >= self.cl_lmin and L <= self.cl_lmax):
+                    if self.cl_lmin <= L <= self.cl_lmax:
                         bins.binning_matrix[b, :, L - self.cl_lmin] = window[i, 1:]
                     else:
                         Err = Err or any(window[i, 1:] != 0)
-                if Err: print 'WARNING: %s %u outside cl_lmin-cl_max range: %s' % (file_stem, b, windows % (b + 1))
+                if Err: print('WARNING: %s %u outside cl_lmin-cl_max range: %s' % (file_stem, b, windows % (b + 1)))
             return bins
 
 
         def loadDataset(self, froot):
             if not '.dataset' in froot: froot += '.dataset'
-            ini = iniFile.iniFile(froot)
+            ini = IniFile(froot)
             self.readIni(ini)
 
         def readIni(self, ini):
@@ -198,10 +204,10 @@ class DatasetLikelihood(object):
 
             self.cov = np.loadtxt(ini.relativeFileName('covmat_fiducial'))
             cov = self.cov[self.bin_min:self.bin_max + 1, self.bin_min:self.bin_max + 1]
-            self.covinv = inv(cov)
+            self.covinv = np.linalg.inv(cov)
 
-            if 'linear_correction_fiducial' in ini.params:
-                self.fid_correction = loadtxt(ini.relativeFileName('linear_correction_fiducial'))[:, 1]
+            if 'linear_correction_fiducial_file' in ini.params:
+                self.fid_correction = np.loadtxt(ini.relativeFileName('linear_correction_fiducial_file'))[:, 1]
                 self.linear_correction = self.readBinWindows(ini, 'linear_correction_bin_window')
             else:
                 self.linear_correction = None
@@ -230,17 +236,13 @@ class DatasetLikelihood(object):
             binned_phicl_err = np.zeros(self.nbins)
             for b in range(self.nbins):
                 binned_phicl_err[b] = np.sqrt(self.cov[b, b])
-            errorbar(lbin, self.bandpowers, yerr=binned_phicl_err  , xerr=[lbin - self.lmin, self.lmax - lbin], fmt='o')
-#           if dofid:
-#               self.fid_bandpowers = np.dot(self.binning_matrix, self.fid_phi)
-#               errorbar(lbin, self.fid_bandpowers , yerr=binned_phicl_err , xerr=[lbin - self.lmin, self.lmax - lbin], fmt='o', alpha=0.3)
-#               if phicl is None: phicl = self.fid_phi
+            plt.errorbar(lbin, self.bandpowers, yerr=binned_phicl_err  , xerr=[lbin - self.lmin, self.lmax - lbin], fmt='o')
 
             if phicl is not None:
                 if isinstance(phicl, ClsArray): phicl = phicl.get([3, 3])
                 if ls is None: ls = np.arange(len(phicl))
-                plot(ls, phicl, color='k')
-                xlim([2, ls[-1]])
+                plt.plot(ls, phicl, color='k')
+                plt.xlim([2, ls[-1]])
 
         def chi_squared(self, ClArray):
 
@@ -258,8 +260,8 @@ def plotAndChisq(dataset, cl_file):
     d = DatasetLikelihood(dataset)
     cls = ClsArray(cl_file)
     d.plot(cls)
-    print 'Chi-squared: ', d.chi_squared(cls)
-    show()
+    print('Chi-squared: ', d.chi_squared(cls))
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -267,7 +269,7 @@ if __name__ == "__main__":
 #    sys.exit()
     try: import argparse
     except:
-        print 'use "module load" to load python 2.7'
+        print('use "module load" to load python 2.7')
         sys.exit()
     parser = argparse.ArgumentParser(description="Load .dataset and calculate likelihood")
     parser.add_argument('dataset', help='.dataset filename')

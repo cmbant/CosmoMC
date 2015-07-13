@@ -1,307 +1,326 @@
-# GetDist.py
+#!/usr/bin/env python
 
+from __future__ import absolute_import
+from __future__ import print_function
 import os
-import sys
-import iniFile
-from getdist import MCSamples, chains
-# ==============================================================================
-
-if (len(sys.argv) < 2):
-    print 'Usage: python/GetDist.py ini_file [chain_root]'
-    sys.exit()
-
-# Parameter file
-ini_file = os.path.abspath(sys.argv[1])
-if not os.path.isfile(ini_file):
-    print 'Parameter file does not exist ', ini_file
-    sys.exit()
-
-# Input parameters
-ini = iniFile.iniFile()
-ini.readFile(ini_file)
-
-# File root
-if (len(sys.argv) > 2):
-    in_root = sys.argv[2]
-else:
-    in_root = ini.params['file_root']
-if (in_root == ''):  # or (not os.path.isfile(file_root)):
-    print 'Root file does not exist ', in_root
-    sys.exit()
-rootname = os.path.basename(in_root)
-
-ignorerows = ini.float('ignore_rows', 0.0)
-
-# Create instance of MCSamples
-mc = MCSamples.MCSamples(in_root)
-
-single_column_chain_files = ini.bool('single_column_chain_files', False)
-
-mc.initParameters(ini)
+import subprocess
+import getdist
+import io
+from getdist import MCSamples, chains, IniFile
 
 
-adjust_priors = ini.bool('adjust_priors', False)
+def runScript(fname):
+    subprocess.Popen(['python', fname])
 
-plot_ext = ini.string('plot_ext', 'py')
 
-finish_run_command = ini.string('finish_run_command', '')
+def doError(msg):
+    if __name__ == '__main__':
+        import sys
 
-auto_label = ini.bool('auto_label', False)
-
-prob_label = ini.bool('prob_label', False)
-
-samples_are_chains = ini.bool('samples_are_chains', True)
-
-no_plots = ini.bool('no_plots', False);
-plots_only = ini.bool('plots_only', False)
-no_tests = plots_only or ini.bool('no_tests', False)
-# not used: line_labels = ini.bool('line_labels', False)
-
-thin_factor = ini.int('thin_factor', 0)
-thin_cool = ini.float('thin_cool', 1.0)
-
-make_single_samples = ini.bool('make_single_samples', False)
-single_thin = ini.int('single_thin', 1)
-cool = ini.float('cool', 1.0)
-
-exclude_chain = ini.string('exclude_chain')
-chain_exclude = [ int(s) for s in exclude_chain.split(' ') if s <> '' ]
-num_exclude = len(chain_exclude) - chain_exclude.count(0)
-
-map_params = ini.bool('map_params', False)
-if (map_params):
-    print 'WARNING: Mapping params - .covmat file is new params.'
-
-shade_meanlikes = ini.bool('shade_meanlikes', False)
-mc.shade_meanlikes = shade_meanlikes
-
-out_dir = ini.string('out_dir')
-if (out_dir <> ''):
-    print 'producing files in directory ', out_dir
-mc.out_dir = out_dir
-
-out_root = ini.string('out_root')
-if (out_root <> ''):
-    rootname = out_root
-    print 'producing files with with root ', out_root
-mc.rootname = rootname
-
-plot_data_dir = ini.string('plot_data_dir')
-if (plot_data_dir == ''):
-    plot_data_dir = 'plot_data/'
-
-abs_plot_data_dir = plot_data_dir
-if not os.path.isdir(abs_plot_data_dir):
-    os.mkdir(abs_plot_data_dir)
-mc.plot_data_dir = plot_data_dir
-
-rootdirname = os.path.join(out_dir, rootname); mc.rootdirname = rootdirname
-
-if not no_tests:
-    converge_test_limit = ini.float('converge_test_limit', mc.contours[mc.num_contours - 1])
-    corr_length_thin = ini.int('corr_length_thin', 0)
-    corr_length_steps = ini.int('corr_length_steps', 15)
-    mc.corr_length_thin = corr_length_thin
-    mc.corr_length_steps = corr_length_steps
-
-if (ini.params.has_key('do_minimal_1d_intervals')):
-    print 'do_minimal_1d_intervals no longer used; set credible_interval_threshold instead'
-    sys.exit()
-
-PCA_num = ini.int('PCA_num', 0)
-if (PCA_num <> 0):
-    if (PCA_num < 2):
-        print 'Can only do PCA for 2 or more parameters'
+        print(msg)
         sys.exit()
-    line = ini.string('PCA_params')
-    PCA_func = ini.string('PCA_func')
-    # Characters representing functional mapping
-    if (PCA_func == ''):
-        PCA_func = ['N'] * PCA_num  # No mapping
-    if (line.lower() == 'all'):
+    raise ValueError(msg)
+
+
+def main(args):
+    no_plots = False
+    chain_root = args.chain_root
+    if args.ini_file is None and chain_root is None:
+        doError('Must give either a .ini file of parameters or a chain file root name. Run "GetDist.py -h" for help.')
+    if not '.ini' in args.ini_file and chain_root is None:
+        # use default settings acting on chain_root, no plots
+        chain_root = args.ini_file
+        args.ini_file = getdist.default_getdist_settings
+        no_plots = True
+    if not os.path.isfile(args.ini_file):
+        doError('Parameter file does not exist: ' + args.ini_file)
+    if chain_root and chain_root.endswith('.txt'):
+        chain_root = chain_root[:-4]
+
+    # Input parameters
+    ini = IniFile(args.ini_file)
+
+    # File root
+    if chain_root is not None:
+        in_root = chain_root
+    else:
+        in_root = ini.params['file_root']
+    if not in_root:
+        doError('Chain Root file name not given ')
+    rootname = os.path.basename(in_root)
+
+    if args.ignore_rows is not None:
+        ignorerows = args.ignore_rows
+    else:
+        ignorerows = ini.float('ignore_rows', 0.0)
+
+    samples_are_chains = ini.bool('samples_are_chains', True)
+
+    # Create instance of MCSamples
+    mc = MCSamples(in_root, files_are_chains=samples_are_chains)
+
+    mc.initParameters(ini)
+
+    if ini.bool('adjust_priors', False) or ini.bool('map_params', False):
+        doError(
+            'To adjust priors or define new parameters, use a separate python script; see the python getdist docs for examples')
+
+    plot_ext = ini.string('plot_ext', 'py')
+    finish_run_command = ini.string('finish_run_command', '')
+
+    no_plots = ini.bool('no_plots', no_plots)
+    plots_only = ini.bool('plots_only', False)
+    no_tests = plots_only or ini.bool('no_tests', False)
+
+    thin_factor = ini.int('thin_factor', 0)
+    thin_cool = ini.float('thin_cool', 1.0)
+
+    make_single_samples = ini.bool('make_single_samples', False)
+    single_thin = ini.int('single_thin', 1)
+    cool = ini.float('cool', 1.0)
+
+    chain_exclude = ini.int_list('exclude_chain')
+
+    shade_meanlikes = ini.bool('shade_meanlikes', False)
+    plot_meanlikes = ini.bool('plot_meanlikes', False)
+
+    out_dir = ini.string('out_dir', './')
+    if out_dir:
+        if not os.path.isdir(out_dir):
+            os.mkdir(out_dir)
+        print('producing files in directory ', out_dir)
+    mc.out_dir = out_dir
+
+    out_root = ini.string('out_root', '')
+    if out_root:
+        rootname = out_root
+        print('producing files with with root ', out_root)
+    mc.rootname = rootname
+
+    rootdirname = os.path.join(out_dir, rootname)
+    mc.rootdirname = rootdirname
+
+    if 'do_minimal_1d_intervals' in ini.params:
+        doError('do_minimal_1d_intervals no longer used; set credible_interval_threshold instead')
+
+    line = ini.string('PCA_params', '')
+    if line.lower() == 'all':
         PCA_params = mc.paramNames.list()
     else:
         PCA_params = line.split()
-    line = ini.string('PCA_normparam')
-    PCA_NormParam = line or None
+    PCA_num = ini.int('PCA_num', len(PCA_params))
+    if PCA_num != 0:
+        if PCA_num < 2:
+            doError('Can only do PCA for 2 or more parameters')
+        PCA_func = ini.string('PCA_func', '')
+        # Characters representing functional mapping
+        if PCA_func == '':
+            PCA_func = ['N'] * PCA_num  # No mapping
+        PCA_NormParam = ini.string('PCA_normparam', '') or None
 
-make_scatter_samples = ini.bool('make_scatter_samples', False)
+    make_scatter_samples = ini.bool('make_scatter_samples', False)
 
-BW = ini.bool('B&W', False)
-do_shading = ini.bool('do_shading', True)
+    # ==============================================================================
 
-# ==============================================================================
+    first_chain = ini.int('first_chain', 0)
+    last_chain = ini.int('chain_num', -1)
+    # -1 means keep reading until one not found
 
-# Chain files
-chain_files = chains.chainFiles(in_root)
+    # Chain files
+    chain_files = chains.chainFiles(in_root, first_chain=first_chain, last_chain=last_chain,
+                                    chain_exclude=chain_exclude)
 
-def getLastChainIndex(in_root):
-    if not chain_files: return 0
-    names_files = [ os.path.basename(f) for f in chain_files ]
-    basename = os.path.basename(in_root)
-    indexes = [ int(f.replace(basename + '_', '').replace('.txt', '')) for f in names_files ]
-    return max(indexes)
+    mc.loadChains(in_root, chain_files)
 
-first_chain = ini.int('first_chain', 1)
-last_chain = ini.int('chain_num', -1)
-# -1 means keep reading until one not found
-if(last_chain == -1): last_chain = getLastChainIndex(in_root)
+    mc.removeBurnFraction(ignorerows)
+    mc.deleteFixedParams()
+    mc.makeSingle()
 
-# Read in the chains
-ok = mc.loadChains(in_root, chain_files)
-# if (not ok): print ''
-# if (mc.numrows==0):
-#    print 'No un-ignored rows! (check number of chains/burn in)'
-#    sys.exit()
-
-mc.removeBurnFraction(ignorerows)
-mc.deleteFixedParams()
-
-if (not no_tests):
-    mc.DoConvergeTests(converge_test_limit)
-
-mc.makeSingle()
-
-def filterPars(names):
-    return [ name for name in names if mc.paramNames.parWithName(name) ]
-
-if (cool <> 1):
-    mc.CoolChain(cool)
-
-# Adjust weights if requested
-if (adjust_priors):
-    mc.AdjustPriors()
-
-plotparams = []
-line = ini.string('plot_params', '')
-if (line not in ['', 0]):
-    plotparams = filterPars(line.split())
-
-line = ini.string('plot_2D_param', '')
-plot_2D_param = None
-if line.strip() and line <> '0':
-    plot_2D_param = line.strip()
-
-cust2DPlots = []
-if not plot_2D_param:
-    # Use custom array of specific plots
-    num_cust2D_plots = ini.int('plot_2D_num', 0)
-    for i in range(1, num_cust2D_plots + 1):
-        line = ini.string('plot' + str(i))
-        pars = filterPars(line.split())
-        if len(pars) <> 2: raise Exception('plot_2D_num parameter not found, not varied, or not wrong number of parameters')
-        cust2DPlots.append(pars)
-
-triangle_params = []
-triangle_plot = ini.bool('triangle_plot', False)
-if (triangle_plot):
-    no_triangle_axis_labels = ini.bool('no_triangle_axis_labels', False)
-    line = ini.string('triangle_params')
-    if line: triangle_params = filterPars(line.split())
-    triangle_num = len(triangle_params)
-    triangle_plot = triangle_num > 1
-
-num_3D_plots = ini.int('num_3D_plots', 0)
-plot_3D = []
-for ix in range(1, num_3D_plots + 1):
-    line = ini.string('3D_plot' + str(ix))
-    pars = filterPars(line.split())
-    if len(pars) <> 3: raise Exception('3D_plot parameter not found, not varied, or not wrong number of parameters')
-    plot_3D.append(line.split)
+    def filterParList(namestring, num=None):
+        if not namestring.strip():
+            pars = mc.paramNames.list()
+        else:
+            pars = []
+            for name in namestring.split():
+                if '?' in name or '*' in name:
+                    pars += mc.paramNames.getMatches(name, strings=True)
+                elif mc.paramNames.parWithName(name):
+                    pars.append(name)
+        if num is not None and len(pars) != num:
+            raise Exception('%iD plot has not wrong number of parameters: %s' % (num, pars))
+        return pars
 
 
-if (adjust_priors):
-    mc.DeleteZeros()
+    if cool != 1:
+        print('Cooling chains by ', cool)
+        mc.cool(cool)
 
-mc.updateChainBaseStatistics()
+    mc.updateBaseStatistics()
 
-mc.writeCovMatrix()
-mc.writeCorrMatrix()
+    if not no_tests:
+        mc.getConvergeTests(mc.converge_test_limit, writeDataToFile=True, feedback=True)
 
-# Output thinned data if requested
-# Must do this with unsorted output
-if (thin_factor <> 0):
-    thin_ix = mc.thin_indices(thin_factor)
-    filename = rootdirname + '_thin.txt'
-    mc.WriteThinData(filename, thin_ix, thin_cool)
+    mc.writeCovMatrix()
+    mc.writeCorrelationMatrix()
 
-# Produce file of weight-1 samples if requested
-if ((num_3D_plots and not make_single_samples or make_scatter_samples) and not no_plots):
-    make_single_samples = True
-    single_thin = max(1, int(round(mc.numsamp / mc.max_mult)) / mc.max_scatter_points)
+    # Output thinned data if requested
+    # Must do this with unsorted output
+    if thin_factor != 0:
+        thin_ix = mc.thin_indices(thin_factor)
+        filename = rootdirname + '_thin.txt'
+        mc.writeThinData(filename, thin_ix, thin_cool)
 
-if (make_single_samples):
-    filename = os.path.join(plot_data_dir, rootname.strip() + '_single.txt')
-    mc.MakeSingleSamples(filename, single_thin)
+    print(mc.getNumSampleSummaryText().strip())
+    if mc.likeStats: print(mc.likeStats.likeSummary().strip())
 
-print 'mean input multiplicity = ', mc.mean_mult
+    if PCA_num > 0 and not plots_only:
+        mc.PCA(PCA_params, PCA_func, PCA_NormParam, writeDataToFile=True)
 
-num_parameters = mc.paramNames.numParams()
-print 'using ', mc.numrows, ' rows, processing ', num_parameters, ' parameters'
-if (mc.indep_thin <> 0):
-    print 'Approx indep samples: ', round(mc.numsamp / mc.indep_thin)
-else:
-    print  'effective number of samples (assuming indep): ', round(mc.numsamp / mc.max_mult)
+    if not no_plots:
+        # set plot_data_dir before we generate the 1D densities below
+        plot_data_dir = ini.string('plot_data_dir', default='', allowEmpty=True)
+        if plot_data_dir and not os.path.isdir(plot_data_dir):
+            os.mkdir(plot_data_dir)
+    else:
+        plot_data_dir = None
+    mc.plot_data_dir = plot_data_dir
+
+    # Do 1D bins
+    mc._setDensitiesandMarge1D(writeDataToFile=not no_plots and plot_data_dir, meanlikes=plot_meanlikes)
+
+    if not no_plots:
+        # Output files for 1D plots
+        print('Calculating plot data...')
+
+        plotparams = []
+        line = ini.string('plot_params', '')
+        if line not in ['', '0']:
+            plotparams = filterParList(line)
+
+        line = ini.string('plot_2D_param', '').strip()
+        plot_2D_param = None
+        if line and line != '0':
+            plot_2D_param = line
+
+        cust2DPlots = []
+        if not plot_2D_param:
+            # Use custom array of specific plots
+            num_cust2D_plots = ini.int('plot_2D_num', 0)
+            for i in range(1, num_cust2D_plots + 1):
+                line = ini.string('plot' + str(i))
+                pars = filterParList(line, 2)
+                cust2DPlots.append(pars)
+
+        triangle_params = []
+        triangle_plot = ini.bool('triangle_plot', False)
+        if triangle_plot:
+            line = ini.string('triangle_params', '')
+            triangle_params = filterParList(line)
+            triangle_num = len(triangle_params)
+            triangle_plot = triangle_num > 1
+
+        num_3D_plots = ini.int('num_3D_plots', 0)
+        plot_3D = []
+        for ix in range(1, num_3D_plots + 1):
+            line = ini.string('3D_plot' + str(ix))
+            plot_3D.append(filterParList(line, 3))
 
 
-filename = os.path.join(plot_data_dir, rootname.strip() + '.bounds')
-mc.writeBounds(filename)
+        # Produce file of weight-1 samples if requested
+        if (num_3D_plots and not make_single_samples or make_scatter_samples) and not no_plots:
+            make_single_samples = True
+            single_thin = max(1, int(round(mc.norm / mc.max_mult)) // mc.max_scatter_points)
 
-if (PCA_num > 0) and not plots_only:
-    mc.PCA(PCA_params, PCA_func, PCA_NormParam, writeDataToFile=True)
+        if plot_data_dir:
+            if make_single_samples:
+                filename = os.path.join(plot_data_dir, rootname.strip() + '_single.txt')
+                mc.makeSingleSamples(filename, single_thin)
 
-# Do 1D bins
-mc.Do1DBins(mc.max_frac_twotail, writeDataToFile=True)
+            # Write paramNames file
+            mc.getParamNames().saveAsText(os.path.join(plot_data_dir, rootname + '.paramnames'))
+            mc.getBounds().saveToFile(os.path.join(plot_data_dir, rootname + '.bounds'))
 
-if not no_plots:
-    # Output files for 1D plots
-    print 'Calculating plot data...'
-    filename = rootdirname + '.' + plot_ext
-    mc.WriteScriptPlots1D(filename, plotparams)
+        make_plots = ini.bool('make_plots', False)
 
-# Do 2D bins
-if plot_2D_param == 'corr' and not no_plots:
-    # In this case output the most correlated variable combinations
-    print 'doing 2D plots for most correlated variables'
-    num_cust2D_plots_0 = 12
-    cust2DPlots = mc.GetCust2DPlots(num_cust2D_plots_0)
-    plot_2D_param = None
-elif plot_2D_param:
-    mc.paramNames.parWithName(plot_2D_param, error=True)  # just check
+        done2D = {}
 
-if (cust2DPlots or plot_2D_param) and  not no_plots:
-    filename = rootdirname + '_2D.' + plot_ext
-    mc.WriteScriptPlots2D(filename, plot_2D_param, cust2DPlots, plots_only)
+        filename = rootdirname + '.' + plot_ext
+        mc.writeScriptPlots1D(filename, plotparams)
+        if make_plots: runScript(filename)
 
-if (triangle_plot and not no_plots):
-    # Add the off-diagonal 2D plots
-    mc.WriteScriptPlotsTri(rootdirname + '_tri.' + plot_ext, triangle_params)
-    for i in range(triangle_num):
-        for i2 in range(i + 1, triangle_num):
-            j = mc.index[triangle_params[i]]
-            j2 = mc.index[triangle_params[i2]]
-            if (mc.done2D is None or not mc.done2D[j2][j]) and not plots_only: mc.Get2DPlotData(j2, j, writeDataToFile=True)
+        # Do 2D bins
+        if plot_2D_param == 'corr':
+            # In this case output the most correlated variable combinations
+            print('...doing 2D plots for most correlated variables')
+            cust2DPlots = mc.getCorrelatedVariable2DPlots()
+            plot_2D_param = None
+        elif plot_2D_param:
+            mc.paramNames.parWithName(plot_2D_param, error=True)  # just check
 
-# Do 3D plots (i.e. 2D scatter plots with coloured points)
-if (num_3D_plots <> 0 and not no_plots):
-    print 'producing ', num_3D_plots, '2D colored scatter plots'
-    filename = rootdirname + '_3D.' + plot_ext
-    mc.WriteScriptPlots3D(filename, plot_3D)
+        if cust2DPlots or plot_2D_param:
+            print('...producing 2D plots')
+            filename = rootdirname + '_2D.' + plot_ext
+            done2D = mc.writeScriptPlots2D(filename, plot_2D_param, cust2DPlots,
+                                           writeDataToFile=plot_data_dir, shade_meanlikes=shade_meanlikes)
+            if make_plots: runScript(filename)
 
-# Write out stats marginalized
-if not plots_only: mc.saveMargeStats()
+        if triangle_plot:
+            # Add the off-diagonal 2D plots
+            print('...producing triangle plot')
+            filename = rootdirname + '_tri.' + plot_ext
+            mc.writeScriptPlotsTri(filename, triangle_params)
+            for i, p2 in enumerate(triangle_params):
+                for p1 in triangle_params[i + 1:]:
+                    if not done2D.get((p1, p2)) and plot_data_dir:
+                        mc.get2DDensityGridData(p1, p2, writeDataToFile=True, meanlikes=shade_meanlikes)
+            if make_plots: runScript(filename)
 
-# Write paramNames file
-mc.paramNames.saveAsText(os.path.join(plot_data_dir, rootname + '.paramnames'))
+        # Do 3D plots (i.e. 2D scatter plots with coloured points)
+        if num_3D_plots:
+            print('...producing ', num_3D_plots, '2D colored scatter plots')
+            filename = rootdirname + '_3D.' + plot_ext
+            mc.writeScriptPlots3D(filename, plot_3D)
+            if make_plots: runScript(filename)
 
-# Limits from global likelihood
-if not plots_only:
-    mc.WriteGlobalLikelihood(rootdirname + '.likestats')
+    if not plots_only:
+        # Write out stats marginalized
+        mc.getMargeStats().saveAsText(rootdirname + '.margestats')
 
-# System command
-if (finish_run_command):
-    finish_run_command = finish_run_command.replace('%ROOTNAME%', rootname)
-    finish_run_command = finish_run_command.replace('%PLOTDIR%', plot_data_dir)
-    finish_run_command = finish_run_command.replace('%PLOTROOT%', os.path.join(plot_data_dir, rootname))
-    os.system(finish_run_command)
+        # Limits from global likelihood
+        if mc.loglikes is not None: mc.getLikeStats().saveAsText(rootdirname + '.likestats')
 
+    # System command
+    if finish_run_command:
+        finish_run_command = finish_run_command.replace('%ROOTNAME%', rootname)
+        finish_run_command = finish_run_command.replace('%PLOTDIR%', plot_data_dir)
+        finish_run_command = finish_run_command.replace('%PLOTROOT%', os.path.join(plot_data_dir, rootname))
+        os.system(finish_run_command)
+
+
+if __name__ == '__main__':
+    try:
+        import argparse
+    except ImportError:
+        print('Make sure you are using python 2.7+')
+        raise
+
+    parser = argparse.ArgumentParser(description='GetDist sample analyser')
+    parser.add_argument('ini_file', nargs='?',
+                        help='.ini file with analysis settings (optional, if omitted uses defaults)')
+    parser.add_argument('chain_root', nargs='?',
+                        help='Root name of chain to analyse (e.g. chains/test), required unless file_root specified in ini_file')
+    parser.add_argument('--ignore_rows',
+                        help='set initial fraction of chains to cut as burn in (fraction of total rows, or >1 number of rows); overrides any value in ini_file if set')
+    parser.add_argument('--make_param_file',
+                        help='Produce a sample distparams.ini file that you can edit and use when running GetDist')
+    parser.add_argument('-V', '--version', action='version', version='%(prog)s ' + getdist.__version__)
+    args = parser.parse_args()
+    if args.make_param_file:
+        content = io.open(getdist.distparam_template).read()
+        analysis = io.open(getdist.default_getdist_settings).read()
+        content = content.replace('%%%ANALYSIS_DEFAULTS%%%', analysis)
+        with io.open(args.make_param_file, 'w') as f:
+            f.write(content)
+        print('Template .ini file written to ' + args.make_param_file)
+    else:
+        main(args)

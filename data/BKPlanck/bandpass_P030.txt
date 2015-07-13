@@ -3,7 +3,7 @@
 # http://bicepkeck.org/
 #
 # File: bandpass_P030.txt 
-# Date: 2015-01-31
+# Date: 2015-02-23
 #
 # Experiment bandpasses for the multi-component likelihood described in Section III of A Joint Analysis of BICEP2/Keck Array and Planck Data.
 # See the comments in the .dataset file for further information.

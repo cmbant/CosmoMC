@@ -262,14 +262,15 @@
         if (MPIChains > 1) then
             do i=1,num_params_used
                 do j=i,num_params_used
-                    cov(i,j) = sum(MPIMeans(0,:)*MPICovMats(i,j,:))/ norm
+                    MPICovMat(i,j) = sum(MPIMeans(0,:)*MPICovMats(i,j,:))/ norm
+                    cov(i,j) = sum(MPICovMats(i,j,:))/ MPIChains
                     meanscov(i,j) = sum(MPIMeans(0,:)*&
                         (chain_means(:,i)-mean(i))*(chain_means(:,j)-mean(j)))/norm
                     meanscov(j,i) = meanscov(i,j)
                     cov(j,i) = cov(i,j)
+                    MPICovMat(j,i) = MPICovMat(i,j)
                 end do
             end do
-            MPICovMat = Cov !+ meansCov !Estimate global covariance for proposal density
             meansCov = meansCov * real(MPIChains,mcp)/(MPIChains-1)
             invertible= GelmanRubinEvalues(cov, meanscov, evals, num_params_used)
             if (invertible) then

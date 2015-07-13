@@ -13,6 +13,7 @@
     use bao
     use mpk
     use wigglez
+    use szcounts !Anna
     use wl
     use ElementAbundances
     class(TSettingIni), intent(in) :: Ini
@@ -32,6 +33,8 @@
     if (use_mpk) call WiggleZLikelihood_Add(DataLikelihoods, Ini)
 
     call BAOLikelihood_Add(DataLikelihoods, Ini)
+
+    call SZLikelihood_Add(DataLikelihoods, Ini) !Anna
 
     call WLLikelihood_Add(DataLikelihoods, Ini)
 

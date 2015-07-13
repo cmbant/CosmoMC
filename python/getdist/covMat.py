@@ -1,13 +1,27 @@
+from __future__ import print_function
 import numpy as np
+import io
 
-class covMat(object):
 
-    def __init__(self, filename='', matrix=[], paramNames=[]):
+class CovMat(object):
+    """
+    Class holding a covariance matrix for some named parameters
+    
+    :ivar matrix: the covariance matrix  (square numpy array)
+    :ivar paramNames: list of parameter name strings
+    """
 
+    def __init__(self, filename='', matrix=None, paramNames=None):
+        """
+        :param filename: optionally, a file name to load from
+
+        """
+        if not paramNames:
+            paramNames = []
         self.matrix = matrix
         self.paramNames = paramNames
         self.size = 0
-        if matrix: self.size = matrix.shape[0]
+        if matrix is not None: self.size = matrix.shape[0]
         if filename != '':
             self.loadFromFile(filename)
 
@@ -15,63 +29,56 @@ class covMat(object):
         return " ".join(self.paramNames)
 
     def loadFromFile(self, filename):
-        textFileHandle = open(filename)
-        textFileLines = textFileHandle.readlines()
-        textFileHandle.close()
-        first = textFileLines[0].strip()
-        if first.startswith('#'):
-            paramNames = first[1:].split()
-            self.size = len(paramNames)
-        else:
-            raise Exception('.covmat must now have parameter names header')
-        matrix = [[0 for _ in range(self.size)] for row in range(self.size)]
-        used = []
-        for i in range(self.size):
-            splitLine = textFileLines[i + 1].split()
-            for j in range(len(splitLine)):
-                matrix[i][j] = float(splitLine[j])
-            if matrix[i].count(0.) != self.size:
-                used.append(i)
-
-        self.size = len(used)
-        self.matrix = np.empty((self.size, self.size))
-        self.paramNames = []
-        for i in range(self.size):
-            self.paramNames.append(paramNames[used[i]])
-            for j in range(self.size):
-                self.matrix[i, j] = matrix[used[i]][used[j]]
-
+        with open(filename) as f:
+            first = f.readline().strip()
+            if first.startswith('#'):
+                self.paramNames = first[1:].split()
+                self.size = len(self.paramNames)
+            else:
+                raise Exception('.covmat must now have parameter names header')
+            self.matrix = np.loadtxt(f)
 
     def saveToFile(self, filename):
-        fout = open(filename, 'w')
-        fout.write('# ' + self.paramNameString() + '\n')
-        np.savetxt(fout, self.matrix, '%E')
-        fout.close
+        """
+        Save the covariance matrix to a text file, with comment header listing the parameter names
+        
+        :param filename: name of file to save to (.covmat)
+        """
+        with io.open(filename, 'wb') as fout:
+            fout.write(('# ' + self.paramNameString() + '\n').encode('UTF-8'))
+            np.savetxt(fout, self.matrix, '%15.7E')
 
     def rescaleParameter(self, name, scale):
+        """
+        Used to rescale a covariance if a parameter is renormalized
+        
+        :param name: parameter name to rescale
+        :scale scale: value to rescale by 
+        """
         if name in self.paramNames:
             i = self.paramNames.index(name)
-            self.matrix[:, i] = self.matrix[:, i] * scale;
-            self.matrix[i, :] = self.matrix[i, :] * scale;
-        else: print 'Not in covmat: ' + name
+            self.matrix[:, i] = self.matrix[:, i] * scale
+            self.matrix[i, :] = self.matrix[i, :] * scale
+        else:
+            print('Not in covmat: ' + name)
 
     def mergeCovmatWhereNew(self, cov2):
         params1 = self.paramNames
         params2 = cov2.paramNames
 
-        C = covMat()
+        C = CovMat()
         C.paramNames.extend(params1)
 
         for param in cov2.paramNames:
-                if param not in C.paramNames:
-                    C.paramNames.append(param)
+            if param not in C.paramNames:
+                C.paramNames.append(param)
         l1 = len(params1)
         l2 = len(params2)
         l = len(C.paramNames)
 
-        map1 = dict(zip(params1, range(0, l1)))
-        map2 = dict(zip(params2, range(0, l2)))
-        covmap = dict(zip(range(0, l), C.paramNames))
+        map1 = dict(list(zip(params1, list(range(0, l1)))))
+        map2 = dict(list(zip(params2, list(range(0, l2)))))
+        covmap = dict(list(zip(list(range(0, l)), C.paramNames)))
 
         C.matrix = np.zeros((l, l))
         for i in range(0, l):
@@ -84,6 +91,11 @@ class covMat(object):
         return C
 
     def correlation(self):
+        """
+        Get the correlation matrix
+        
+        :return: numpy array giving the correlation matrix
+        """
         m = self.matrix.copy()
         for i in range(self.size):
             s = np.sqrt(self.matrix[i, i])
@@ -92,13 +104,16 @@ class covMat(object):
         return m
 
     def plot(self):
-        import pylab as plt
+        """
+        Plot the correlation matrix as grid of colored squares
+        """
+        import matplotlib.pyplot as plt
+
         plt.pcolor(self.correlation())
         plt.colorbar()
         sz = self.size
-        plt.yticks(np.arange(0.5, sz + .5), range(1, sz + 1))
+        plt.yticks(np.arange(0.5, sz + .5), list(range(1, sz + 1)))
         plt.gca().set_yticklabels(self.paramNames)
-        plt.xticks(np.arange(0.5, sz + .5), range(1, sz + 1))
+        plt.xticks(np.arange(0.5, sz + .5), list(range(1, sz + 1)))
         plt.xlim([0, sz])
         plt.ylim([0, sz])
-

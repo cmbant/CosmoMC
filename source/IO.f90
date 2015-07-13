@@ -85,11 +85,8 @@
     subroutine IO_OutputChainRow(F, mult, like, values)
     class(TFileStream) :: F
     real(mcp) mult, like, values(:)
-    real(mcp), allocatable :: tmp(:)
     
-    allocate(tmp(1:size(values)+2), source= [mult, like, values])
-    call F%Write(tmp)
-  !    call F%Write( [mult, like, values]) !gfortran bug
+    call F%Write([mult, like, values])
 
     if (flush_write) call F%Flush()
 
@@ -219,7 +216,7 @@
     end subroutine IO_ReadParamNames
 
     function IO_ReadChainRows(in_root, chain_ix,chain_num, ignorerows, nrows, &
-        ncols,max_rows,coldata,samples_are_chains) result(OK)
+        ncols,max_rows,coldata,samples_are_chains, noerror) result(OK)
     !OK = false if chain not found or not enough samples
     character(LEN=*), intent(in) :: in_root
     integer,intent(in) :: chain_ix, chain_num
@@ -227,7 +224,7 @@
     integer, intent(in) :: ncols
     real(KIND(1.d0)), intent(inout), allocatable :: coldata(:,:) !(col_index, row_index)
     real(KIND(1.d0)), allocatable :: tmp(:,:) !(col_index, row_index)
-    logical, intent(in) :: samples_are_chains
+    logical, intent(in) :: samples_are_chains, noerror
     integer, intent(inout) :: nrows
     logical OK, ChainOK
     real(mcp) invars(1:ncols)
@@ -245,14 +242,14 @@
         infile = trim(in_root) //'_'//IntToStr(chain_ix)// '.txt'
     end if
 
-    write (*,*) 'reading ' // trim(infile)
-
     call F%Open(infile, status=status)
     if (status/=0) then
-        write (*,'(" chain ",1I4," missing")') chain_ix
+        if (.not. noerror) write (*,'(" chain ",1I4," missing")') chain_ix
         OK = .false.
         return
     end if
+
+    write (*,*) 'reading ' // trim(infile)
 
     if (ignorerows >=1) then
         if (.not. F%SkipLines(ignorerows)) then
@@ -311,7 +308,7 @@
     nameFormat = concat('(1A',j+1,')')
 
     call F%CreateFile(trim(froot)//'.margestats')
-    F%RealFormat = '(*(1E15.7))'
+    F%RealFormat = '(*(E15.7))'
     call F%Write('Marginalized limits: ' // contours_str)
     call F%NewLine()
     call F%WriteLeftAligned(nameFormat,'parameter')

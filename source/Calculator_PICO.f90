@@ -4,7 +4,8 @@
     use CosmologyTypes
     use CosmoTheory
     use Calculator_CAMB
-    use CAMB, only : CAMBParams_Set, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, BackgroundOutputs, lmin
+    use CAMB, only : CAMBParams_Set, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, &
+        BackgroundOutputs, lmin, CAMBParams
     use Errors !CAMB
     use settings
     use likelihood
@@ -52,11 +53,12 @@
     class(TCosmoTheoryPredictions) :: Theory
     integer i,j
     character(LEN=*) :: name
-    integer(fpint) lmax
+    integer(fpint) lmax, lmn
 
     if (CosmoSettings%cl_lmax(i,j)>0) then
         lmax = min(CosmoSettings%lmax_computed_cl,CosmoSettings%cl_lmax(i,j))
-        call fpico_read_output(name,Theory%Cls(i,j)%CL(lmin:),lmin,lmax)
+        lmn = lmin
+        call fpico_read_output(name,Theory%Cls(i,j)%CL(lmin:),lmn,lmax)
     end if
 
     end subroutine PICO_GetOutputArray
@@ -106,9 +108,7 @@
     call fpico_set_param("theta", CosmomcTheta())
     call fpico_set_param("helium_fraction", p%yhe)
 
-    !    call fpico_set_param("massless_neutrinos", )
-    !!!Check what's going on with neutrinos
-    call fpico_set_param("massive_neutrinos", p%Num_Nu_massless+p%Num_Nu_massive)
+    call fpico_set_param("massive_neutrinos", CMB%nnu)
     call fpico_set_param("scalar_spectral_index(1)",p%InitPower%an(1))
     call fpico_set_param("scalar_nrun(1)",p%InitPower%n_run(1))
     call fpico_set_param("initial_ratio(1)",p%InitPower%rat(1))
@@ -127,21 +127,22 @@
             if (CosmoSettings%num_cls>2) then
                 if (CosmoSettings%cl_lmax(3,3)>0) call fpico_request_output("cl_BB")
                 if (CosmoSettings%num_cls>3) then
-!                    call MpiStop('PICO: lensing output currently innaccurate')
-!                    if (CosmoSettings%cl_lmax(4,4)>0) call fpico_request_output("cl_pp")
+                    !                    call MpiStop('PICO: lensing output currently innaccurate')
+                    !                    if (CosmoSettings%cl_lmax(4,4)>0) call fpico_request_output("cl_pp")
                 end if
             end if
         end if
     end if
-    if (P%WantTransfer) then
-        call fpico_request_output("k")
-        call fpico_request_output("pk")
-    end if
+   ! if (P%WantTransfer) then
+   !     call fpico_request_output("k")
+   !     call fpico_request_output("pk")
+   ! end if
 
     call fpico_compute_result(success)
-    if (.not. success) then
+    if (success == 0) then
         ! for now just reject if out of pico bounds
         !call mpiStop('PICO failed to get result')
+        if (Feedback>1) write(*,*) 'PICO out of bounds'
         error = 1
         return
     end if
@@ -152,7 +153,7 @@
             call PICO_GetOutputArray(Theory,2,1, "cl_TE")
             call PICO_GetOutputArray(Theory,2,2, "cl_EE")
             if (CosmoSettings%num_cls>2) call PICO_GetOutputArray(Theory,3,3, "cl_BB")
-!            if (CosmoSettings%num_cls>3) call PICO_GetOutputArray(Theory,4,4, "cl_pp") need to change units, as in scalCls
+            !            if (CosmoSettings%num_cls>3) call PICO_GetOutputArray(Theory,4,4, "cl_pp") need to change units, as in scalCls
         end if
     end if
 
@@ -191,7 +192,7 @@
     class(PICO_Calculator) :: this
     class(TNameValueList) :: ReadValues
 
-    call ReadValues%Add('Compiled_PICO_version', '3.2') !dynamic version variable?
+    call ReadValues%Add('Compiled_PICO_version', '3.3.0') !dynamic version variable?
     call this%CAMB_Calculator%VersionTraceOutput(ReadValues)
 
     end subroutine PICO_VersionTraceOutput
@@ -203,6 +204,8 @@
 
     call this%CAMB_Calculator%ReadParams(Ini)
     this%calcName ='PICO'
+    
+    !$ write(*,*) '**WARNING**: pico may not work when CosmoMC compiled with -openmp (why??)'
 
     call fpico_init(1_fpint)
     call fpico_load(Ini%Read_String_Default("pico_datafile", EnvDefault=.true.))

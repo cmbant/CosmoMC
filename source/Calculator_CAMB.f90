@@ -15,6 +15,7 @@
     use likelihood
     use Calculator_Cosmology
     use GeneralTypes
+    use, intrinsic :: ieee_arithmetic
     implicit none
     private
 
@@ -256,7 +257,7 @@
                 end if
                 do j= i, 1, -1
                     if (CosmoSettings%cl_lmax(i,j)>0) then
-                        if ( any(isNan(Theory%cls(i,j)%Cl))) then
+                        if ( any(ieee_is_nan(Theory%cls(i,j)%Cl))) then
                             error=1
                             write(*,*) 'WARNING: NaN CL?', i, j
                             return
@@ -334,7 +335,7 @@
             if(error/=0) exit
             do j= i, 1, -1
                 if (CosmoSettings%cl_lmax(i,j)>0) then
-                    if ( any(isNan(Theory%cls(i,j)%Cl))) then
+                    if ( any(ieee_is_nan(Theory%cls(i,j)%Cl))) then
                         error=1
                         write(*,*) 'WARNING: NaN CL?'
                         exit
@@ -501,7 +502,7 @@
 
         call Transfer_GetUnsplinedPower(M, PK,transfer_power_var,transfer_power_var)
         PK = Log(PK)
-        if (any(isNan(PK))) then
+        if (any(ieee_is_nan(PK))) then
             error = 1
             return
         end if
@@ -513,7 +514,7 @@
     if (CosmoSettings%use_Weylpower) then
         call Transfer_GetUnsplinedPower(M, PK,transfer_Weyl,transfer_Weyl,hubble_units=.false.)
         PK = Log(PK)
-        if (any(isNan(PK))) then
+        if (any(ieee_is_nan(PK))) then
             error = 1
             return
         end if
@@ -580,7 +581,7 @@
     call MatterPowerdata_Free(CPK)
 
     PK = PK+2*log(Ratios)
-    if (any(isNan(PK))) then
+    if (any(ieee_is_nan(PK))) then
         error = 1
         return
     end if

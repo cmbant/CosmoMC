@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="cosmomc" />
+		<Option makefile_is_custom="1" />
+		<Option pch_mode="2" />
+		<Option compiler="gfortran" />
+		<Option virtualFolders="Makefiles/;Makefiles/source/;" />
+		<Build>
+			<Target title="Debug">
+				<Option output="cosmomc_debug" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gfortran" />
+				<Option parameters="test.ini" />
+				<Compiler>
+					<Add option="-w" />
+					<Add option="-Wfatal-errors" />
+					<Add option="-g" />
+					<Add option="-0g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="cosmomc" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gfortran" />
+				<Option parameters="test.ini" />
+				<Compiler>
+					<Add option="-ffast-math" />
+					<Add option="-O3" />
+					<Add option="-w" />
+					<Add option="-Wfatal-errors" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-cpp" />
+			<Add option="-Wall" />
+		</Compiler>
+		<Unit filename="Makefile">
+			<Option virtualFolder="Makefiles/" />
+		</Unit>
+		<Unit filename="camb/bessels.f90">
+			<Option weight="3" />
+		</Unit>
+		<Unit filename="camb/camb.f90">
+			<Option weight="6" />
+		</Unit>
+		<Unit filename="camb/cmbmain.f90">
+			<Option weight="5" />
+		</Unit>
+		<Unit filename="camb/constants.f90">
+			<Option weight="0" />
+		</Unit>
+		<Unit filename="camb/equations_ppf.f90">
+			<Option weight="3" />
+		</Unit>
+		<Unit filename="camb/halofit_ppf.f90">
+			<Option weight="4" />
+		</Unit>
+		<Unit filename="camb/inifile.f90">
+			<Option weight="0" />
+		</Unit>
+		<Unit filename="camb/lensing.f90">
+			<Option weight="3" />
+		</Unit>
+		<Unit filename="camb/modules.f90">
+			<Option weight="2" />
+		</Unit>
+		<Unit filename="camb/power_tilt.f90">
+			<Option weight="1" />
+		</Unit>
+		<Unit filename="camb/recfast.f90">
+			<Option weight="1" />
+		</Unit>
+		<Unit filename="camb/reionization.f90">
+			<Option weight="1" />
+		</Unit>
+		<Unit filename="camb/subroutines.f90">
+			<Option weight="1" />
+		</Unit>
+		<Unit filename="source/ArrayUtils.f90">
+			<Option weight="0" />
+		</Unit>
+		<Unit filename="source/BaseParameters.f90">
+			<Option weight="9" />
+		</Unit>
+		<Unit filename="source/CMB.f90">
+			<Option weight="15" />
+		</Unit>
+		<Unit filename="source/CMB_BK_Planck.f90">
+			<Option weight="14" />
+		</Unit>
+		<Unit filename="source/CMBlikes.f90">
+			<Option weight="13" />
+		</Unit>
+		<Unit filename="source/CalcLike_Cosmology.f90">
+			<Option weight="18" />
+		</Unit>
+		<Unit filename="source/Calculator_CAMB.f90">
+			<Option weight="12" />
+		</Unit>
+		<Unit filename="source/Calculator_Cosmology.f90">
+			<Option weight="11" />
+		</Unit>
+		<Unit filename="source/Calculator_PICO.f90">
+			<Option weight="13" />
+		</Unit>
+		<Unit filename="source/CosmoTheory.f90">
+			<Option weight="10" />
+		</Unit>
+		<Unit filename="source/CosmologyConfig.f90">
+			<Option weight="21" />
+		</Unit>
+		<Unit filename="source/CosmologyParameterizations.f90">
+			<Option weight="12" />
+		</Unit>
+		<Unit filename="source/CosmologyTypes.f90">
+			<Option weight="9" />
+		</Unit>
+		<Unit filename="source/DataLikelihoods.f90">
+			<Option weight="16" />
+		</Unit>
+		<Unit filename="source/ElementAbundances.f90">
+			<Option weight="13" />
+		</Unit>
+		<Unit filename="source/EstCovmat.f90">
+			<Option weight="18" />
+		</Unit>
+		<Unit filename="source/FileUtils.f90">
+			<Option weight="2" />
+		</Unit>
+		<Unit filename="source/GeneralConfig.f90">
+			<Option weight="8" />
+		</Unit>
+		<Unit filename="source/GeneralSetup.f90">
+			<Option weight="20" />
+		</Unit>
+		<Unit filename="source/GeneralTypes.f90">
+			<Option weight="7" />
+		</Unit>
+		<Unit filename="source/HST.f90">
+			<Option weight="13" />
+		</Unit>
+		<Unit filename="source/IO.f90">
+			<Option weight="6" />
+		</Unit>
+		<Unit filename="source/ImportanceSampling.f90">
+			<Option weight="18" />
+		</Unit>
+		<Unit filename="source/IniObjects.f90">
+			<Option weight="3" />
+		</Unit>
+		<Unit filename="source/Interpolation.f90">
+			<Option weight="4" />
+		</Unit>
+		<Unit filename="source/Likelihood_Cosmology.f90">
+			<Option weight="12" />
+		</Unit>
+		<Unit filename="source/MCMC.f90">
+			<Option weight="18" />
+		</Unit>
+		<Unit filename="source/Makefile">
+			<Option virtualFolder="Makefiles/source/" />
+		</Unit>
+		<Unit filename="source/Matrix_utils_new.f90">
+			<Option weight="3" />
+		</Unit>
+		<Unit filename="source/MiscUtils.f90">
+			<Option weight="0" />
+		</Unit>
+		<Unit filename="source/MpiUtils.f90">
+			<Option weight="0" />
+		</Unit>
+		<Unit filename="source/ObjectLists.f90">
+			<Option weight="3" />
+		</Unit>
+		<Unit filename="source/ObjectParamNames.f90">
+			<Option weight="4" />
+		</Unit>
+		<Unit filename="source/ParamSet.f90">
+			<Option weight="10" />
+		</Unit>
+		<Unit filename="source/PowellConstrainedMinimize.f90">
+			<Option weight="0" />
+		</Unit>
+		<Unit filename="source/RandUtils.f90">
+			<Option weight="1" />
+		</Unit>
+		<Unit filename="source/SampleCollector.f90">
+			<Option weight="19" />
+		</Unit>
+		<Unit filename="source/StringUtils.f90">
+			<Option weight="1" />
+		</Unit>
+		<Unit filename="source/bao.f90">
+			<Option weight="13" />
+		</Unit>
+		<Unit filename="source/bbn.f90">
+			<Option weight="6" />
+		</Unit>
+		<Unit filename="source/calclike.f90">
+			<Option weight="17" />
+		</Unit>
+		<Unit filename="source/cliklike.f90" />
+		<Unit filename="source/driver.F90" />
+		<Unit filename="source/likelihood.f90">
+			<Option weight="8" />
+		</Unit>
+		<Unit filename="source/lrggettheory.f90">
+			<Option weight="3" />
+		</Unit>
+		<Unit filename="source/minimize.f90">
+			<Option weight="19" />
+		</Unit>
+		<Unit filename="source/mpk.f90">
+			<Option weight="13" />
+		</Unit>
+		<Unit filename="source/propose.f90">
+			<Option weight="8" />
+		</Unit>
+		<Unit filename="source/samples.f90">
+			<Option weight="6" />
+		</Unit>
+		<Unit filename="source/settings.f90">
+			<Option weight="5" />
+		</Unit>
+		<Unit filename="source/supernovae.f90">
+			<Option weight="14" />
+		</Unit>
+		<Unit filename="source/supernovae_JLA.f90">
+			<Option weight="13" />
+		</Unit>
+		<Unit filename="source/supernovae_SNLS.f90">
+			<Option weight="13" />
+		</Unit>
+		<Unit filename="source/supernovae_Union2.f90">
+			<Option weight="13" />
+		</Unit>
+		<Unit filename="source/szcounts.f90">
+			<Option weight="13" />
+		</Unit>
+		<Unit filename="source/wigglez.f90">
+			<Option weight="14" />
+		</Unit>
+		<Unit filename="source/wl.f90">
+			<Option weight="13" />
+		</Unit>
+		<Extensions>
+			<envvars />
+			<code_completion />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

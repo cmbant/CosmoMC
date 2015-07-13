@@ -56,6 +56,7 @@
         logical :: SlashComments = .false.
         logical :: Echo_Read = .false.
         logical :: Fail_on_not_found = .false.
+        logical :: ExpandEnvironmentVariables = .true.
         character(LEN=:), allocatable :: Original_filename
         Type(TNameValueList) :: ReadValues
     contains
@@ -79,6 +80,7 @@
     procedure :: Key_To_Arraykey => Ini_Key_To_Arraykey
     procedure :: EnumerationValue => Ini_EnumerationValue
     procedure :: ResolveLinkedFile => Ini_ResolveLinkedFile
+    procedure :: ExpandEnvironment => Ini_ExpandEnvironment
     procedure, private :: NameValue_AddLine => Ini_NameValue_AddLine
     procedure, private :: EmptyCheckDefault => Ini_EmptyCheckDefault
     procedure, private :: Ini_Read_Real_Change
@@ -323,7 +325,41 @@
 
     end subroutine Ini_EmptyCheckDefault
 
+    function Ini_ExpandEnvironment(this, InValue) result(res)
+    !expand $(PLACEHOLDER) with environment variables, as Makefile
+    class(TIniFile) :: this
+    character(LEN=:), allocatable, intent(in) :: InValue
+    character(LEN=:), allocatable :: res, S
+    integer i
 
+    i = index(InValue,'$(')
+    if (i > 0) then
+        res = InValue(:i-1)
+        S = InValue(i:)
+        i=1
+        do while (i <= len(S))
+            if (S(i:i)=='$') then
+                if (S(i+1:i+1)=='$') then
+                    res = res // '$'
+                    i = i + 1
+                else if (S(i+1:i+1)=='(') then
+                    S = S(i+2:)
+                    i = index(S,')')
+                    if (i==0) then
+                        call this%Error('bad environment placeholder: '//InValue)
+                    end if
+                    res = res //GetEnvironmentVariable(S(:i-1))
+                end if
+            else
+                res = res // S(i:i)
+            end if
+            i = i + 1
+        end do
+    else
+        res = InValue
+    end if
+
+    end function Ini_ExpandEnvironment
 
     subroutine Ini_NameValue_AddLine(this,AInLine,only_if_undefined)
     class(TIniFile) :: this
@@ -331,7 +367,8 @@
     integer EqPos, slashpos, lastpos
     logical, optional, intent(in) :: only_if_undefined
     logical isDefault
-    character (LEN=len(AInLine)) :: AName, S, InLine
+    character (LEN=len(AInLine)) :: AName, InLine
+    character(LEN=:), allocatable ::  val
 
     isDefault = DefaultFalse(only_if_undefined)
 
@@ -340,20 +377,23 @@
     if (EqPos/=0 .and. InLine(1:1)/='#' .and. .not. StringStarts(InLine,'COMMENT')) then
         AName = trim(InLine(1:EqPos-1))
 
-        S = adjustl(InLine(EqPos+1:))
+        val = adjustl(InLine(EqPos+1:))
         if (this%SlashComments) then
-            slashpos=scan(S,'/')
+            slashpos=scan(val,'/')
             if (slashpos /= 0) then
-                S  = S(1:slashpos-1)
+                val  = val(1:slashpos-1)
             end if
         end if
-        lastpos=len_trim(S)
+        if (this%ExpandEnvironmentVariables) then
+            val = this%ExpandEnvironment(val)
+        end if
+        lastpos=len_trim(val)
         if (lastpos>1) then
-            if (S(1:1)=='''' .and. S(lastpos:lastpos)=='''') then
-                S = S(2:lastpos-1)
+            if (val(1:1)=='''' .and. val(lastpos:lastpos)=='''') then
+                val = val(2:lastpos-1)
             end if
         end if
-        call this%Add(AName, S,only_if_undefined = isDefault)
+        call this%Add(AName, val, only_if_undefined = isDefault)
     end if
 
     end subroutine Ini_NameValue_AddLine
@@ -463,13 +503,15 @@
     class(TIniFile) :: this
     integer, intent(IN) :: NumLines
     character (LEN=*), dimension(NumLines), intent(IN) :: Lines
-    logical, intent(IN) :: slash_comments
+    logical, intent(IN), optional :: slash_comments
     integer i
 
     call this%TNameValueList%Init()
     call this%ReadValues%Init(.true.)
 
-    this%SlashComments = slash_comments
+    if (present(slash_comments)) then
+        this%SlashComments = slash_comments
+    end if
 
     do i=1,NumLines
         call this%NameValue_AddLine(Lines(i))
@@ -712,7 +754,7 @@
             call this%Error('Wrong number of enumeration values', Key)
         end if
     end if
-    allocate(Enums(n), source= values(:n))
+    allocate(Enums, source= values(:n))
 
     end subroutine Ini_Read_Enumeration_List
 
