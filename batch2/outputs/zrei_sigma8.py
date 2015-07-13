@@ -29,5 +29,5 @@ fill_between([0, 6.5], one * 0.7, one * 1, facecolor=c, alpha=0.1, edgecolor=c, 
 # g.add_text(s.planckall, 0.96, 0.18, color='olive')
 # g.add_text(s.planckall + '+lensing', 0.96, 0.12, color='midnightblue')
 
-g.add_legend(legends, legend_loc='lower right', colored_text=True);
+g.add_legend(legends, legend_loc='lower right', colored_text=True)
 g.export()

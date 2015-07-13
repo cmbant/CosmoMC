@@ -11,6 +11,7 @@ ifortErr = $(shell which ifort >/dev/null; echo $$?)
 #these settings for ifort 14 and higher. Earlier versions will not work.
 ifeq "$(ifortErr)" "0"
 #ifort; Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
+
 F90C     = ifort
 #use this if mpif90 is trying to use gfortran: MPIF90C = mpif90 -f90=ifort
 
@@ -29,16 +30,28 @@ else
 FFLAGS += -xHost
 endif
 
+ifneq ($(NERSC_HOST),)
+#setting for Edison/Hopper on NERSC
+MPIF90C = ftn
+endif
+
 else
 #gfortran 5.0 and earlier will not work (many F2003 bugs)
 #gfortran 6 trunk should work, and perhaps GCC 5.2 when available; see virtual machines for up-to-date environments
 F90C = gfortran
-FFLAGS = -cpp -O3 -march=native -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4
+FFLAGS = -cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4
 DEBUGFLAGS = -cpp -g -fbounds-check -fbacktrace -ffree-line-length-none -fopenmp -fmax-errors=4 -ffpe-trap=invalid,overflow,zero
 MODOUT =  -J$(OUTPUT_DIR)
 #LAPACKL = -Wl,-framework -Wl,accelerate
 #commented above is (I think) for Mac; this is standard linux (sudo apt-get install liblapack-dev)
 LAPACKL = -lblas -llapack
+
+#march native does not work on Mac, otherwise use (comment out if your cluster is inhomogeneous)
+ifneq ($(shell uname -s),Darwin)
+#native optimization does not work on Mac
+FFLAGS+=-march=native
+endif
+
 endif
 
 #use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
@@ -52,13 +65,8 @@ PRECISION ?=
 #set WMAP empty not to compile with WMAP, e.g. WMAP = /scratch/../WMAP9/likelihood_v5
 WMAP ?=
 
-#set PICO=YES to build with pico support, or set path to PICO manually
 #e.g. PICO=/path/to/pypico
-PICO ?= $(shell python -c "import pypico; print pypico.get_folder()")
-ifeq ($(PICO),YES)
-override PICO =$(shell python -c "import pypico; print pypico.get_folder()")
-endif
-
+PICO ?= $(shell python -c "import pypico; print pypico.get_folder()" 2> /dev/null)
 
 #Needed for WMAP; set from ~/.bashrc definition or edit here
 cfitsio ?=

@@ -1,12 +1,15 @@
 import numpy as np
-from . import MCSamples, densities
+from getdist import mcsamples, densities
+import six
 
-def make2DCov(sigmax, sigmay, corr):
+
+def make_2D_Cov(sigmax, sigmay, corr):
     return np.array([[sigmax ** 2, sigmax * sigmay * corr], [sigmax * sigmay * corr, sigmay ** 2]])
+
 
 class MixtureND(object):
     """
-    Gaussian mixture model in with optional boundary ranges
+    Gaussian mixture model with optional boundary ranges
     """
 
     def __init__(self, means, covs, weights=None, lims=None, names=None, label=''):
@@ -24,14 +27,14 @@ class MixtureND(object):
         self.total_mean = np.atleast_1d(np.dot(self.weights, self.means))
         self.total_cov = np.zeros((self.dim, self.dim))
         for mean, cov, weight, totmean in zip(self.means, self.covs, self.weights, self.total_mean):
-                self.total_cov += weight * (cov + np.outer(mean - totmean, mean - totmean))
+            self.total_cov += weight * (cov + np.outer(mean - totmean, mean - totmean))
 
     def sim(self, size):
         tot = 0
         res = []
         block = None
         while True:
-            for i, (num, mean, cov) in enumerate(zip(np.random.multinomial(block or size, self.weights), self.means, self.covs)):
+            for num, mean, cov in zip(np.random.multinomial(block or size, self.weights), self.means, self.covs):
                 if num > 0:
                     v = np.random.multivariate_normal(mean, cov, size=num)
                     if self.lims is not None:
@@ -46,7 +49,7 @@ class MixtureND(object):
                 block = min(max(size, 100000), int(1.1 * (size * (size - tot))) // max(tot, 1) + 1)
         samples = np.vstack(res)
         if len(res) > 1: samples = np.random.permutation(samples)
-        if tot <> size:
+        if tot != size:
             samples = samples[:-(tot - size), :]
         return samples
 
@@ -57,8 +60,7 @@ class MixtureND(object):
             loglikes = -np.log(self.pdf(samples))
         else:
             loglikes = None
-        samps = MCSamples.MCSamples(samples=samples, loglikes=loglikes, names=names, ranges=self.lims, **kwargs)
-        return samps
+        return mcsamples.MCSamples(samples=samples, loglikes=loglikes, names=names, ranges=self.lims, **kwargs)
 
     def autoRanges(self, sigma_max=4, lims=None):
         res = []
@@ -79,9 +81,10 @@ class MixtureND(object):
 
     def pdf(self, x):
         """
-        Calcualte the PDF. Note this assumes x and y are within the boundaries (does not return zero outside)
+        Calculate the PDF. Note this assumes x and y are within the boundaries (does not return zero outside)
         Result is also only normalized if no boundaries
         """
+        tot = None
         for i, (mean, icov, weight, norm) in enumerate(zip(self.means, self.invcovs, self.weights, self.norms)):
             dx = x - mean
             res = np.exp(-np.einsum('ik,km,im->i', dx, icov, dx) / 2) / norm
@@ -92,8 +95,9 @@ class MixtureND(object):
         return tot
 
     def pdf_marged(self, index, x, no_limit_marge=False):
-        if isinstance(index, basestring): index = self.names.index(index)
+        if isinstance(index, six.string_types): index = self.names.index(index)
         if not no_limit_marge: self.checkNoLimits([index])
+        tot = None
         for i, (mean, cov, weight) in enumerate(zip(self.means, self.covs, self.weights)):
             dx = x - mean[index]
             var = cov[index, index]
@@ -105,7 +109,7 @@ class MixtureND(object):
         return tot
 
     def density1D(self, index=0, num_points=1024, sigma_max=4, no_limit_marge=False):
-        if isinstance(index, basestring): index = self.names.index(index)
+        if isinstance(index, six.string_types): index = self.names.index(index)
         if not no_limit_marge: self.checkNoLimits([index])
         mn, mx = self.autoRanges(sigma_max)[index]
         x = np.linspace(mn, mx, num_points)
@@ -115,7 +119,7 @@ class MixtureND(object):
     def marginalizedMixture(self, params, label=None, no_limit_marge=False):
         indices = []
         for p in params:
-            if isinstance(p, basestring):
+            if isinstance(p, six.string_types):
                 indices.append(self.names.index(p))
             else:
                 indices.append(p)
@@ -132,19 +136,21 @@ class MixtureND(object):
         if label is None: label = self.label
         covs = [cov[np.ix_(indices, indices)] for cov in self.covs]
         return MixtureND(self.means[indices], covs, self.weights, lims=lims,
-                           names=names, label=label)
+                         names=names, label=label)
 
     def checkNoLimits(self, keep_params):
         if self.lims is None: return
         for i, lim in enumerate(self.lims):
             if not i in keep_params and (lim[0] is not None or lim[1] is not None):
-                raise Exception('In general can only marginalize analytically if no hard boundary limits: ' + self.label)
+                raise Exception(
+                    'In general can only marginalize analytically if no hard boundary limits: ' + self.label)
 
 
 class Mixture2D(MixtureND):
     """
     Simulate from Gaussian mixture model in 2D with optional boundaries for fixed x and y ranges
     """
+
     def __init__(self, means, covs, weights=None, lims=None, names=['x', 'y'],
                  xmin=None, xmax=None, ymin=None, ymax=None, **kwargs):
         if lims is not None:
@@ -154,7 +160,7 @@ class Mixture2D(MixtureND):
         mats = []
         for cov in covs:
             if isinstance(cov, (list, tuple)) and len(cov) == 3:
-                mats.append(make2DCov(*cov))
+                mats.append(make_2D_Cov(*cov))
             else:
                 mats.append(cov)
         MixtureND.__init__(self, means, mats, weights, limits, names=names, **kwargs)
@@ -164,7 +170,7 @@ class Mixture2D(MixtureND):
         xmax = xmax if xmax is not None else lims[0][1]
         ymin = ymin if ymin is not None else lims[1][0]
         ymax = ymax if ymax is not None else lims[1][1]
-        return  [(xmin, xmax), (ymin, ymax)]
+        return [(xmin, xmax), (ymin, ymax)]
 
     def density2D(self, num_points=1024, xmin=None, xmax=None, ymin=None, ymax=None, sigma_max=5):
         lims = self._updateLimits(self.lims, xmin, xmax, ymin, ymax)
@@ -177,10 +183,11 @@ class Mixture2D(MixtureND):
 
     def pdf(self, x, y=None):
         """
-        Calcualte the PDF. Note this assumes x and y are within the boundaries (does not return zero outside)
+        Calculate the PDF. Note this assumes x and y are within the boundaries (does not return zero outside)
         Result is also only normalized if no boundaries
         """
         if y is None: return super(Mixture2D, self).pdf(x)
+        tot = None
         for i, (mean, icov, weight, norm) in enumerate(zip(self.means, self.invcovs, self.weights, self.norms)):
             dx = x - mean[0]
             dy = y - mean[1]
@@ -191,15 +198,17 @@ class Mixture2D(MixtureND):
                 tot += res * weight
         return tot
 
-class Gaussian2D(Mixture2D):
 
+class Gaussian2D(Mixture2D):
     def __init__(self, mean, cov, **kwargs):
         super(Gaussian2D, self).__init__([mean], [cov], **kwargs)
+
 
 class Mixture1D(MixtureND):
     """
     Simulate from Gaussian mixture model in 1D with optional boundaries for fixed ranges
     """
+
     def __init__(self, means, sigmas, weights=None, lims=None, name='x',
                  xmin=None, xmax=None, **kwargs):
         if lims is not None:
@@ -217,3 +226,30 @@ class Mixture1D(MixtureND):
 class Gaussian1D(Mixture1D):
     def __init__(self, mean, sigma, **kwargs):
         super(Gaussian1D, self).__init__([mean], [sigma], **kwargs)
+
+
+class RandomTestMixtureND(MixtureND):
+    """
+    class for randomly generating an N-D gaussian for testing
+    """
+
+    def __init__(self, ndim=4, ncomponent=1, names=None, weights=None, seed=0, label='RandomMixture'):
+        if seed: np.random.seed(seed)
+        covs = []
+        for _ in range(ncomponent):
+            A = np.random.rand(ndim, ndim)
+            covs.append(np.dot(A, A.T))
+        super(RandomTestMixtureND, self).__init__(np.random.rand(ncomponent, ndim), covs, weights=weights,
+                                                  lims=None, names=names, label=label)
+
+
+def randomTestMCSamples(ndim=4, ncomponent=1, nsamp=10009, nMCSamples=1, seed=10, names=None, labels=None):
+    """
+    get a list of MCSamples instances with random samples from random covariances and means
+    """
+    if seed: np.random.seed(seed)
+    if names is None: names = ["x%s" % i for i in range(ndim)]
+    if labels is None: labels = ["x_{%s}" % i for i in range(ndim)]
+    return [RandomTestMixtureND(ndim, ncomponent, names).MCSamples(nsamp, labels=labels,
+                                                                   name_tag='Sim %s' % (i + 1)) for i in
+            range(nMCSamples)]

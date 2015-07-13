@@ -1,8 +1,20 @@
 import os
 
+
 class ParamBounds(object):
+    """
+    Class for holding list of parameter bounds (e.g. for plotting, or hard priors). 
+    A limit is None if not specified, denoted by 'N' if read from a string or file
+
+    :ivar names: list of parameter names
+    :ivar lower: dict of lower limits, indexed by parameter name
+    :ivar upper: dict of upper limits, indexed by parameter name
+    """
 
     def __init__(self, fileName=None):
+        """
+        :param fileName: optional file name to read from
+        """
         self.names = []
         self.lower = {}
         self.upper = {}
@@ -12,7 +24,7 @@ class ParamBounds(object):
         self.filenameLoadedFrom = os.path.split(fileName)[1]
         with open(fileName) as f:
             for line in f:
-                strings = [text.strip() for text in  line.split()]
+                strings = [text.strip() for text in line.split()]
                 if len(strings) == 3:
                     self.setRange(strings[0], strings[1:])
 
@@ -33,17 +45,29 @@ class ParamBounds(object):
         return s
 
     def saveToFile(self, fileName):
+        """
+        Save to a plain text file
+
+        :param fileName: file name to save to
+        """
         with open(fileName, 'w') as f:
             f.write(str(self))
 
     def setRange(self, name, strings):
-        if strings[0] <> 'N' and strings[0] is not None: self.lower[name] = float(strings[0])
-        if strings[1] <> 'N' and strings[1] is not None: self.upper[name] = float(strings[1])
+        if strings[0] != 'N' and strings[0] is not None: self.lower[name] = float(strings[0])
+        if strings[1] != 'N' and strings[1] is not None: self.upper[name] = float(strings[1])
         if not name in self.names: self.names.append(name)
 
     def getUpper(self, name):
+        """
+        :param name: parameter name
+        :return: upper limit, or None if not specified
+        """
         return self.upper.get(name, None)
 
     def getLower(self, name):
+        """
+        :param name: parameter name
+        :return: lower limit, or None if not specified
+        """
         return self.lower.get(name, None)
-

@@ -2,14 +2,11 @@
 # Use in cosmomc .ini file using e.g.
 # cmb_dataset[MyForecast]=data/MyForecast/test_lensedCls_exactsim.dataset
 
+from __future__ import absolute_import
 import shutil
 import os
-
 import numpy as np
-
-from getdist import inifile
-
-
+from getdist import IniFile
 
 # Edit parameters you want to change here
 
@@ -35,7 +32,7 @@ fsky = 0.57
 
 
 # os.path.dirname(sys.path[0])+'/data/'
-ini = inifile.IniFile()
+ini = IniFile()
 dataset = ini.params
 
 # change this if you don't want to use all pol
@@ -54,7 +51,7 @@ NoiseOut = []
 # d = loadtxt(lensedTotClFileRoot)
 # SN = 0
 for l in range(lmax + 1):
-    NoiseCl = l * (l + 1) / 2 / np.pi * NoiseVar * np.exp(l * (l + 1) * sigma2)
+    NoiseCl = l * (l + 1.) / 2 / np.pi * NoiseVar * np.exp(l * (l + 1) * sigma2)
     NoiseOut.append([NoiseCl, ENoiseFac * NoiseCl, ENoiseFac * NoiseCl])
 #    if (l >= 2): SN += (2 * l + 1) * fsky * (d[l - 2, 1] / (NoiseCl + d[l - 2, 1])) ** 2
 # print 'Number of modes: ', SN

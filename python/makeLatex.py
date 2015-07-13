@@ -1,14 +1,15 @@
-
+from __future__ import absolute_import
+from __future__ import print_function
 import os
-from getdist import ResultObjs
+from getdist import types
 
 def margeParamTex(rootname, params=None, limit=1, paramNameFile=None):
-    """ Get tex snipped for constraint on parameters in params """
+    """ Get tex snippet for constraint on parameters in params """
     if not '.margestats' in rootname: rootname += '.margestats'
-    marge = ResultObjs.margeStats(rootname , paramNameFile)
+    marge = types.MargeStats(rootname, paramNameFile)
     if not params: params = marge.list()
 
-    formatter = ResultObjs.noLineTableFormatter()
+    formatter = types.NoLineTableFormatter()
     texs = []
     labels = []
     for par in params:
@@ -34,7 +35,6 @@ def makeSnippetFiles(outdir, rootname, params, texs, tag=None):
 
 if __name__ == "__main__":
     import argparse
-#    import batchJobArgs
 
     parser = argparse.ArgumentParser(description='make latex constraints for specific .margestats file')
     parser.add_argument('rootname', help='rootname.margestats should be the file you want to convert')
@@ -56,10 +56,10 @@ if __name__ == "__main__":
         for label, value in zip(labels, texs):
             if args.tabular:
                 if value != '---':
-                    print("$ {0:<33}$ & $ {1:<33}$\\\\".format(label, value))
+                    print(("$ {0:<33}$ & $ {1:<33}$\\\\".format(label, value)))
                 else:
-                    print("$ {0:<33}$ &   {1:<33} \\\\".format(label, value))
+                    print(("$ {0:<33}$ &   {1:<33} \\\\".format(label, value)))
             else:
-                print("{0:<33} {1:}".format(label, value))
+                print(("{0:<33} {1:}".format(label, value)))
 
 

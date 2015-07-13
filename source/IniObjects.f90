@@ -80,6 +80,7 @@
     procedure :: Key_To_Arraykey => Ini_Key_To_Arraykey
     procedure :: EnumerationValue => Ini_EnumerationValue
     procedure :: ResolveLinkedFile => Ini_ResolveLinkedFile
+    procedure :: ExpandEnvironment => Ini_ExpandEnvironment
     procedure, private :: NameValue_AddLine => Ini_NameValue_AddLine
     procedure, private :: EmptyCheckDefault => Ini_EmptyCheckDefault
     procedure, private :: Ini_Read_Real_Change
@@ -324,12 +325,46 @@
 
     end subroutine Ini_EmptyCheckDefault
 
+    function Ini_ExpandEnvironment(this, InValue) result(res)
+    !expand $(PLACEHOLDER) with environment variables, as Makefile
+    class(TIniFile) :: this
+    character(LEN=:), allocatable, intent(in) :: InValue
+    character(LEN=:), allocatable :: res, S
+    integer i
 
+    i = index(InValue,'$(')
+    if (i > 0) then
+        res = InValue(:i-1)
+        S = InValue(i:)
+        i=1
+        do while (i <= len(S))
+            if (S(i:i)=='$') then
+                if (S(i+1:i+1)=='$') then
+                    res = res // '$'
+                    i = i + 1
+                else if (S(i+1:i+1)=='(') then
+                    S = S(i+2:)
+                    i = index(S,')')
+                    if (i==0) then
+                        call this%Error('bad environment placeholder: '//InValue)
+                    end if
+                    res = res //GetEnvironmentVariable(S(:i-1))
+                end if
+            else
+                res = res // S(i:i)
+            end if
+            i = i + 1
+        end do
+    else
+        res = InValue
+    end if
+
+    end function Ini_ExpandEnvironment
 
     subroutine Ini_NameValue_AddLine(this,AInLine,only_if_undefined)
     class(TIniFile) :: this
     character (LEN=*), intent(IN) :: AInLine
-    integer EqPos, slashpos, lastpos, EndPos
+    integer EqPos, slashpos, lastpos
     logical, optional, intent(in) :: only_if_undefined
     logical isDefault
     character (LEN=len(AInLine)) :: AName, InLine
@@ -350,13 +385,7 @@
             end if
         end if
         if (this%ExpandEnvironmentVariables) then
-            EqPos = index(val,'$(')
-            if (EqPos > 0) then
-                EndPos = index(val,')',back=.true.)
-                if (EndPos > EqPos) then
-                    val = val(1:EqPos-1)//GetEnvironmentVariable(val(EqPos+2:EndPos-1))//val(EndPos+1:)
-                end if
-            end if
+            val = this%ExpandEnvironment(val)
         end if
         lastpos=len_trim(val)
         if (lastpos>1) then
@@ -474,13 +503,15 @@
     class(TIniFile) :: this
     integer, intent(IN) :: NumLines
     character (LEN=*), dimension(NumLines), intent(IN) :: Lines
-    logical, intent(IN) :: slash_comments
+    logical, intent(IN), optional :: slash_comments
     integer i
 
     call this%TNameValueList%Init()
     call this%ReadValues%Init(.true.)
 
-    this%SlashComments = slash_comments
+    if (present(slash_comments)) then
+        this%SlashComments = slash_comments
+    end if
 
     do i=1,NumLines
         call this%NameValue_AddLine(Lines(i))

@@ -1,30 +1,33 @@
-import getdist.plots as plots
-import pylab as plt
 
+from __future__ import print_function
+import getdist.plots as plots
+import matplotlib.pyplot as plt
 import numpy as np
-from getdist.gaussianMixtures import Mixture2D, Mixture1D, Gaussian1D, Gaussian2D, make2DCov
+from getdist.gaussian_mixtures import Mixture2D, Mixture1D, Gaussian1D, Gaussian2D, make_2D_Cov
 
 default_nsamp = 10000
 
 
 def simFiles(prob, file_root, sample_lengths=[1000, 2000, 5000, 10000, 20000, 50000, 100000], text=True):
     for nn in sample_lengths:
-        mcsamples = prob.MCSamples(nn, logLikes=True)
+        samples = prob.MCSamples(nn, logLikes=True)
         if text:
-            mcsamples.saveAsText(file_root + '_' + str(nn))
+            samples.saveAsText(file_root + '_' + str(nn))
         else:
-            mcsamples.savePickle(file_root + '.py_mcsamples')
+            samples.savePickle(file_root + '.py_mcsamples')
 
-def compareSimPlot2D(g, mcsamples, density, pars=['x', 'y'], subplot_size=3):
-    g.plot_2d(mcsamples, pars)
+
+def compareSimPlot2D(g, samples, density, pars=['x', 'y']):
+    g.plot_2d(samples, pars)
     density.normalize('max')
     levels = density.getContourLevels(contours=[0.68, 0.95])
     g.add_2d_density_contours(density, filled=False, color='red', contour_levels=levels)
     levels = density.getContourLevels(contours=[0.2, 0.4, 0.6, 0.8])
     g.add_2d_density_contours(density, filled=False, color='magenta', alpha=0.5, contour_levels=levels)
 
-def compareSimPlot(g, mcsamples, density, par='x'):
-    g.plot_1d(mcsamples, par)
+
+def compareSimPlot(g, samples, density, par='x'):
+    g.plot_1d(samples, par)
     density.normalize('max')
     plt.plot(density.x, density.P, color='r')
 
@@ -45,7 +48,7 @@ def compare1D(g, probs, nsamp=default_nsamp, settings={}):
 
     g.make_figure(len(probs))
     for i, (samps, prob) in enumerate(zip(samples, probs)):
-        g.subplot_number(i)
+        g._subplot_number(i)
         compareSimPlot(g, samps, prob.density1D())
         g.add_text_left(prob.label, y=0.95)
     plt.subplots_adjust()
@@ -58,7 +61,7 @@ def compare2D(g, probs, nsamp=default_nsamp, settings={}):
 
     g.make_figure(len(probs))
     for i, (samps, prob) in enumerate(zip(samples, probs)):
-        g.subplot_number(i)
+        g._subplot_number(i)
         compareSimPlot2D(g, samps, prob.density2D())
         g.add_text_left(prob.label, y=0.95)
     plt.subplots_adjust()
@@ -80,7 +83,7 @@ def get2DMises(prob, nsamp=default_nsamp, nsim=20, scales=np.arange(0.6, 1.5, 0.
     return scales, Mises
 
 
-def get1DMises(prob, nsamp=default_nsamp, nsim=50, scales=np.arange(0.6, 1.5, 0.1), settings={}):
+def get1DMises(prob, nsamp=default_nsamp, nsim=50, scales=[0.6, 1.5, 0.1], settings={}):
     Mises = np.zeros(np.asarray(scales).size)
     for _ in range(nsim):
         samps = prob.MCSamples(nsamp, settings=settings)
@@ -129,10 +132,10 @@ class Test2DDistributions(object):
 
         self.hammer = Mixture2D([[0, 0], [1, 1.8]], [(np.sqrt(0.5), 1, 0.9), (0.3, 1, -0.7)], [0.5, 0.5], label='hammer')
 
-        cov = make2DCov(np.sqrt(0.5), 1, 0.1)
+        cov = make_2D_Cov(np.sqrt(0.5), 1, 0.1)
         self.skew = Mixture2D([[0, 0], [0, 1.2]], [cov, cov / 4], [0.5, 0.5], label='skew')
 
-        cov = make2DCov(np.sqrt(0.5), 1, 0.1)
+        cov = make_2D_Cov(np.sqrt(0.5), 1, 0.1)
         self.broadtail = Mixture2D([[0, 0], [0, 0.2]], [cov, cov * 8], [0.9, 0.1], label='broad tail')
 
         self.tensorlike = Mixture2D([[0, 0.03], [0, 0.03]], [(0.03, 0.03, 0.1), (0.03, 0.06, 0.1)], [0.85, 0.15], ymin=0, label='tensor like')
@@ -180,7 +183,7 @@ class Test2DDistributions(object):
 def plot_compare_method(ax, prob, colors=['k'], sims=100, nsamp=default_nsamp,
                        scalings=[0.3, 0.5, 0.7, 0.9, 1, 1.1, 1.3, 1.5], test_settings=[None], linestyles=['-']):
     # compare Parzen estimator with higher order
-    print prob.label, ', size = ', nsamp
+    print(prob.label, ', size = ', nsamp)
     if len(colors) == 1: colors = colors * len(scalings)
     if len(linestyles) == 1: linestyles = linestyles * len(scalings)
     miselist = np.empty((len(scalings), len(test_settings)))
@@ -192,7 +195,7 @@ def plot_compare_method(ax, prob, colors=['k'], sims=100, nsamp=default_nsamp,
         ax.plot(scales, MISEs, ls=ls, color=color)
         miselist[:, i] = MISEs
     for i, scale in enumerate(scalings):
-        print scale, miselist[i, :]
+        print(scale, miselist[i, :])
     ax.set_yscale('log')
     ax.set_xlim([scalings[0], scalings[-1]])
 #    ax.set_yticks(ax.get_yticks()[1:-1])
@@ -205,10 +208,10 @@ def plot_compare_probs_methods(ax, probs, colors=['b', 'r', 'k', 'm', 'c'], **kw
 def compare_method_nsims(g, probs, sizes=[1000, 10000], **kwargs):
     g.make_figure(len(sizes))
     for i, size in enumerate(sizes):
-        ax = g.subplot_number(i)
+        ax = g._subplot_number(i)
         plot_compare_probs_methods(ax, probs, nsmap=size, **kwargs)
 
-def compare_method(g, probs, nx=2, fname='', **kwargs):
+def compare_method(probs, nx=2, fname='', **kwargs):
     ny = (len(probs) - 1) // nx + 1
     fig, axs = plt.subplots(ny, nx, sharex=True, sharey=True, squeeze=False , figsize=(nx * 3, ny * 3))
     for i, prob in enumerate(probs):
@@ -239,8 +242,7 @@ def join_subplots(ax_array):
     plt.tight_layout(0, 0, 0)
 
 
-if __name__ == "__main__":
-    # simFiles(Test2DDistributions().trimodal[0], 'z://test_pickled', text=True)
+def testProgram():
     import time
     import argparse
 
@@ -259,25 +261,25 @@ if __name__ == "__main__":
     g = plots.getSubplotPlotter(subplot_size=2)
 
     if 'ISE_1D' in args.plots:
-        compare_method(g, test1D.distributions(), nx=3,
+        compare_method(test1D.distributions(), nx=3,
                       test_settings=[ {'mult_bias_correction_order':1, 'boundary_correction_order':1},
                          {'mult_bias_correction_order':2, 'boundary_correction_order':1},
-                        # {'mult_bias_correction_order':1, 'boundary_correction_order':0},
                          {'mult_bias_correction_order':0, 'boundary_correction_order':0},
                          {'mult_bias_correction_order':0, 'boundary_correction_order':1},
                          {'mult_bias_correction_order':0, 'boundary_correction_order':2},
-                         ], colors=['k', 'b', 'r', 'm', 'c', 'g'], linestyles=['-', '-', ':', '-.', '--'], fname='compare_method_1d_N%s.pdf' % (args.nsamp),
+                         ], colors=['k', 'b', 'r', 'm', 'c', 'g'], linestyles=['-', '-', ':', '-.', '--'],
+                      fname='compare_method_1d_N%s.pdf' % args.nsamp,
                        sims=args.sims, nsamp=args.nsamp
                        )
 
     if 'ISE_2D' in args.plots:
-        compare_method(g, test2D.distributions(), nx=4,
+        compare_method(test2D.distributions(), nx=4,
                       test_settings=[ {'mult_bias_correction_order':1, 'boundary_correction_order':1},
                          {'mult_bias_correction_order':2, 'boundary_correction_order':1},
-                        # {'mult_bias_correction_order':1, 'boundary_correction_order':0},
                          {'mult_bias_correction_order':0, 'boundary_correction_order':0},
                          {'mult_bias_correction_order':0, 'boundary_correction_order':1},
-                         ], colors=['k', 'b', 'r', 'm', 'c', 'g'], linestyles=['-', '-', ':', '-.', '--'], fname='compare_method_2d_N%s.pdf' % (args.nsamp),
+                         ], colors=['k', 'b', 'r', 'm', 'c', 'g'], linestyles=['-', '-', ':', '-.', '--'],
+                      fname='compare_method_2d_N%s.pdf' % args.nsamp,
                        sims=args.sims, nsamp=args.nsamp
                        )
 
@@ -285,7 +287,7 @@ if __name__ == "__main__":
         g.newPlot()
         start = time.time()
         compare1D(g, test1D.distributions(), nsamp=args.nsamp, settings=test_settings)
-        print '1D timing:', time.time() - start
+        print('1D timing:', time.time() - start)
         join_subplots(g.subplots)
         plt.savefig('test_dists_1D_mbc%s_bco%s_N%s.pdf' % (args.mbc, args.bco, args.nsamp), bbox_inches='tight')
 
@@ -293,7 +295,7 @@ if __name__ == "__main__":
         g.newPlot()
         start = time.time()
         compare2D(g, test2D.distributions(), nsamp=args.nsamp, settings=test_settings)
-        print '2D timing:', time.time() - start
+        print('2D timing:', time.time() - start)
         join_subplots(g.subplots)
         plt.savefig('test_dists_2D_mbc%s_bco%s_N%s.pdf' % (args.mbc, args.bco, args.nsamp), bbox_inches='tight')
 
@@ -302,8 +304,12 @@ if __name__ == "__main__":
         print('testing 1D gaussian MISE...')
         scales, MISEs = get1DMises(test1D.gauss)
         for scale, MISE in zip(scales, MISEs):
-            print scale, MISE, np.sqrt(MISE)
+            print(scale, MISE, np.sqrt(MISE))
         print('testing 2D gaussian MISE...')
         scales, MISEs = get2DMises(test2D.gauss)
         for scale, MISE in zip(scales, MISEs):
-            print scale, MISE, np.sqrt(MISE)
+            print(scale, MISE, np.sqrt(MISE))
+
+
+if __name__ == "__main__":
+    testProgram()

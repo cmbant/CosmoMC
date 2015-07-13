@@ -43,7 +43,6 @@ export I_MPI_CPUINFO=proc
 ##RUN: time mpirun --ppn ##MPIPERNODE## -np ##NUMMPI## ##PROGRAM## ##INI## > ./scripts/##INIBASE##.log 2>&1 ##
 ### defaults for this script
 ##DEFAULT_qsub: qsub ##
-##DEFAULT_coresPerNode: 16 ##
 
 ##COMMAND##
 

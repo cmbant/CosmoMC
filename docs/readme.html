@@ -8,7 +8,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>May 2015</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>July 2015</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -66,43 +66,47 @@ learn the proposal matrix from the covariance of the post-burn-in samples so far
 <p>There are two programs supplied <B>cosmomc</B> and <B>getdist</B>. The first is a compiled Fortran code
 does the actual Monte-Carlo and produces sets of .txt chain files and (optionally) .data output
 files (the binary .data files include the theoretical CMB power spectra
-etc.). The "getdist" program analyses the .txt files calculating statistics
+etc.).  The "cosmomc" program can also do post processing on .data files, for example doing importance
+sampling with new data. The "getdist" program analyses the .txt files calculating statistics
 and outputs files for the requested 1D, 2D and 3D plots (and could be used independently of the main cosmomc program), and there are Fortran and python versions.
-The Python version is is the most up to date, and output is not the same as the fortran version (which is mainly provided for backwards checking and reproducing Planck results).  The "cosmomc" program also does post processing on .data files, for example doing importance
+The Python version is is the most up to date, and output is not the same as the fortran version (which is mainly provided for backwards checking and reproducing Planck results). GetDist is included with CosmoMC, but can be also run quite separately from the standalone <A HREF="https://pypi.python.org/pypi/GetDist/">python package</A>. The "cosmomc" program also does post processing on .data files, for example doing importance
 sampling with new data.
 <P>
 Please e-mail details of any bugs or enhancements to <a href="http://cosmologist.info/">Antony Lewis</a>. If you have any questions please ask in the <A HREF="http://cosmocoffee.info">CosmoCoffee</A> computers and software forum. You can also read answers to other people's questions there.
 
 
+
 <A NAME="Compiling"><h2  style ="color:darkred">Downloading and Compiling</h2></A>
-To run CosmoMC you will need a Fortran 2003 (or higher) compiler - Intel Fortran 14 or higher works (earlier versions will not). 
-The latest gfortran (part of GCC 6) source also works, but the currently released versions do not. 
-If you just want to analyse chains and run plots, you only need python 2.7+ (see <A HREF="#Analysing">plotting</A> below).
-
-Two options:
+To run compile and run CosmoMC you will need a Fortran 2008 compiler. Various options include
 <UL>
-<LI>Use CosmoMC (and CAMB) in the pre-configured virtual machine <A HREF="http://cosmologist.info/CosmoBox">CosmoBox</A>. This is good for development and debugging or if you have problems with compilers etc on your local system. There are both desktop virtual machine images and Amazon AWS images that can be used for running clusters in the cloud.
-<LI>
-Download and install yourself:
+<LI>Intel Fortran 14 or higher (earlier versions will not work). This is usually installed on supercomputers.
+<LI>The latest gfortran (part of GCC 6) compiled from source  (currently released versions do not work).
+<LI>A pre-configured virtual development environment, available from <A HREF="http://cosmologist.info/CosmoBox">CosmoBox</A>. <br>
+<i>This is good for consistent development and debugging, and ensures required libraries are also available. There are both desktop virtual machine (and Docker) images, and an Amazon AWS image that can be used for running clusters in the cloud.</i>
+</UL>
+If you just want to analyse chains and run plots, you only need python 2.7+ or 3.4+ (see <A HREF="#Analysing">plotting</A> below).
+<P>
+You then need to download and install the program:
 <ul>
-<li>
-Get the <a href="http://cosmologist.info/cosmomc/submit.html">download</a>
-and unzip and untar it (run "gunzip cosmomc.tar.gz", then "tar -xf cosmomc.tar")</li>
-</ul>
-</ul>
-Compiling and running:
-<ul>
-<LI>To use Planck you need to download and install the Planck likelihood code and data. See the <A HREF="readme_planck.html">Planck readme</A> before continuing.
-<li>
-Run "make"  (try "gmake" if you get an error)</li>
-<LI>
-The Makefiles used by "make" should detect ifort and gfortran, but if necessary edit the relevant top parts of the Makefile in the source directory depending on what system you are using
-<blockquote><FONT SIZE=2>Using MPI simplifies running several chains and proposal optimization. MPI can be used with OpenMP: generally you want to use OpenMP to use all the shared-memory processors on each node of a cluster, and MPI to run multiple chains on different nodes (the program can also just be run on a single CPU).
-</FONT></blockquote>
-
+<li>Get the <a href="http://cosmologist.info/cosmomc/submit.html">download</a> (or clone from git)
+<li>Extract the files with
+<pre>
+tar xvf cosmomc.tar.gz
+</pre>
+<li>Change to the cosmomc directory and run "make"
+<br>
+<i>To use Planck data you need to download and install the Planck likelihood code and data first. See the <A HREF="readme_planck.html">Planck readme</A>.
+The Makefiles used by "make" should detect ifort and gfortran, but if necessary edit the relevant top parts of the Makefile in the source directory depending on what system you are using.</i>
 <li>To output chains you might want to make a <b>chains</b> subdirectory, or (perhaps better) symlink to somewhere on your data disk.
-<LI>
-Using Visual Fortran there's no need to use the Makefile, just open the project file in the source folder, and set params.ini as the program argument. This is not set up to compile with MPI, so mainly useful for development.
+</ul>
+
+By default the build uses MPI. Using MPI simplifies running several chains and proposal optimization. MPI can be used with OpenMP for parallelization of each chain. Generally you want to use OpenMP to use all the shared-memory processors on each node of a cluster, and MPI to run multiple chains on different nodes (the program can also just be run on a single CPU).
+<p>
+For code editing some project files are available for standard development environments:
+<ul>
+<LI>A CodeBlocks project file is provided (cosmomc.cbp), which can also be used to run and debug from the cross-platform <A hREF="http://darmar.vgtu.lt/">CodeBlocks IDE</A>.
+<LI>On Windows using Visual Fortran, open the solution file in the VisualStudio folder.<br>
+  <i>Set test.ini (or your .ini file) as the program argument. This is not set up to compile with MPI, so mainly useful for development. Visual Fortran does not use the provided Makefiles, but works out dependencies automatically (and has much better debugging support than gdb with CodeBlocks).</i>
 </ul><P>
 <P>
 See <A HREF="http://cosmologist.info/cosmomc/cosmomc.bib">BibTex file</A> for relevant citations.
@@ -140,7 +144,7 @@ There is also a supplied script python/runMPI.py that you may be able to adapt f
   <B>python python/runMPI.py params</B>
 </BLOCKQUOTE>
  to run using the params.ini parameters file. Run runMPI.py without arguments to see a list of options (number of chains, cores, wall time, etc).
- You will probably need to set up a job script template file for your computer cluster (a couple of samples are supplied). See <A HREF="#jobscript">Configuring job settings for your machine</A>.
+ You will probably need to set up a job script template file for your computer cluster (a couple of samples are supplied). See <A HREF="#jobscript">Configuring job settings for your machine</A>. If you want to run batches of chains with different parameter or data combinations, see the help file on setting up <A HREF="./readme_grids.html">parameter grids</A>.
  <BR><BR>
  In the parameters file you can set <B>MPI_Converge_Stop</B> to a convergence criterion (see <A HREF="#Convergence">Convergence Diagnostics</A>. Small numbers are better convergence; generally need R-1 < 0.1, but may want much smaller especially for importance sampling or accurate confidence limits. You can also directly impose an error limit on confidence values - see the parameter input file for details). If you set <B>MPI_LearnPropose</B> = T, the proposal density will be updated using the covariance matrix of the last half of all samples (across chains) so far. <BR><BR>
 Using MPI_LearnPropose will significantly improve performance if you are adding new parameters for which you don't have a pre-computed covariance matrix. However adjusting the proposal density is not strictly Markovian, though asymptotically it is as the covariance will converge. The burn in period should therefore be taken to be larger when learning the proposal density to allow for the time it takes the covariance matrix to converge sufficiently (though in practice it probably doesn't matter much in most cases). Note also that as the proposal density changes the number of steps between independent samples is not constant (i.e. the correlation length should decrease along the chain until the covariance has converged). The stopping criterion uses the last half of the samples in each chain, minus a (shortish) initial burn in period. If you don't have a starting covariance matrix a fairly safe thing to do is set <B>ignore_rows=0.3</B> in the <A HREF="#Analysing">GetDist</A> parameter file to skip the first chunk of each chain. <BR><BR>
@@ -279,7 +283,7 @@ export COSMOMC_queue=default_queue
 export COSMOMC_walltime=24:00:00
 </pre>
 </UL>
-If necessary you can also edit the <b>submitJob</b> function in <b>python/jobQueue.py</b>, but most things can be configured via the template and .bashrc settings.
+If necessary you can also edit the <b>submitJob</b> function in <b>python/paramgrid/jobqueue.py</b>, but most things can be configured via the template and .bashrc settings.
 You can change the number of chains, nodes, walltime etc when submitting a job by using optional parameters to runMPI.py and runbatch.py: see <b>-h</b> help for available options.
 </P>
 
@@ -287,38 +291,79 @@ You can change the number of chains, nodes, walltime etc when submitting a job b
 <A NAME="Analysing"><h2 style ="color:darkred">Analysing samples and plotting</h2></A>
 There are now several ways you can analyse chain results:
 <UL>
-<LI>Using the <b>getdist</b> program, compiled with Fortran
-<LI>Using the <b>python/GetDist.py</b> python equivalent (which can be run without having a fortran compiler installed). Note that this currently does not produce all the convergence stats (and a few other things) of the Fortran program
-<LI>With the GetDist Gui interactive program, in <b>python/getdist/gui.py</b>.  See the <A HREF="readme_gui.html">GetDist Gui readme</A>.
-<LI>Programmatically, using the <A HREF="readme_python.html">python scripts</A>.
+<LI>Using the <b>python/GetDist.py</b> program (which can be run without having a fortran compiler installed).
+<LI>With the GetDist Gui interactive program, in <b>python/GetDistGUI.py</b>.  See the <A HREF="readme_gui.html">GetDist GUI readme</A>.
+<LI>Programmatically, using the python modules via <A HREF="readme_python.html">python scripts</A>.
+<LI>Using the <b>getdist</b> program, compiled with Fortran (used by Planck 2015 chains, but now deprecated)
 </UL>
-The <b>getdist</b> program analyses text chain files produced by the cosmomc program. These are in the format
+The <b>GetDist</b> programs analyses text chain files produced by the cosmomc program. These are a group of plain text files of the form
+<blockquote>
+<pre>
+xxx_1.txt
+xxx_2.txt
+...
+xxx.paramnames
+xxx.ranges
+</pre>
+</blockquote>
+
+where "xxx" is some root filename, the .txt files are separate chain files, xxx.paramnames gives the names (and optionally latex labels) for each parameter, and xxx.ranges optionally specified bounds for each (named) parameter. The chain .txt files are in the format
 <p>&nbsp;&nbsp;&nbsp; <i>weight like param1 param2 param3</i> ...
 <p>The <i>weight</i> gives the number of samples (or importance weight)
-with these parameters. <i>like</i> gives -log(likelihood). The getdist
-program and gui could be used completely independently of the cosmomc program.
+with these parameters. <i>like</i> gives -log(likelihood), and <i>param1, param2...</i> are the values of the parameters at each point.
 <P>
-Run <B>getdist distparams.ini</B> or <B>python python/GetDist.py distparams.ini</B>  to process the chains specified in the
-parameter input file distparams.ini. This should be fairly self-explanatory,
-in the same format as the cosmomc parameter input file. Note that the outputs from the python and fortran versions of getdist are not identical due to slightly different algorithms, but should be consistent to better than the sampling noise. Both can produce pre-computed densities for plotting (in plot_data directory), but the python plotting scripts do not require this (they are generated on demand) - output will be faster and make far fewer files if <b>no_plots=T</b>.
+The .paramnames file lists the names of the parameters, one per line, optionally followed by a latex label.
+Names cannot include spaces, and if they end in "*" they are interpreted as derived (rather than MCMC) parameters, e.g.
+<blockquote>
+<pre>
+x1   x_1
+y1   y_1
+x2   x_2
+xy*  x_1+y_1
+</pre>
+</blockquote>
+The .ranges file gives hard bounds for the parameters, e.g.
+<blockquote>
+<pre>
+x1  -5 5
+x2   0 N
+</pre>
+</blockquote>
+Note that not all parameters need to be specified, and "N" can be used to denote that a particular upper or lower limit is unbounded. The ranges are used to determine
+densities and plot bounds if there are samples near the boundary; if there are no samples anywhere near the boundary the ranges have no affect on plot bounds, which are chosen appropriately for the range of the samples.
+<P>
+The GetDist program, scripts and gui could be used completely independently of the CosmoMC program if you produce chains (or samples) in the same format
+(see the pip-installable <A HREF="https://pypi.python.org/pypi/GetDist/">python package</A>). If there is just one file of samples, you can also use xxx.txt without the _n number tag that's used to denote separate chains.
+<P>
+<H3>Running the GetDist program</H3>
+The GetDist program processes the chains and produces a set of output files giving marginalized constraints, convergence diagnostics, etc, and optionally some scripts for producing plots. This is convenient for bulk production of parameter constraints and first-look plotting; use the <A HREF="readme_python.html">python modules</A> in your own scripts if you need more fine-grained control.
+<p>
+Running using the python version
+<blockquote>
+<B>python python/GetDist.py [distparams.ini] [chains/chainroot]</B>
+</blockquote>
+or using compiled Fortran:
+<blockquote>
+<B>./getdist distparams.ini [chains/chainroot]</B>
+</blockquote>
+Here the parameter input file distparams.ini determines analysis parameters; in the python version this is optional, and if omitted defaults will be used. The chain root name to analyse can be given in the .ini file, or you can specify it as an optional parameter on the command line to quickly analyse different chains with the same settings. The parameter input file should be fairly self-explanatory,
+and is in the same format as the cosmomc parameter input file. To make a new .ini file you can edit to customize settings use
+<blockquote>
+<B>python python/GetDist.py --make_param_file myparams.ini</B>
+</blockquote>
+<p>
+Note that the outputs from the python and fortran versions of GetDist are not identical due to slightly different algorithms, but should usually be consistent to better than the sampling noise for parameter means and limits. Both can produce pre-computed densities for plotting (in the <B>plot_data_dir</b> directory), but the python plotting scripts do not require this - output will be faster and make far fewer files if <b>plot_data_dir</b> is not set.
 <P>
 
 <P>
 <A NAME="GetDistParams">
 <B><FONT COLOR="blue">GetDist Parameters</FONT></B>
 <UL>
-<LI>GetDist processes the <B>file_root</B>.txt file (or, if there are multiple chains,
-set the <b>chain_num</b> parameter), and outputs statistics, marginalized
+<LI>GetDist processes the <B>file_root</B>.txt file, and outputs statistics, marginalized
 plots, samples plots, and performs PCA (principle component analysis). <BR><BR>
-<LI>Set the <b>parameter_names</b> parameter to specify a .paramnames file with the names and labels for parameters corresponding to the various columns in the chain files (see the supplied examples). If this parameter is empty getdist reads the parameters from the file_root.paramnames file that is output when generating the chains. If neither exist parameters are referenced by number, so parameter labels have to be specified in the .ini file (lab1=\Omega_b h^2, etc.).
-<BR><BR>
 <LI>Set <b>ignore_rows</b> to a positive integer to ignore that number of output rows as burn-in, or to a fraction &lt;1 to skip that fraction of each chain's rows.
-<BR><BR><LI>
-Set the <b>thin_factor</b> parameter to produce a file_root_thin.txt file containing
-every <b>thin_factor</b>th sample.
-<BR><BR><LI>
-Set <b>adjust_priors</b> to adjust the
-sample multiplicities for a new prior (write the corresponding code in GetDist.f90).
+<BR><BR>
+<LI>Set the <b>parameter_names</b> parameter to specify a .paramnames file with the names and labels for parameters corresponding to the various columns in the chain files (see the supplied examples). If this parameter is empty getdist reads the parameters from the file_root.paramnames file that is output when generating the chains.
 <BR><BR><LI>
 If you have a derived parameter which has a prior which cuts off when the posterior is non-negligible
 you need to set the <b>limits[paramname]</b> variables to the corresponding limits
@@ -333,24 +378,23 @@ When limits[paramname] are used the .margestats file
 <table border=0 Cellpadding=20><TR><TD>
 <IMG SRC="http://cosmologist.info/cosmomc/pics/r_wrong.png"><BR>
 Incorrect result when <B>limits[r02]</B> is not set.</TD><TD> <IMG SRC="http://cosmologist.info/cosmomc/pics/r_correct.png"><BR>Correct result when setting <B>limits[r02]=0 N</B>.</TD></TR></table>
-If you are not using parameter names you can set numbered limit parameters, e.g. limits12=0 N for parameter 12.
 <P>
-<LI>You should check that you have set <B>num_bins</B> large enough and that your plots are stable to increasing it.
-The <B>smooth_scale_1D</b> and <B>smooth_scale_2D</B> parameters can be set to change the smoothing scale with respect to the bin size (or in the 1D case with respect to the posterior width).
+<LI>Various parameters determine how sample densities are computed (see the <A HREF="http://cosmologist.info/notes/GetDist.pdf">Kernel Density Estimation notes</A>).  The <B>smooth_scale_1D</b> and <B>smooth_scale_2D</B> parameters can be set to change the smoothing scale.
 For smooth_scale_1D:
 <UL>
 <LI>if smooth_scale_1D &gt;= 1 smooth by smooth_scale_1D bin widths
 <LI>if smooth_scale_1D&gt; 0  and &lt;1 smooth by Gaussian of smooth_scale_1D standard deviations in each parameter (around 0.2-0.3 is often good); this gets flat distributions nice and smooth without overly broadening well determined parameters
 <LI>if smooth_scale_1D&lt; 0 uses automatic smoothing length (changes with parameter)-the overall smoothing length is scaled by abs(smooth_scale_1D) from very crude guess at best overall scale
 </UL>
-For 2D plots smooth_scale_2D is the smoothing scale relative to the bin size
+The behaviour for smooth_scale_2D is similar. Usually the default <b>=-1</b> setting can be used, which choose smoothing automatically, but changing it can be a good way to enforce a smaller smoothing scale (for example if you have too few samples, the auto-scaling will make the smoothing relatively large, which can sometimes make the results somewhat artificially better than they really are).
 
 </BLOCKQUOTE>
 </UL>
 The .ini file comments should explain the other options.
 <P>
 <A NAME="GetDistOutput">
-<B><FONT COLOR="blue">Output Text Files</FONT></B>
+<B><FONT COLOR="blue">Output Text Files</FONT></B></br>
+These are all output by the GetDist program, and most can also be viewed on demand by using the menu options in the <A HREF="readme_gui.html">GetDist GUI</A>.
 <UL>
 <LI><B>file_root.margestats</B> file contains the means, standard deviations and marginalized limits for the different parameters (including derived parameters). Limits to calculate are set using the <B>contour</B>xx input parameters.
 <BR><BR>
@@ -374,45 +418,46 @@ param1^a param2^b param3^c ...&nbsp; = x \pm y.
 <P>
 <A NAME="Plotting">
 <B><FONT COLOR="blue">Plotting</FONT></B><P>
-GetDist can be used to produce basic simple scripts for various types of plots. You can also just write plotting scripts, or use the GetDist Gui, in which case there is no need to run GetDist first.
+GetDist can be used to produce basic simple scripts for various types of plots. You can also just write plotting scripts, or use the GetDist GUI, in which case there is no need to run GetDist first.
 <UL>
 <LI><B>Interactive plotting</B><BR>
 See the <A HREF="readme_gui.html">GetDist GUI readme</A> for details of hope to use the GetDist GUI to make plots from chains. Even if you ultimately write custom scripts to optimize how things are displayed, this can be a quick and easy way to compare results and see what you want to plot.
 <LI><B>Python plot scripts</B><BR>
 See the <A HREF="readme_python.html">CosmoMC python readme</A> for details of how to use the plotting library.
-<LI><B>Matlab plots</B><BR>
-If <b>plot_ext=m</b> GetDist produces Matlab '.m' files. Matlab support is not likely to be developed further, but maintained from the previous version for convenience.
 </UL>
 <P>
-If <b>no_plots=F</b>, GetDist produces scripts files to make simple 1D, 2D and 3D plots. In the fortran getdist these can be either python or matlab, set <b>plot_ext=py</b> or <b>plot_ext=m</b> for which you prefer, python is now preferred and the matlab option is not available from python getdist. The script files produced are called
+If <b>no_plots=F</b>, GetDist produces scripts files to make simple 1D, 2D and 3D plots.  The script files produced are called
 <UL>
-<LI><B>file_root</B> for 1D maringalized plots
-<LI><B>file_root</B>_2D for 2D maringalized plots
+<LI><B>file_root</B> for 1D marginalized plots
+<LI><B>file_root</B>_2D for 2D marginalized plots
 <LI><B>file_root</B>_3D to make coloured 2D samples plots
 <LI><B>file_root</B>_tri to make 'triangle' plots (<A HREF="http://cosmologist.info/cosmomc/power/fig5.ps">example</A>. Set triangle_plot=T in the .ini file)
 </UL>
-To compare two different sets of chains set <B>compare_num=1</B> in the .ini file, and <B>compare1</B> to the root name of some chains you have previously run GetDist on.
 <P>
 Parameter labels are set in distparams.ini - if any are blank the parameter is ignored. You can also specify which parameters to plot, or if parameters are not specified for
 the 2D plots or the colour of the 3D plots getdist automatically works out
-the most correlated variables and uses them.
-The data files used by  python and Matlab are output to the plot_data directory.
+the most correlated variables and uses them. The data files used by auto-generated plotting scripts are output to the plot_data directory.
 
 <A NAME="Convergence"><h2  style ="color:darkred">Convergence diagnostics</h2></A>
 
 The <B>getdist</B> program will output convergence diagnostics, both short summary information when getdist is run, and also more detailed information in the file_root.converge file. When running with MPI the first two of the parameters below can also be calculated when running the chains for comparison with a stopping criterion (see the .ini input file).
 <UL>
 <LI>For multiple chains the code computes the Gelman and Rubin "variance of chain means"/"mean of chain variances" R statistic for each parameter using the second half of each chain (<A HREF="http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.55.1675">reference</A>). The <B>.converge</B> file produced by getdist contains the numbers for each parameter individually. The program also writes out the value for the worst eigenvalue of the covariance of the means, which should be a worst case (catching poor chain coverage in directions not aligned with the base parameters). This "R-1" statistic is also used for the stopping criterion when generating chains with MPI.
-If the numbers are much less than one then the second half of each chain probably provides an accurate estimate of the means and variances. If the distribution is bimodal and no chains find the second mode low values can be misleading. Typically you want the value to be less than 0.2. Low values do not guarantee that small percentiles will be measured accurately (though it certainly helps), or that the value won't increase as you run longer and probe further into the tails.<BR><BR>
+If the numbers are much less than one then the second half of each chain probably provides an accurate estimate of the means and variances. If the distribution is bimodal and no chains find the second mode low values can be misleading. Typically you want the value to be less than 0.1, or lower if you want means to high accuracy or to make nice 2D density plots (0.01 is often fine). Low values do not guarantee that small percentiles will be measured accurately (though it certainly helps), or that the value won't increase as you run longer and probe further into the tails.<BR><BR>
 <LI>
 For MPI runs, in addition to specifying a stopping criterion as above, you can also give a convergence criterion for a confidence limit. In general it is much harder to get an accurate value for a small confidence value than for the mean, so imposing a tight limit may make your chains run for a very long time (though you can then be pretty confident in your confidence). The value computed is the variance of the chain percentiles from the last half of the different chains, in units of the standard deviation of each parameter. You can either specify a particular parameter to check, or do all of them. Any parameter with a slowly explored tail will only converge very slowly, in which case you may be able to improve things by generating chains at a higher temperature (so the tails are explored more readily; GetDist can adjust for the temperature automatically), or re-parameterizing.
+<BR><BR>
+<LI>The auto-correlation length gives a measure of how independent the samples are, with the total number of samples divided by the length giving an estimate of an effective number of independent samples.
+Two auto-correlation lengths are computed, in 'weight' units and 'sample' units. The latter is in units of the number of rows in the chain file, the former is the "weight mass' that determines the correlation length; for definitions see the <A HREF="http://cosmologist.info/notes/GetDist.pdf">GetDist notes</A>.
 <BR><BR>
 <LI>
 For individual chains (before importance sampling) getdist computes the Raftery and Lewis convergence diagnostics. This uses a binary chain derived from each parameter depending on whether the parameter is above or below a given percentile of its distribution (specified by the <b>converge_test_limit</b> input parameter). The code works out how much the binary chain needs to be thinned to approximate a Markov process better than a second order process, and then uses analytical results for the convergence of binary Markov chains to assess the burn in period. It also assesses the thin factor needed for the binary chain to approximate an independence chain, which gives an idea of how much you need to thin the chain to obtain independent samples (i.e. how much you can get away with thinning it for importance sampling, though thinning isn't entirely lossless). The .converge file contains the numbers for each chain used, getdist writes out the worst case.  See this <A HREF="http://www.ee.duke.edu/~lcarin/raftery92how.pdf">reference</A> for details.<BR><BR>
 <LI>
 A simpler way to assess the error on quantile limits is by computing them using subsets of the samples. GetDist produces the file_root.converge contains the 'split-test' rms change on the parameter quantiles in units of the standard deviation when the samples are split into 2,3 or 4 parts. Small numbers are clearly better. A number of 0.5 for a 2-way split indicates that the 95% confidence limit may in fact be off by the order of half a standard deviation (though probably better, as the limit is computed using all the samples). Large values in a particular parameter may indicate that there is a long tail that is only being explored slowly (in which case generating the chain at a higher temperature or changing parameters to the log might help).
+<!--
 <BR><BR>
 <LI>The file_root.converge file also outputs the parameter auto-correlations as a function of step separation (see e.g. <A HREF="http://arxiv.org/astro-ph/0310723">astro-ph/0310723</A>). The correlation length is similar to the Raftery&Lewis statistics in giving a measure (though harder to quantify) of how far apart independent samples are, though it is less sensitive to how well the tails are explored (see bad case example in the <A HREF="http://cosmologist.info/notes/CosmoMC.pdf">notes</A>).
+-->
 </UL>
 <BLOCKQUOTE>
 <B><FONT COLOR="blue">Differences between GetDist and MPI run-time statistics</FONT></B><BR><BR>
@@ -493,20 +538,16 @@ Main program that reads in parameters and calls MCMC or post-processing.
 <li><b>propose.f90</b></li>
 This is the proposal density and related constants and subroutines. The efficiency
 of MCMC is quite dependent on the proposal. Fast+slow and fast parameter subspaces are proposed separately. See the <A HREF="http://arxiv.org/abs/1304.4473">paper</A> for a discussion of the proposal density and use of fast and slow parameters.
-
-<b>GetDist.f90</b></li>
-
-<br>The "getdist" program for analysing chains. Write your own importance
-weighting function or parameter mapping.</ul>
-
+</ul>
 <A NAME="Addons"><h2>Add-ons and extra datasets</h2></A>
 Various extended data sets require some code modifications. After testing these may be included as part of the public program, but meanwhile can be
 installed manually or obtained from the cosmomc git repository (access available on request).
 <UL>
+<LI><A HREF="http://ccpforge.cse.rl.ac.uk/gf/project/polychord">CosmoChord</a> (and PolyChord, Next Generation Nested Sampler)
+<LI><A HREF="http://isit.gr">Integrated Software in Testing General Relativity</a> (ISiTGR)
 <LI><A HREF="https://sites.google.com/site/adambmantz/work/fgas14/">fgas</A> (Relaxed Galaxy Clusters, available as <b>clusters_fgas</b> branch in git repository)
 </UL>
 <!--
-<LI><A HREF="http://www.utdallas.edu/~jdossett/isitgr/">Integrated Software in Testing General Relativity</a>
 <LI><A HREF="http://www.nhn.ou.edu/~wang/SNcode/index.html">Yun Wang's Supernova Flux-averaging Likelihood Code</a>
 <LI><A HREF="http://www.esnested.info">Evolutionary Strategies for Cosmology</a> (nested sampling)
 <LI><A HREF="http://lukas.physi.ch/lh/Code.html">Python GetDist</A>
@@ -526,11 +567,36 @@ installed manually or obtained from the cosmomc git repository (access available
 <A NAME="Version"><h2  style ="color:darkred">Version History</h2></A>
 
 <UL>
-<LI><B>March 2015</B><BR>
+<LI><B>July 2015</B><BR>
 <UL>
-<LI>For distribution boundaries (e.g. r, mnu, etc), now use a linear boundary kernel to get more accurate first distribution slope at the boundary (boundary_correction_method=1, <A HREF="http://www3.stat.sinica.edu.tw/statistica/oldpdf/A6n414.pdf">Jones and Foster 1996</A>)
-<LI>Kernel densities now use multiplicative bias correction (combined with the linear boundary correction, this gives significantly more accurate results with wider smoothing); (<A HREF="http://biomet.oxfordjournals.org/content/82/2/327.short">Jones, Sigorni, Hjort</A>; <A HREF="http://www.jstor.org/stable/2965571">Jones and Sigorni</A>)
-<LI>Python GetDist fixes, all convergence tests, and much faster
+<LI>Data Updates:
+<UL>
+<LI>Settings (batch2/) for the Planck 2015 likelihood release. Planck lensing and BKP likelihoods are native and included with cosmomc, others can be linked to the Planck likelihood code.
+<LI>Added SZ likelihood, szcounts.f90, as used by the Planck 2015 cluster paper
+<LI>BKP likelihood update to include tests including E; small fix to covariance matrix (does not significantly change results)
+<LI>action=4 test run has option to check likelihoods gives expected values (as test_planck.ini)
+</UL>
+<LI>New GetDist:
+<UL>
+<LI>Major rewrite of Python GetDist (python/GetDist.py), which now supersedes the Fortran version
+<LI>Kernel density estimates in 1D and 2D now use optimized kernel bandwidth selection, linear boundary correction and multiplicative bias correction;
+for details and references see the <A HREF="http://cosmologist.info/notes/GetDist.pdf">GetDist Notes</A>. Generally much more accurate, and also works with multi-modal distributions.
+<LI>Convergence stats include correlation length in both sample and weight units (generalization so applicable to importance-sampled chains;  see the <A HREF="http://cosmologist.info/notes/GetDist.pdf">GetDist Notes</A>)
+<LI>GetDist GUI (now python/GetDistGUI.py) can show convergence, margestats and likestats, latex tables, and option for shaded contours
+<LI>GetDist GUI options menu windows to easily change and immediately preview different analysis and plot settings; option to change the default style module (getdist.plots or planckStyle provided)
+<LI>GetDist GUI Script Preview tab for WYSIWYG plot preview of generated and custom scripts
+<LI>GetDist available separately as a pip-installable <A HREF="https://pypi.python.org/pypi/GetDist/">python package</A>
+</UL>
+<LI>Reorganized python code into modules (paramgrid, getdist and getdist.gui)
+<LI>Plot scripts and GUI can now compare named chains from multiple grids/directories (chain_dir=[dir1, dir2...]; note chain names must be distinct)
+<LI>GetDistPlots now getdist.plots; added options to plot above and below diagonal in triangle plot; various fixes
+<LI>Grid scripts compatibility with Grid Engine (OGE/SGE, as installed e.g. on StarCluster Amazon images)
+<LI>Added project files for the <A HREF="http://darmar.vgtu.lt/">CodeBlocks</A> Fortran development environment (using CosmoMC Makefile)
+<LI>Changes for compatibility with gfortran from GCC 6 trunk (which fixes critical GCC Fortran 2003 bugs that affect GCC 5.1 and lower).
+Updated development environments available with <A HREF="http://cosmologist.info/CosmoBox">CosmoBox</A>
+<LI>Fix for small inconsistency in how neutrino Neff was set in Calculator_PICO. Added warning if attempting to run with PICO when compiled with -openmp (fails for unknown reason; just remove openmp form Makefile and rebuild).
+<LI>Tidied up Makefiles, with auto-detection of ifort and gfortran (only gcc 6+ works)
+<LI>Support for Python 2.7 and Python 3.4+
 </Ul>
 <LI><B>February 2015</B><BR>
 <UL>
@@ -543,8 +609,8 @@ installed manually or obtained from the cosmomc git repository (access available
 <LI>Added <A HREF="http://bicepkeck.org/">BICEP-Keck-Planck</A> likelihood (native CosmoMC; include batch2/BKPlanck.ini)
 <LI>New GetDist python version, updated plotted and graphical user interface:
 <UL>
-<LI>Run python/getdust/gui.py (required PySide python module to be installed): make 1D, 2D, 3D plots, select parameters and chains, export PDF or script
-<LI>Pure-Python version of GetDist, python/GetDist.py (not all options supported, e.g. no Raftery-Lewis convergence tests)
+<LI>Run python/GetDistGUI.py (required PySide python module to be installed): make 1D, 2D, 3D plots, select parameters and chains, export PDF or script
+<LI>Pure-Python version of GetDist, python/GetDist.py (not all options supported yet)
 <LI>GetDistPlots can now generate densities on the fly from chains without running GetDist first (old method still supported)
 <LI>Many plotting generalizations, including new rectangle plots, customization of colours and lines, mixed filled/line contour legends, etc.
 <LI>MCSamples.py module for script access generalized getdist function: loading chains, getting margestats/limits, density estimates, adding new derived parameters, PCA, etc.
@@ -561,7 +627,7 @@ installed manually or obtained from the cosmomc git repository (access available
 <LI>Grid scripts:
 <UL>
 <LI>New optional script parameters to select more specifically in various ways
-<LI>deleteJobs.py and corresponding functions in jobQueue.py
+<LI>deleteJobs.py and corresponding functions in jobqueue.py
 <LI>listGrid.py to view chain names in grid
 <LI>batchJob functions to resolve actual chain name given param and data tags (in any order)
 <LI>Matching of .covmat names using normalized name tags
