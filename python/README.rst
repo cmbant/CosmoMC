@@ -2,7 +2,7 @@
 GetDist
 ===================
 :GetDist: MCMC sample analysis, plotting and GUI
-:Version: 0.2.2
+:Version: 0.2.4
 :Author: Antony Lewis
 :Homepage: https://github.com/cmbant/getdist
 
@@ -10,21 +10,24 @@ GetDist
   :target: https://secure.travis-ci.org/cmbant/getdist
 .. image:: http://img.shields.io/pypi/v/GetDist.svg?style=flat
         :target: https://pypi.python.org/pypi/GetDist/
+.. image:: https://readthedocs.org/projects/getdist/badge/?version=latest
+   :target: https://getdist.readthedocs.org/en/latest
 
 Description
 ============
 
-GetDist is a package for analysing Monte Carlo samples, including correlated samples
+GetDist is a Python package for analysing Monte Carlo samples, including correlated samples
 from Markov Chain Monte Carlo (MCMC).
 
-* **Point and click GUI** - select chain files, view plots, marginalized constraints, latex tables and more
+* **Point and click GUI** - select chain files, view plots, marginalized constraints, LaTeX tables and more
 * **Plotting library** - make custom publication-ready 1D, 2D, 3D-scatter, triangle and other plots
-* **Named parameters** - simple handling of many parameters using parameter names, including LaTex labels and prior bounds
+* **Named parameters** - simple handling of many parameters using parameter names, including LaTeX labels and prior bounds
 * **Optimized Kernel Density Estimation** - automated optimal bandwidth choice for 1D and 2D densities (Botev et al. Improved Sheather-Jones method), with boundary and bias correction
 * **Convergence diagnostics** - including correlation length and diagonalized Gelman-Rubin statistics
-* **Latex tables** for marginalized 1D constraints
+* **LaTeX tables** for marginalized 1D constraints
 
-See the `Plot Gallery <http://htmlpreview.github.io/?https://github.com/cmbant/getdist/blob/master/docs/plot_gallery.html>`_.
+See the `Plot Gallery and tutorial <http://getdist.readthedocs.org/en/latest/plot_gallery.html>`_
+and `GetDist Documentation <http://getdist.readthedocs.org/en/latest/index.html>`_.
 
 
 Getting Started
@@ -52,9 +55,9 @@ Dependencies
 * matplotlib
 * scipy
 * PySide (optional, only needed for GUI)
-* Working latex installation (for some plotting/table functions)
+* Working LaTeX installation (for some plotting/table functions)
 
-Python distributions like Anaconda have most of what you need (except for latex). To install binary backages on Linux-like systems
+Python distributions like Anaconda have most of what you need (except for LaTeX). To install binary backages on Linux-like systems
 install pacakages *py-matplotlib, py-scipy, py-pyside, texlive-latex-extra, texlive-fonts-recommended, dvipng*. 
 For example on a Mac using Python 2.7 from `MacPorts <https://www.macports.org/install.php>`_::
 
@@ -66,6 +69,8 @@ For example on a Mac using Python 2.7 from `MacPorts <https://www.macports.org/i
    sudo port install texlive-latex-extra
    sudo port install texlive-fonts-recommended
    sudo port install dvipng
+
+If you don't want to install dependencies locally, you can also use a pre-configured `virtual environment <http://cosmologist.info/CosmoBox/>`_.
 
 Algorithm details
 ==================
@@ -87,13 +92,13 @@ In general there are a set of plain text files of the form::
 
 where "xxx" is some root file name.
 
-The .txt files are separate chain files (there can also be just one xxx.txt file). Each row of each sample .txt files is in the format
+The .txt files are separate chain files (there can also be just one xxx.txt file). Each row of each sample .txt file is in the format
 
   *weight like param1 param2 param3* ...
 
 The *weight* gives the number of samples (or importance weight) with these parameters. *like* gives -log(likelihood), and *param1, param2...* are the values of the parameters at the sample point. The first two columns can be 1 and 0 if they are not known or used.
 
-The .paramnames file lists the names of the parameters, one per line, optionally followed by a latex label. Names cannot include spaces, and if they end in "*" they are interpreted as derived (rather than MCMC) parameters, e.g.::
+The .paramnames file lists the names of the parameters, one per line, optionally followed by a LaTeX label. Names cannot include spaces, and if they end in "*" they are interpreted as derived (rather than MCMC) parameters, e.g.::
 
  x1   x_1
  y1   y_1
@@ -107,35 +112,36 @@ The .ranges file gives hard bounds for the parameters, e.g.::
 
 Note that not all parameters need to be specified, and "N" can be used to denote that a particular upper or lower limit is unbounded. The ranges are used to determine densities and plot bounds if there are samples near the boundary; if there are no samples anywhere near the boundary the ranges have no affect on plot bounds, which are chosen appropriately for the range of the samples.
 
+There can also optionally be a .properties.ini file, which can specify *burn_removed=T* to ensure no burn in is removed, or *ignore_rows=x" to ignore the first
+fraction *x* of the file rows (or if *x > 1*, the specified number of rows).
+
 Loading samples
 ===================
 
 To load an MCSamples object from text files do::
 
 	 from getdist import loadMCSamples
-	 samples = loadMCSamples('/path/to/xxx', dist_settings={'ignore_rows':0.3})
+	 samples = loadMCSamples('/path/to/xxx', settings={'ignore_rows':0.3})
 
-Here *dist_settings* gives optional parameter settings for the analysis. *ignore_rows* is useful for MCMC chains where you want to
-discard some fraction from the start of each chain as burn in (use a number >0 to discard a fixed number of sample lines rather than a fraction).
-The MCSamples object can be passed to plot functions, or used to get many results. For example to plot marginalized parameter densities 
+Here *settings* gives optional parameter settings for the analysis. *ignore_rows* is useful for MCMC chains where you want to
+discard some fraction from the start of each chain as burn in (use a number >1 to discard a fixed number of sample lines rather than a fraction).
+The MCSamples object can be passed to plot functions, or used to get many results. For example, to plot marginalized parameter densities 
 for parameter names *x1* and *x2*::
 
     from getdist import plots
     g = plots.getSinglePlotter()
     g.plot_2d(samples, ['x1', 'x2'])
 
-For plotting, when you have many different chain files in the same directory, 
-you can work directly with the root names. For example to compare *x* and *y* constraints
+When you have many different chain files in the same directory, 
+plotting can work directly with the root file names. For example to compare *x* and *y* constraints
 from two chains with root names *xxx* and *yyy*::
 
 	from getdist import plots
-	
 	g = plots.getSinglePlotter(chain_dir='/path/to/', analysis_settings={'ignore_rows':0.3})
-
 	g.plot_2d(['xxx','yyy], ['x', 'y'])
 
 
-MCSamples objects can also be constructed directly from numpy arrays in memory, see the example in the `Plot Gallery <http://htmlpreview.github.io/?https://github.com/cmbant/getdist/blob/master/docs/plot_gallery.html>`_.
+MCSamples objects can also be constructed directly from numpy arrays in memory, see the example in the `Plot Gallery <http://getdist.readthedocs.org/en/latest/plot_gallery.html>`_.
 
 GetDist script
 ===================
@@ -182,6 +188,7 @@ GetDist GUI
 
 Run the GetDistGUI.py script to run the graphical user interface. This requires PySide, but will run on Windows, Linux and Mac.
 It allows you to open a folder of chain files, then easily select, open, plot and compare, as well as viewing standard GetDist outputs and tables.
+See the `GUI Readme <http://getdist.readthedocs.org/en/latest/gui.html>`_.
 
 
 Using with CosmoMC

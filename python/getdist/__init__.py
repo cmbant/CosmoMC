@@ -1,11 +1,12 @@
 __author__ = 'Antony Lewis'
-__version__ = "0.2.2"
+__version__ = "0.2.4"
 
 from getdist.inifile import IniFile
 from getdist.paramnames import ParamInfo, ParamNames
 from getdist.chains import WeightedSamples
 from getdist.mcsamples import MCSamples, loadMCSamples
 import numpy as np
+
 
 def get_defaults_file(name='analysis_defaults.ini'):
     import os

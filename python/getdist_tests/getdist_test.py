@@ -30,8 +30,8 @@ class GetDistFileTest(unittest.TestCase):
             if re.search('testchain*', f):
                 os.remove(os.path.join(self.tempdir, f))
 
-    def testLoad(self):
-        samples = loadMCSamples(self.root, dist_settings={'ignore_rows': 0.1})
+    def testFileLoadPlot(self):
+        samples = loadMCSamples(self.root, settings={'ignore_rows': 0.1})
         g = plots.getSinglePlotter(chain_dir=self.tempdir, analysis_settings={'ignore_rows': 0.1})
         self.assertEqual(g.sampleAnalyser.samplesForRoot('testchain').numrows, samples.numrows,
                          "Inconsistent chain loading")
@@ -40,16 +40,12 @@ class GetDistFileTest(unittest.TestCase):
         samples.getConvergeTests(0.95)
         self.assertAlmostEqual(0.0009368, samples.GelmanRubin, 5, 'Gelman Rubin error, got ' + str(samples.GelmanRubin))
 
-    def testPlotFile(self):
-        samples = loadMCSamples(self.root, dist_settings={'ignore_rows': 0.1})
         g = plots.getSinglePlotter()
         g.plot_3d(samples, ['x', 'y', 'x'])
         g.export(self.root + '_plot.pdf')
 
-    def testLoadName(self):
         g = plots.getSinglePlotter(chain_dir=self.tempdir,
-                                    analysis_settings={'ignore_rows': 0.3, 'contours':[0.68, 0.95, 0.99]})
-
+                                    analysis_settings={'ignore_rows': 0.1, 'contours':[0.68, 0.95, 0.99]})
         g.settings.num_plot_contours = 3
         g.plot_2d('testchain', ['x', 'y'])
 
@@ -59,7 +55,7 @@ class GetDistFileTest(unittest.TestCase):
             if os.getenv('TRAVIS', None):
                 return str(subprocess.check_output(['GetDist.py'] + args))
             else:
-                return str(subprocess.check_output(['python', os.path.join(os.path.dirname(__file__), '../', 'GetDist.py')] + args))
+                return str(subprocess.check_output(['python', os.path.join(os.path.dirname(__file__), '..' + os.sep, 'GetDist.py')] + args))
 
         os.chdir(self.tempdir)
         res = callGetDist([self.root])
@@ -73,6 +69,8 @@ class GetDistFileTest(unittest.TestCase):
         ini.params['num_3D_plots'] = 1
         ini.params['3D_plot1'] = 'x y x'
         ini.params['plot_data_dir'] = ''
+        ini.params['triangle_params'] = '*[xy]*'
+
         ini.saveFile(fname)
         res = callGetDist([fname, self.root])
         self.assertTrue('-Ln(mean like)  = 2.30' in res)
@@ -128,18 +126,27 @@ class GetDistTest(unittest.TestCase):
         samples = self.samples
         p = samples.getParams()
         samples.addDerived(p.x + (5 + p.y) ** 2, name='z')
+        samples.addDerived(p.x, name='x.yx', label='forPattern')
+        samples.addDerived(p.y, name='x.2', label='x_2')
         samples.updateBaseStatistics()
 
+        g.plot_1d(samples, 'x')
+        g.newPlot()
+        g.plot_1d(samples, 'y', normalized=True, marker=0.1, marker_color='b')
+        g.newPlot()
         g.plot_2d(samples, 'x', 'y')
         g.newPlot()
         g.plot_2d(samples, 'x', 'y', filled=True)
         g.newPlot()
         g.plot_2d(samples, 'x', 'y', shaded=True)
         g.newPlot()
-        g.plots_1d(samples, ['x', 'y'])
+        g.plot_2d_scatter(samples, 'x', 'y', color='red', colors=['blue'])
         g.newPlot()
         g.plot_3d(samples, ['x', 'y', 'z'])
+
         g = plots.getSubplotPlotter(width_inch=8.5)
+        g.plots_1d(samples, ['x', 'y'], share_y=True)
+        g.newPlot()
         g.triangle_plot(samples, ['x', 'y', 'z'])
         g.newPlot()
         g.triangle_plot(samples, ['x', 'y'], plot_3d_with_param='z')
@@ -149,8 +156,16 @@ class GetDistTest(unittest.TestCase):
         samples2 = prob2.MCSamples(12000)
         g.newPlot()
         g.triangle_plot([samples, samples2], ['x', 'y'])
-
+        g.newPlot()
+        g.plots_2d([samples, samples2], param_pairs=[['x', 'y'], ['x', 'z']])
+        g.newPlot()
+        g.plots_2d([samples, samples2], 'x', ['z', 'y'])
+        g.newPlot()
+        self.assertEquals([name.name for name in samples.paramNames.parsWithNames('x.*')], ['x.yx', 'x.2'])
+        g.triangle_plot(samples, 'x.*')
         samples.updateSettings({'contours': '0.68 0.95 0.99'})
         g.settings.num_contours = 3
         g.plot_2d(samples, 'x', 'y', filled=True)
+        g.add_y_bands(0.2, 1.5)
+        g.add_x_bands(-0.1, 1.2, color='red')
 

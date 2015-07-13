@@ -8,6 +8,7 @@ from getdist import paramnames
 import six
 import tempfile
 
+
 class TextFile(object):
     def __init__(self, lines=None):
         if isinstance(lines, six.string_types):
@@ -219,9 +220,27 @@ class NoLineTableFormatter(OpenTableFormatter):
 
 
 class ResultTable(object):
+    """
+    Class for holding a latex table of parameter statistics
+    """
+
     def __init__(self, ncol, results, limit=2, tableParamNames=None, titles=None, formatter=None,
                  numFormatter=None, blockEndParams=None, paramList=None, refResults=None, shiftSigma_indep=False,
                  shiftSigma_subset=False):
+        """
+        :param ncol: number of columns
+        :param results: a :class:`MargeStats` or :class:`BestFit` instance, or a list of them for comparing different results
+        :param limit: which limit to include (1 is first limit calculated, usually 68%, 2 the second, usually 95%)
+        :param tableParamNames: optional :class:`~.paramnames.ParamNames` instance listing particular parameters to include
+        :param titles: optional titles describing different results
+        :param formatter: a table formatting class
+        :param numFormatter: a number formatting class
+        :param blockEndParams: mark parameters in blocks, ending on this list of parameter names
+        :param paramList: a list of parameter names (strings) to include
+        :param refResults: for showing parameter shifts, a reference :class:`MargeStats` instance to show differences to
+        :param shiftSigma_indep: show parameter shifts in sigma assuming data are independent
+        :param shiftSigma_subset: show parameter shifts in sigma assuming data are a subset of each other
+        """
         # results is a margeStats or bestFit table
         self.lines = []
         if formatter is None:
@@ -229,6 +248,8 @@ class ResultTable(object):
         else:
             self.format = formatter
         self.ncol = ncol
+        if isinstance(results, six.string_types):
+            results = [results]
         if tableParamNames is None:
             self.tableParamNames = results[0]
         else:
@@ -274,13 +295,11 @@ class ResultTable(object):
             txt += self.format.colSeparator * ((1 + self.colsPerParam) * (self.ncol - len(row)))
         self.lines.append(txt + self.format.endofrow)
 
-
     def addLine(self, position):
         if self.format.getLine(position) is None:  # no line is appended if the attribute is None
             return self.lines
         else:
             return self.lines.append(self.format.getLine(position))
-
 
     def addTitlesRow(self, titles):
         self.addLine("aboveTitles")
@@ -293,7 +312,6 @@ class ResultTable(object):
         belowTitleLine = self.format.belowTitleLine(self.colsPerResult, self.colsPerParam // self.colsPerResult)
         if belowTitleLine:
             self.lines.append(belowTitleLine)
-
 
     def addHeaderRow(self):
         self.addLine("aboveHeader")
@@ -308,10 +326,8 @@ class ResultTable(object):
         #        self.lines.append((res * self.ncol).replace(self.format.colSeparator,'',1) + self.format.endofrow)
         self.addLine("belowHeader")
 
-
     def paramResultsTex(self, param):
         return self.format.colSeparator.join(self.paramResultTex(result, param) for result in self.results)
-
 
     def paramResultTex(self, result, p):
         values = result.texValues(self.format, p, self.limit, self.refResults,
@@ -326,16 +342,21 @@ class ResultTable(object):
         else:
             return self.format.textAsColumn('') * len(result.getColumnLabels(self.limit))
 
-
     def paramLabelColumn(self, param):
         return self.format.textAsColumn(param.getLabel(), True, separator=True, bold=not param.isDerived)
-
 
     def endTable(self):
         self.lines.append(self.format.endTable())
 
-
     def tableTex(self, document=False, latex_preamble=None, packages=['amsmath', 'amssymb', 'bm']):
+        """
+        Get the latex string for the table
+
+        :param document: if True, make a full latex file, if False just the snippet for including in another file
+        :param latex_preamble: any preamble to include in the latex file
+        :param packages: list of packages to load
+        """
+
         if document:
             lines = []
             lines.append(r'\documentclass{article}')
@@ -352,15 +373,29 @@ class ResultTable(object):
             lines = self.lines
         return "\n".join(lines)
 
-
     def write(self, fname, **kwargs):
+        """
+        Write the latex for the table to a file
+        
+        :param fname: filename to write
+        :param kwargs: arguments for :func:`~ResultTable.tableTex`
+        """
         TextFile(self.tableTex(**kwargs)).write(fname)
 
     def tablePNG(self, dpi=None, latex_preamble=None, filename=None, bytesIO=False):
+        """
+        Get a .png file image of the table. You must have latex installed to use this.
+
+        :param dpi: dpi settings for the png
+        :param latex_preamble: any latex preamble
+        :param filename: filename to save to (defaults to file in the temp directory)
+        :param bytesIO: if True, return a BytesIO instance holding the .png data
+        :return: if bytesIO, the BytesIO instance, otherwise name of the output file
+        """
         texfile = tempfile.mktemp(suffix='.tex')
         self.write(texfile, document=True, latex_preamble=latex_preamble)
         basefile = os.path.splitext(texfile)[0]
-        outfile = filename or  basefile + '.png'
+        outfile = filename or basefile + '.png'
         old_pwd = os.getcwd()
 
         def runCommand(command):
@@ -377,7 +412,7 @@ class ResultTable(object):
                    % (outfile, basefile + '.dvi')
             runCommand(cmd)
         finally:
-            for f in  [basefile + ext for ext in ('.tex', '.dvi', '.aux', '.log')]:
+            for f in [basefile + ext for ext in ('.tex', '.dvi', '.aux', '.log')]:
                 if os.path.isfile(f):
                     os.remove(f)
             os.chdir(old_pwd)
@@ -390,14 +425,31 @@ class ResultTable(object):
         else:
             return outfile
 
-class ParamResults(paramnames.ParamList): pass
+
+class ParamResults(paramnames.ParamList):
+    """
+    Base class for a set of parameter results, inheriting from :class:`.~paramnames.ParamList`, 
+    so that self.names is a list of :class:`.~paramnames.ParamInfo` instances for each parameter, which
+    have attribute holding results for the different parameters.
+    """
+    pass
 
 
 class LikelihoodChi2(object): pass
 
 
 class BestFit(ParamResults):
+    """
+    Class holding the result of a likelihood minimization, inheriting from :class:`ParamResults`
+    """
+
     def __init__(self, fileName=None, setParamNameFile=None, want_fixed=False):
+        """
+        :param fileName: text file to load from, assumed to be in CosmoMC's .minimum format
+        :param setParamNameFile: optional name of .paramnames file listing preferred parameter labels for the parameters
+        :param want_fixed:  whether to include values of parameters that are not allowed to vary
+        """
+
         ParamResults.__init__(self)
         if fileName is not None: self.loadFromFile(fileName, want_fixed=want_fixed)
         if setParamNameFile is not None: self.setLabelsAndDerivedFromParamNames(setParamNameFile)
@@ -465,7 +517,6 @@ class BestFit(ParamResults):
             if akind == kind and val.name == name: return val.chisq
         return None
 
-
     def texValues(self, formatter, p, **kwargs):
         param = self.parWithName(p.name)
         if param is not None:
@@ -475,7 +526,22 @@ class BestFit(ParamResults):
 
 
 class ParamLimit(object):
+    """
+    Class containing information about a marginalized parameter limit.
+    
+    :ivar lower: lower limit
+    :ivar upper: upper limit
+    :ivar twotail: True if a two-tail limit, False if one-tail
+    :ivar onetail_upper: True if one-tail upper limit
+    :ivar ontail_lower: True if one-tail lower limit
+    """
+
     def __init__(self, minmax, tag='two'):
+        """
+        :param minmax: a [min,max] tuple with lower and upper limits. Entries be None if no limit.
+        :param tag: a text tag descibing the limit, one of ['two' | '>' | '<' | 'none']
+        """
+
         self.lower = minmax[0]
         self.upper = minmax[1]
         self.twotail = tag == 'two'
@@ -483,6 +549,14 @@ class ParamLimit(object):
         self.onetail_lower = tag == '<'
 
     def limitTag(self):
+        """        
+        :return: Short text tag describing the type of limit (one-tail or two tail):
+                
+                - *two*: two-tail limit
+                - *>*: a one-tail upper limit
+                - *<*: a one-tail lower limit
+                - *none*: no limits (both boundaries have high probability)
+        """
         if self.twotail:
             return 'two'
         elif self.onetail_upper:
@@ -493,6 +567,14 @@ class ParamLimit(object):
             return 'none'
 
     def limitType(self):
+        """        
+        :return: a text description of the type of limit. One of:
+         
+            - *two tail*
+            - *one tail upper limit*
+            - *one tail lower limit*
+            - *none*
+        """
         if self.twotail:
             return 'two tail'
         elif self.onetail_upper:
@@ -503,11 +585,39 @@ class ParamLimit(object):
             return 'none'
 
     def __str__(self):
+        """
+        :return: string representation of lower and upper bounds, with text description of the limit type
+        """
         return "%g %g %s" % (self.lower, self.upper, self.limitTag())
 
 
 class MargeStats(ParamResults):
+    """
+    Stores marginalized 1D parameter statistics, including mean, variance and confidence limits,
+    inheriting from :class:`ParamResults`. 
+    
+    Values are stored as attributes of the :class:`~.paramnames.ParamInfo` objects stored in self.names.
+    Use *par= margeStats.parWithName('xxx')* to get the :class:`~.paramnames.ParamInfo` for parameter *xxx*; 
+    Values stored are:
+    
+    - *par.mean*: parameter mean
+    - *par.err*: standard deviation
+    - *limits*: list of :class:`~.types.ParamLimit` objects for the stored number of marginalized limits
+     
+    For example to get the first and second lower limits (default 68% and 95%) for parameter *xxx*::
+    
+         print(margeStats.names.parWithName('xxx').limits[0].lower)
+         print(margeStats.names.parWithName('xxx').limits[1].lower)
+         
+    See  :class:`~.types.ParamLimit` for details of limits.
+    """
+
     def loadFromFile(self, filename):
+        """
+        Load from a plain text file
+        
+        :param filename: file to load from
+        """
         textFileLines = self.fileList(filename)
         lims = textFileLines[0].split(':')[1]
         self.limits = [float(s.strip()) for s in lims.split(';')]
@@ -561,7 +671,6 @@ class MargeStats(ParamResults):
                 text += "%15.7E%15.7E  %-5s" % (lim.lower, lim.upper, lim.limitTag())
             text += "   %s\n" % par.label
         return text
-
 
     def addBestFit(self, bf):
         self.hasBestFit = True
@@ -626,7 +735,7 @@ class MargeStats(ParamResults):
                     if shiftSigma_indep or shiftSigma_subset:
                         res += '\quad('
                         if shiftSigma_subset:
-                            # give mean shift in sigma units for subset data (reguarized to max sigma/20)
+                            # give mean shift in sigma units for subset data (regularized to max sigma/20)
                             subset_sigma = np.sqrt(abs(param.err ** 2 - refVal.err ** 2))
                             res += '%+.1f \\sigma_s' % (delta / max(subset_sigma, refVal.err / 20))
                         if shiftSigma_indep:
@@ -646,6 +755,12 @@ class MargeStats(ParamResults):
 
 
 class LikeStats(ParamResults):
+    """
+    Stores likelihood-related statistics, including best-fit sample and extremal values of the N-D confidence region, 
+    inheriting from :class:`ParamResults`. 
+    TODO: currently only saves to text, does not load full data from file
+    """
+
     def loadFromFile(self, filename):
         textFileLines = self.fileList(filename)
         results = dict()
@@ -657,6 +772,7 @@ class LikeStats(ParamResults):
         self.logMeanInvLike = results.get('Ln(mean 1/like)', None)
         self.meanLogLike = results.get('mean(-Ln(like))', None)
         self.logMeanLike = results.get('-Ln(mean like)', None)
+        # TODO: load N-D limits
 
     def likeSummary(self):
         text = "Best fit sample -log(Like) = %f\n" % self.logLike_sample
@@ -711,5 +827,3 @@ class ConvergeStats(ParamResults):
 
     def worstR(self):
         return self.R_eigs[len(self.R_eigs) - 1]
-
-
