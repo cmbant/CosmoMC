@@ -1755,7 +1755,7 @@ class GetDistPlotter(object):
         :param legend_ncol: The number of columns for the legend
         :param legend_loc: The location for the legend
         :param upper_roots: set to fill the upper triangle with subplots using this list of sample root names 
-                             (TODO: this needs some work easily without a lot of tweaking)
+                             (TODO: this needs some work to easily work without a lot of tweaking)
         :param upper_kwargs: list of dict for arguments when making upper-triangle 2D plots
         :param kwargs: optional keyword arguments for :func:`~GetDistPlotter.plot_2d` or :func:`~GetDistPlotter.plot_3d` (lower triangle only)
         
