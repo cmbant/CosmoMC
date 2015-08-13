@@ -735,6 +735,7 @@
     integer i, j, L1, L2
     real(mcp) :: covmat_scale = 1
     integer, allocatable :: cov_cl_used(:)
+    character(LEN=:), allocatable :: covmat_format
 
 
     covmat_cl = Ini%Read_String('covmat_cl', .true.)
@@ -771,7 +772,15 @@
         vecsize_in =  (this%pcl_lmax-this%pcl_lmin+1)
         if (IsMainMPI()) then
             allocate(Cov(vecsize_in*num_in,vecsize_in*num_in))
-            call MatrixSym_Read_Binary(filename, Cov)
+            call Ini%Read('covmat_scale',covmat_scale)
+            covmat_format = Ini%Read_String('covmat_format')
+            if (covmat_format == 'symmetric_fortran_binary') then
+                call MatrixSym_Read_Binary(filename, Cov)
+            else if (covmat_format == 'text') then
+                call Matrix_Read(filename, Cov)
+            else
+                call MpiStop('Unknown covmat_format')
+            end if
             allocate(this%inv_covariance(this%nbins_used*this%ncl_used, this%nbins_used*this%ncl_used))
             do i=1, this%ncl_used
                 do j=1,this%ncl_used
@@ -819,7 +828,7 @@
             allocate(this%inv_covariance(this%nbins_used*this%ncl_used, this%nbins_used*this%ncl_used))
         end if !MainMPI
 #ifdef MPI
-        call MPI_BCAST(this%inv_covariance,Size(this%inv_covariance),MPI_real, 0, MPI_COMM_WORLD, i)
+        call MPI_BCAST(this%inv_covariance,Size(this%inv_covariance),MPI_real_mcp, 0, MPI_COMM_WORLD, i)
 #endif
     end if
     end subroutine ReadCovmat
