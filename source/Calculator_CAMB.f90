@@ -131,8 +131,8 @@
 
     P%YHe = CMB%YHe
 #ifdef COSMOREC
-    if (P%Recomb%fdm/=0._mcp) P%Recomb%runmode = 3
     P%Recomb%fdm = CMB%fdm * 1e-23_mcp
+    if (P%Recomb%fdm/=0._mcp) P%Recomb%runmode = 3
 #else
     if (CMB%fdm/=0._mcp) call MpiStop('Compile with CosmoRec to use fdm')
 #endif
