@@ -196,12 +196,12 @@ The default accuracy is aimed at WMAP. Set <B>high_accuracy_default = T</B> to t
 
 <LI><B>Best-fit point</B><BR>
 
-Set <B>action</B> =2 to just calculate the best-fit point and stop (also outputting a .covmat estimate from the inverse Hessian if  <b>estimate_propose_matrix</b>=T). As of Oct 2012 this uses
-<A HREF="http://www.damtp.cam.ac.uk/user/na/NA_papers/NA2009_06.pdf">Powell's  2009 BOBYQA</A> bounded minimization routine, which works from two parameters up to hundreds of parameters, but does require that the likelihood return a valid number at all points between the bounds given on the base parameters in the input .ini file. The algorithm starts at the point given by the <i>center</i> parameter values given in the .ini file, and iterates until the parameter values are converged to within a radius of  <b>max_like_radius</b> in units of the input parameter <i>propose width</i>s; by default <i>max_like_radius = 0.01</i>.
- <!--(the convergence criterion is a radius in nD space; <em>max_like_radius</em> is scaled by the root of the number of parameters so that on average each parameter is converged to a fraction <em>max_like_radius</em> of its <em>propose_width</em>). -->
- The best-fit values (and derived and nuisance parameters) are output to a file called <em>file_root</em>.minimum. The method works for parameters with hard bounds that truncate the posterior, e.g. for neutrino mass mnu>0. It does not use the propose_matrix, only the input parameter bounds, center and propose_width.
+Set <B>action</B> =2 to just calculate the best-fit point and stop. This uses
+<A HREF="http://www.damtp.cam.ac.uk/user/na/NA_papers/NA2009_06.pdf">Powell's  2009 BOBYQA</A> bounded minimization routine, which works from two parameters up to hundreds of parameters, but does require that the likelihood return a valid number at all points between the bounds given on the base parameters in the input .ini file. The algorithm starts at the point given by the <i>center</i> parameter values given in the .ini file, and iterates until the parameter values are converged to within a radius of  <b>max_like_radius</b> (in normalized units, e.g. fraction of a standard deviation or propose_width). The minimization will also stop if the log likelihood has converged to within <i>minimize_loglike_tolerance</i>.
+
+ The best-fit values (and derived and nuisance parameters) are output to a file called <em>file_root</em>.minimum. The method works for parameters with hard bounds that truncate the posterior, e.g. for neutrino mass mnu>0. 
 <BR><BR>
-action=2 only runs on one node, so compile without MPI or run only one MPI instance. Note that the minimizer appears not to be totally reliable for Planck (may stop not at the global minimum) - starting at different points can be a good check.
+Minimization with action=2 will work more reliably if you have a propose_matrix to approximately orthogonalize the likelihood. You can also run minimizations from multiple random starting points to check that they converge: run with e.g. "mpirun -np 4" and <i>minimize_random_start_pos=T</i> to check four minimizations - the final output will be the point with the best fit of all and a warning will be printed if there there are outliers.
 <BR><BR>
 
 <LI><B>Data file output</B><BR>
