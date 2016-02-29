@@ -5,6 +5,13 @@
     !Sept 2014: refactored structure using new "bao_dataset[NAME] = file.dataset" syntax
     !           added refactoed DR7 MGS code (thanks Lado Samushia)
     !Jan 2014 added bao_HZ_rs, f_sigma8, F_AP, and more general .dat format
+    !Feb 2016: TC 1) Hzrs in km units, 
+    !             2) DR12 BAO Likelihoods from alpha_par and alpha_plel
+    !             3) consensus likelihood distribution for LOWZ and CMASS
+    !             4) RSD DR12 results included with QPM and MD-PATCHY inverse
+    !             covariance matrices
+    !             5) corrected DR11 rs_rescale factor (leads to ~0.1% bias
+    !             correction at most)
 
     module bao
     use MatrixUtils
@@ -17,12 +24,12 @@
     implicit none
     private
 
-    character(LEN=Ini_Enumeration_Len), parameter :: measurement_types(7) = &
+    character(LEN=Ini_Enumeration_Len), parameter :: measurement_types(8) = &
         [character(Ini_Enumeration_Len)::'Az','DV_over_rs','rs_over_DV','DA_over_rs', &
-        'F_AP', 'f_sigma8','bao_Hz_rs']
+        'F_AP', 'f_sigma8','bao_Hz_rs','Hz_rs_103']
 
     integer, parameter :: bao_Az =1, bao_DV_over_rs = 2, bao_rs_over_DV = 3, bao_DA_over_rs = 4, &
-        F_AP= 5, f_sigma8=6, bao_Hz_rs = 7
+        F_AP= 5, f_sigma8=6, bao_Hz_rs = 7, Hz_rs_103 = 8
 
     type, extends(TCosmoCalcLikelihood) :: TBAOLikelihood
         integer :: num_bao ! total number of points used
@@ -48,6 +55,26 @@
     contains
     procedure :: LogLike => BAO_DR11_loglike
     procedure :: InitProbDist => BAO_DR11_InitProbDist
+    end type
+
+    Type, extends(TBAOLikelihood) :: DR12CMASSLikelihood
+        real(mcp), allocatable, dimension(:) :: alpha_perp_file,alpha_plel_file
+        real(mcp), allocatable ::  prob_file(:,:)
+        real(mcp) dalpha_perp, dalpha_plel
+        integer alpha_npoints
+    contains
+    procedure :: LogLike => BAO_DR12CMASS_loglike
+    procedure :: InitProbDist => BAO_DR12CMASS_InitProbDist
+    end type
+
+    Type, extends(TBAOLikelihood) :: DR12LOWZLikelihood
+        real(mcp), allocatable, dimension(:) :: alpha_perp_file,alpha_plel_file
+        real(mcp), allocatable ::  prob_file(:,:)
+        real(mcp) dalpha_perp, dalpha_plel
+        integer alpha_npoints
+    contains
+    procedure :: LogLike => BAO_DR12LOWZ_loglike
+    procedure :: InitProbDist => BAO_DR12LOWZ_InitProbDist
     end type
 
     Type, extends(TBAOLikelihood) :: MGSLikelihood
@@ -84,6 +111,10 @@
             allocate(MGSLikelihood::this)
         else if (Datasets%Name(i)=='DR11CMASS') then
             allocate(DR11Likelihood::this)
+        else if (Datasets%Name(i)=='DR12CMASS') then
+            allocate(DR12CMASSLikelihood::this)
+        else if (Datasets%Name(i)=='DR12LOWZ') then
+            allocate(DR12LOWZLikelihood::this)
         else
             allocate(TBAOLikelihood::this)
         end if
@@ -217,6 +248,8 @@
             BAO_theory(j) = this%Calculator%BAO_D_v(z)/rs
         case (bao_Hz_rs)
             BAO_theory(j) = this%Calculator%Hofz_Hunit(z)*rs
+        case (Hz_rs_103)
+            BAO_theory(j) = this%Calculator%Hofz_Hunit(z)*rs*1.0d-3
         case (bao_rs_over_DV)
             BAO_theory(j) = rs/this%Calculator%BAO_D_v(z)
         case (bao_Az)
@@ -311,7 +344,141 @@
 
     end function BAO_DR11_loglike
 
+    subroutine BAO_DR12CMASS_InitProbDist(this, Ini)
+    class(DR12CMASSLikelihood) this
+    class(TSettingIni) :: Ini
+    real(mcp) :: tmp0,tmp1,tmp2
+    integer ios,ii,jj
+    Type(TTExtFile) F
+    integer :: alpha_npoints
 
+    alpha_npoints = Ini%Read_Int('alpha_npoints')
+    allocate(this%alpha_perp_file(alpha_npoints),this%alpha_plel_file(alpha_npoints))
+    allocate(this%prob_file(alpha_npoints,alpha_npoints))
+
+    call F%Open(Ini%ReadRelativeFileName('prob_dist'))
+    do ii=1, alpha_npoints
+        do jj=1, alpha_npoints
+            read (F%unit,*,iostat=ios) tmp0,tmp1,tmp2
+            if (ios /= 0) call MpiStop('Error reading BR11 BAO file')
+            this%alpha_perp_file(ii)   = tmp0
+            this%alpha_plel_file(jj)   = tmp1
+            this%prob_file(ii,jj)      = tmp2
+        end do
+    end do
+    call F%Close()
+
+    this%dalpha_perp=this%alpha_perp_file(2)-this%alpha_perp_file(1)
+    this%dalpha_plel=this%alpha_plel_file(2)-this%alpha_plel_file(1)
+
+    this%prob_file=this%prob_file/ maxval(this%prob_file)
+    this%alpha_npoints = alpha_npoints
+
+    end subroutine BAO_DR12CMASS_InitProbDist
+
+    function BAO_DR12CMASS_loglike(this, CMB, Theory, DataParams)
+    Class(DR12CMASSLikelihood) :: this
+    Class(CMBParams) CMB
+    Class(TCosmoTheoryPredictions), target :: Theory
+    real(mcp) :: DataParams(:)
+    real (mcp) z, BAO_DR12CMASS_loglike, alpha_perp, alpha_plel, prob
+    real,parameter :: Hrd_fid=13827,DA_rd_fid=9.330
+    integer ii,jj
+    real(mcp) rsdrag_theory
+
+    z = this%bao_z(1)
+    rsdrag_theory = this%get_rs_drag(Theory)
+
+    alpha_perp=(this%Calculator%AngularDiameterDistance(z)/rsdrag_theory)/(DA_rd_fid)
+    alpha_plel=(Hrd_fid)/((this%Calculator%Hofz_Hunit(z))*rsdrag_theory)
+
+    if ((alpha_perp < this%alpha_perp_file(1)).or.(alpha_perp > this%alpha_perp_file(this%alpha_npoints-1)).or. &
+        &   (alpha_plel < this%alpha_plel_file(1)).or.(alpha_plel > this%alpha_plel_file(this%alpha_npoints-1))) then
+    BAO_DR12CMASS_loglike = logZero
+    else
+        ii=1+floor((alpha_perp-this%alpha_perp_file(1))/this%dalpha_perp)
+        jj=1+floor((alpha_plel-this%alpha_plel_file(1))/this%dalpha_plel)
+        prob=(1./((this%alpha_perp_file(ii+1)-this%alpha_perp_file(ii))*(this%alpha_plel_file(jj+1)-this%alpha_plel_file(jj))))* &
+                (this%prob_file(ii,jj)*(this%alpha_perp_file(ii+1)-alpha_perp)*(this%alpha_plel_file(jj+1)-alpha_plel) &
+                -this%prob_file(ii+1,jj)*(this%alpha_perp_file(ii)-alpha_perp)*(this%alpha_plel_file(jj+1)-alpha_plel) &
+                -this%prob_file(ii,jj+1)*(this%alpha_perp_file(ii+1)-alpha_perp)*(this%alpha_plel_file(jj)-alpha_plel) &
+                +this%prob_file(ii+1,jj+1)*(this%alpha_perp_file(ii)-alpha_perp)*(this%alpha_plel_file(jj)-alpha_plel))
+        if  (prob > 0) then
+            BAO_DR12CMASS_loglike = -log( prob )
+        else
+            BAO_DR12CMASS_loglike = logZero
+        endif
+    endif
+
+    end function BAO_DR12CMASS_loglike
+
+    subroutine BAO_DR12LOWZ_InitProbDist(this, Ini)
+    class(DR12LOWZLikelihood) this
+    class(TSettingIni) :: Ini
+    real(mcp) :: tmp0,tmp1,tmp2
+    integer ios,ii,jj
+    Type(TTExtFile) F
+    integer :: alpha_npoints
+
+    alpha_npoints = Ini%Read_Int('alpha_npoints')
+    allocate(this%alpha_perp_file(alpha_npoints),this%alpha_plel_file(alpha_npoints))
+    allocate(this%prob_file(alpha_npoints,alpha_npoints))
+
+    call F%Open(Ini%ReadRelativeFileName('prob_dist'))
+    do ii=1, alpha_npoints
+        do jj=1, alpha_npoints
+            read (F%unit,*,iostat=ios) tmp0,tmp1,tmp2
+            if (ios /= 0) call MpiStop('Error reading BR11 BAO file')
+            this%alpha_perp_file(ii)   = tmp0
+            this%alpha_plel_file(jj)   = tmp1
+            this%prob_file(ii,jj)      = tmp2
+        end do
+    end do
+    call F%Close()
+
+    this%dalpha_perp=this%alpha_perp_file(2)-this%alpha_perp_file(1)
+    this%dalpha_plel=this%alpha_plel_file(2)-this%alpha_plel_file(1)
+
+    this%prob_file=this%prob_file/ maxval(this%prob_file)
+    this%alpha_npoints = alpha_npoints
+
+    end subroutine BAO_DR12LOWZ_InitProbDist
+
+    function BAO_DR12LOWZ_loglike(this, CMB, Theory, DataParams)
+    Class(DR12LOWZLikelihood) :: this
+    Class(CMBParams) CMB
+    Class(TCosmoTheoryPredictions), target :: Theory
+    real(mcp) :: DataParams(:)
+    real (mcp) z, BAO_DR12LOWZ_loglike, alpha_perp, alpha_plel, prob
+    real,parameter :: Hrd_fid=11914.0,DA_rd_fid=6.667
+    integer ii,jj
+    real(mcp) rsdrag_theory
+
+    z = this%bao_z(1)
+    rsdrag_theory = this%get_rs_drag(Theory)
+
+    alpha_perp=(this%Calculator%AngularDiameterDistance(z)/rsdrag_theory)/(DA_rd_fid)
+    alpha_plel=(Hrd_fid)/((this%Calculator%Hofz_Hunit(z))*rsdrag_theory)
+
+    if ((alpha_perp < this%alpha_perp_file(1)).or.(alpha_perp > this%alpha_perp_file(this%alpha_npoints-1)).or. &
+           (alpha_plel < this%alpha_plel_file(1)).or.(alpha_plel > this%alpha_plel_file(this%alpha_npoints-1))) then
+    BAO_DR12LOWZ_loglike = logZero
+    else
+        ii=1+floor((alpha_perp-this%alpha_perp_file(1))/this%dalpha_perp)
+        jj=1+floor((alpha_plel-this%alpha_plel_file(1))/this%dalpha_plel)
+        prob=(1./((this%alpha_perp_file(ii+1)-this%alpha_perp_file(ii))*(this%alpha_plel_file(jj+1)-this%alpha_plel_file(jj))))* &
+        (this%prob_file(ii,jj)*(this%alpha_perp_file(ii+1)-alpha_perp)*(this%alpha_plel_file(jj+1)-alpha_plel) &
+        -this%prob_file(ii+1,jj)*(this%alpha_perp_file(ii)-alpha_perp)*(this%alpha_plel_file(jj+1)-alpha_plel) &
+        -this%prob_file(ii,jj+1)*(this%alpha_perp_file(ii+1)-alpha_perp)*(this%alpha_plel_file(jj)-alpha_plel) &
+        +this%prob_file(ii+1,jj+1)*(this%alpha_perp_file(ii)-alpha_perp)*(this%alpha_plel_file(jj)-alpha_plel))
+        if  (prob > 0) then
+            BAO_DR12LOWZ_loglike = -log( prob )
+        else
+            BAO_DR12LOWZ_loglike = logZero
+        endif
+    endif
+
+    end function BAO_DR12LOWZ_loglike
 
     !!!! SDSS DR7 main galaxy sample http://arxiv.org/abs/1409.3242
     !Adapted from code by Lado Samushia
