@@ -4,7 +4,7 @@ zeff = 0.32
 
 num_bao = 3
 
-measurement_type = f_sigma8 Hz_rs_103 DA_over_rs
+measurement_type = f_sigma8 bao_Hz_rs_103 DA_over_rs
 bao_measurement = 0.392 11.48 6.38
 
 bao_invcov_file = sdss_DR12LOWZ_RSD_bao_invcov_qpm.txt
