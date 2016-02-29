@@ -1,0 +1,10 @@
+name = DR12CMASS
+
+measurement_type = DA_over_rs
+
+alpha_npoints = 300
+prob_dist = sdss_DR12CMASS_consensus.dat
+
+zeff =0.57
+#Note these values are not used in the actual likelihood; latter is with true rs
+bao_measurement = 9.42 0.13

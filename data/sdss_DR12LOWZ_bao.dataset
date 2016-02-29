@@ -1,0 +1,10 @@
+name = DR12LOWZ
+
+measurement_type = DA_over_rs
+
+alpha_npoints = 300
+prob_dist = sdss_DR12LOWZ_consensus.dat
+
+zeff=0.32
+
+bao_measurement = 6.85 0.17
