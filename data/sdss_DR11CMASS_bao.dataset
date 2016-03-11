@@ -1,12 +1,14 @@
 name = DR11CMASS
 
+zeff =0.57	
+
+#Note these values are not used in the actual likelihood; latter is with true rs
 measurement_type = DV_over_rs
+bao_measurement = 13.773  0.134
 
 alpha_npoints = 280
 prob_dist = sdss_DR11CMASS_consensus.dat
 
-zeff =0.57	
-#Note these values are not used in the actual likelihood; latter is with true rs
-#bao_measurement = 13.420   0.130
-bao_measurement = 13.773  0.134
-
+rd_fid = 149.28
+H_fid = 93.558 
+DA_fid = 1359.72
