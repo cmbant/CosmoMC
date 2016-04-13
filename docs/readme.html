@@ -60,7 +60,7 @@ On a multi-processor machine you can start to get good results in a few of hours
 you'll need to set aside rather longer. You can also run on a cluster.
 
 <p>By default CosmoMC uses a simple Metropolis algorithm or an optimized fast-slow sampling method (which works for likelihood with many fast nuisance parameters like Planck).
-The program takes as inputs estimates of central values and posterior uncertainties of the various parameters. The proposal density can use information about parameter correlations from a supplied covariance matrix: use one if possible as it will significantly improve performance. Covariance matrices are supplied for common sets of default base parameters. If you compile and run with <A HREF="http://www-unix.mcs.anl.gov/mpi/">MPI</A> (to run across nodes in a cluster), there is an option to dynamically
+The program takes as inputs estimates of central values and posterior uncertainties of the various parameters. The proposal density can use information about parameter correlations from a supplied covariance matrix: use one if possible as it will significantly improve performance. Covariance matrices are supplied for common sets of default base parameters. If you compile and run with <A HREF="https://en.wikipedia.org/wiki/Message_Passing_Interface">MPI</A> (to run across nodes in a cluster), there is an option to dynamically
 learn the proposal matrix from the covariance of the post-burn-in samples so far. The MPI option also allows you to terminate the computation automatically when a particular convergence criterion is matched. MPI is strongly recommended.
 
 <p>There are two programs supplied <B>cosmomc</B> and <B>getdist</B>. The first is a compiled Fortran code
@@ -199,7 +199,7 @@ The default accuracy is aimed at WMAP. Set <B>high_accuracy_default = T</B> to t
 Set <B>action</B> =2 to just calculate the best-fit point and stop. This uses
 <A HREF="http://www.damtp.cam.ac.uk/user/na/NA_papers/NA2009_06.pdf">Powell's  2009 BOBYQA</A> bounded minimization routine, which works from two parameters up to hundreds of parameters, but does require that the likelihood return a valid number at all points between the bounds given on the base parameters in the input .ini file. The algorithm starts at the point given by the <i>center</i> parameter values given in the .ini file, and iterates until the parameter values are converged to within a radius of  <b>max_like_radius</b> (in normalized units, e.g. fraction of a standard deviation or propose_width). The minimization will also stop if the log likelihood has converged to within <i>minimize_loglike_tolerance</i>.
 
- The best-fit values (and derived and nuisance parameters) are output to a file called <em>file_root</em>.minimum. The method works for parameters with hard bounds that truncate the posterior, e.g. for neutrino mass mnu>0. 
+ The best-fit values (and derived and nuisance parameters) are output to a file called <em>file_root</em>.minimum. The method works for parameters with hard bounds that truncate the posterior, e.g. for neutrino mass mnu>0.
 <BR><BR>
 Minimization with action=2 will work more reliably if you have a propose_matrix to approximately orthogonalize the likelihood. You can also run minimizations from multiple random starting points to check that they converge: run with e.g. "mpirun -np 4" and <i>minimize_random_start_pos=T</i> to check four minimizations - the final output will be the point with the best fit of all and a warning will be printed if there there are outliers.
 <BR><BR>
