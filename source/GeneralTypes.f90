@@ -748,7 +748,7 @@
     class(TLikelihoodList) :: L
     real(mcp), allocatable :: derived(:)
     real(mcp), intent(in), optional :: Likelihoods(:), logLike
-    class(TTheoryPredictions) :: Theory
+    class(TTheoryPredictions), allocatable :: Theory
     real(mcp) :: P(:)
     real(mcp), allocatable :: allDerived(:)
     Class(TDataLikelihood), pointer :: DataLike
