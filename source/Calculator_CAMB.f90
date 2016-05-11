@@ -100,6 +100,7 @@
     P%Num_Nu_Massive = 0
     P%Nu_mass_numbers = 0
     P%Num_Nu_Massless = CMB%nnu
+    P%share_delta_neff = .false.
     if (CMB%omnuh2>0) then
         P%Nu_mass_eigenstates=0
         if (CMB%omnuh2>CMB%omnuh2_sterile) then
