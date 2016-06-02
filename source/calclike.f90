@@ -116,7 +116,8 @@
 
     logLike=0
     do i=1,num_params
-        if (BaseParams%varying(i) .and. BaseParams%GaussPriors%std(i)/=0) then
+        !jv- if (BaseParams%varying(i) .and. BaseParams%GaussPriors%std(i)/=0) then   
+        if (BaseParams%GaussPriors%std(i)/=0) then
             logLike = logLike + ((P(i)-BaseParams%GaussPriors%mean(i))/BaseParams%GaussPriors%std(i))**2
         end if
     end do
