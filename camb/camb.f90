@@ -28,23 +28,33 @@
     type(CAMBparams) :: Params
     type (CAMBdata)  :: OutData
     integer :: error !Zero if OK
+    Type(MatterTransferData) :: emptyMT
+    Type(ClTransferData) :: emptyCl
 
     !Set internal types from OutData so it always 'owns' the memory, prevent leaks
 
+    call Transfer_Free(MT)
     MT =  OutData%MTrans
 
+    call Free_ClTransfer(CTransScal)
+    call Free_ClTransfer(CTransVec)
+    call Free_ClTransfer(CTransTens)
     CTransScal = OutData%ClTransScal
     CTransVec  = OutData%ClTransVec
     CTransTens = OutData%ClTransTens
 
-
     call CAMB_GetResults(Params, error)
+
     OutData%Params = Params
     OutData%MTrans = MT
+    MT = emptyMT
     OutData%ClTransScal = CTransScal
     OutData%ClTransVec  = CTransVec
     OutData%ClTransTens = CTransTens
-
+    CTransScal = emptyCl
+    CTransVec  = emptyCl
+    CTransTens = emptyCl
+    
     end subroutine CAMB_GetTransfers
 
     subroutine CAMB_InitCAMBdata(Dat)
@@ -191,25 +201,25 @@
     end if
 
     if (Params%WantTransfer .and. &
-    .not. (Params%WantCls .and. Params%WantScalars .and. .not. separate)) then
-        P=Params
-        P%WantCls = .false.
-        P%WantScalars = .false.
-        P%WantTensors = .false.
-        P%WantVectors = .false.
-        call CAMBParams_Set(P)
-        if (global_error_flag==0) call cmbmain
-        if (global_error_flag/=0) then
-            if (present(error)) error =global_error_flag
-            return
-        end if
-        !Need to store num redshifts etc
-        CP%WantScalars = Params%WantScalars
-        CP%WantCls =  Params%WantCls
-        CP%WantTensors = Params%WantTensors
-        CP%WantVectors = Params%WantVectors
-        CP%Reion%Reionization = InReionization
-        Params = CP
+        .not. (Params%WantCls .and. Params%WantScalars .and. .not. separate)) then
+    P=Params
+    P%WantCls = .false.
+    P%WantScalars = .false.
+    P%WantTensors = .false.
+    P%WantVectors = .false.
+    call CAMBParams_Set(P)
+    if (global_error_flag==0) call cmbmain
+    if (global_error_flag/=0) then
+        if (present(error)) error =global_error_flag
+        return
+    end if
+    !Need to store num redshifts etc
+    CP%WantScalars = Params%WantScalars
+    CP%WantCls =  Params%WantCls
+    CP%WantTensors = Params%WantTensors
+    CP%WantVectors = Params%WantVectors
+    CP%Reion%Reionization = InReionization
+    Params = CP
     end if
 
     call_again = .false.
@@ -329,10 +339,10 @@
     P%want_zstar = .false.  !!JH
     P%want_zdrag = .false.  !!JH
 
-    P%Max_l=1500
-    P%Max_eta_k=3000
-    P%Max_l_tensor=400
-    P%Max_eta_k_tensor=800
+    P%Max_l=2500
+    P%Max_eta_k=5000
+    P%Max_l_tensor=600
+    P%Max_eta_k_tensor=1200
     !Set up transfer just enough to get sigma_8 OK
     P%Transfer%kmax=0.9
     P%Transfer%k_per_logint=0
@@ -349,7 +359,7 @@
     P%AccurateReionization = .false.
     P%AccurateBB = .false.
 
-    P%DoLensing = .false.
+    P%DoLensing = .true.
 
     P%MassiveNuMethod = Nu_best
     P%OnlyTransfers = .false.
@@ -381,23 +391,23 @@
     if (P%yhe < 0.2d0.or.P%yhe > 0.8d0) then
         OK = .false.
         write(*,*) &
-        '  Warning: YHe is the Helium fraction of baryons.', &
-        '  Your have:', P%yhe
+            '  Warning: YHe is the Helium fraction of baryons.', &
+            '  Your have:', P%yhe
     end if
     if (P%Num_Nu_massive < 0) then
         OK = .false.
         write(*,*) &
-        'Warning: Num_Nu_massive is strange:',P%Num_Nu_massive
+            'Warning: Num_Nu_massive is strange:',P%Num_Nu_massive
     end if
     if (P%Num_Nu_massless < 0) then
         OK = .false.
         write(*,*) &
-        'Warning: Num_nu_massless is strange:', P%Num_Nu_massless
+            'Warning: Num_nu_massless is strange:', P%Num_Nu_massless
     end if
     if (P%Num_Nu_massive < 1 .and. P%omegan > 0.0) then
         OK = .false.
         write(*,*) &
-        'Warning: You have omega_neutrino > 0, but no massive species'
+            'Warning: You have omega_neutrino > 0, but no massive species'
     end if
 
 
@@ -407,9 +417,9 @@
     end if
 
     if (P%WantScalars .and. P%Max_eta_k < P%Max_l .or.  &
-    P%WantTensors .and. P%Max_eta_k_tensor < P%Max_l_tensor) then
-        OK = .false.
-        write(*,*) 'You need Max_eta_k larger than Max_l to get good results'
+        P%WantTensors .and. P%Max_eta_k_tensor < P%Max_l_tensor) then
+    OK = .false.
+    write(*,*) 'You need Max_eta_k larger than Max_l to get good results'
     end if
 
     call Reionization_Validate(P%Reion, OK)
@@ -419,17 +429,17 @@
         if (P%transfer%num_redshifts > max_transfer_redshifts .or. P%transfer%num_redshifts<1) then
             OK = .false.
             write(*,*) 'Maximum ',  max_transfer_redshifts, &
-            'redshifts. You have: ', P%transfer%num_redshifts
+                'redshifts. You have: ', P%transfer%num_redshifts
         end if
         if (P%transfer%kmax < 0.01 .or. P%transfer%kmax > 50000 .or. &
-        P%transfer%k_per_logint>0 .and.  P%transfer%k_per_logint <1) then
-!            OK = .false.
-            write(*,*) 'Strange transfer function settings.'
+            P%transfer%k_per_logint>0 .and.  P%transfer%k_per_logint <1) then
+        !            OK = .false.
+        write(*,*) 'Strange transfer function settings.'
         end if
         if (P%transfer%num_redshifts > max_transfer_redshifts .or. P%transfer%num_redshifts<1) then
             OK = .false.
             write(*,*) 'Maximum ',  max_transfer_redshifts, &
-            'redshifts. You have: ', P%transfer%num_redshifts
+                'redshifts. You have: ', P%transfer%num_redshifts
         end if
     end if
 
