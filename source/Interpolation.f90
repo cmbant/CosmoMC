@@ -109,6 +109,8 @@
     contains
     procedure :: Init => TInterpGrid2D_Init
     procedure :: InitFromFile => TInterpGrid2D_InitFromFile
+    procedure :: InitFromMatrixTextFile => TInterpGrid2D_InitFromMatrixTextFile
+    procedure :: InitFromMatrixBinaryFile => TInterpGrid2D_InitFromMatrixBinaryFile
     procedure :: Value => TInterpGrid2D_Value !one point
     procedure :: Values => TInterpGrid2D_Values !array of points
     procedure :: Clear => TInterpGrid2D_Clear
@@ -767,7 +769,43 @@
 
     end subroutine TInterpGrid2D_Init
 
+    subroutine TInterpGrid2D_InitFromMatrixTextFile(this, Filename, colvals, rowvals)
+    class(TInterpGrid2D):: this
+    character(LEN=*), intent(in) :: Filename
+    real(sp_acc), intent(in) :: colvals(:), rowvals(:)
+
+    call this%Clear()
+    this%ny = size(colvals)
+    this%nx = size(rowvals)
+    allocate(this%z(this%nx, this%ny))
+    call File%ReadTextMatrix(Filename, this%z)
+    allocate(this%x, source = rowvals)
+    allocate(this%y, source = colvals)
+    call this%InitInterp()
+
+    end subroutine TInterpGrid2D_InitFromMatrixTextFile
+
+    subroutine TInterpGrid2D_InitFromMatrixBinaryFile(this, Filename, colvals, rowvals)
+    class(TInterpGrid2D):: this
+    character(LEN=*), intent(in) :: Filename
+    real(sp_acc), intent(in) :: colvals(:), rowvals(:)
+    Type(TBinaryFile) :: F
+
+    call this%Clear()
+    this%ny = size(colvals)
+    this%nx = size(rowvals)
+    allocate(this%z(this%nx, this%ny))
+    call F%OpenFile(Filename, mode='binary')
+    call F%Read(this%z)
+    call F%Close()
+    allocate(this%x, source = rowvals)
+    allocate(this%y, source = colvals)
+    call this%InitInterp()
+
+    end subroutine TInterpGrid2D_InitFromMatrixBinaryFile
+
     subroutine TInterpGrid2D_InitFromFile(this, Filename, xcol, ycol, zcol)
+    !Load from file with rows of x, y, value
     class(TInterpGrid2D):: this
     character(LEN=*), intent(in) :: Filename
     integer, intent(in), optional :: xcol, ycol, zcol
