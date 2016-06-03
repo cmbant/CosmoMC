@@ -15,11 +15,20 @@ ifeq "$(ifortErr)" "0"
 F90C     = ifort
 #use this if mpif90 is trying to use gfortran: MPIF90C = mpif90 -f90=ifort
 
-FFLAGS = -mkl -openmp -O3 -no-prec-div -fpp
-DEBUGFLAGS = -mkl -openmp -g -check all -check noarg_temp_created -traceback -fpp -fpe0
+FFLAGS = -mkl -O3 -no-prec-div -fpp
+DEBUGFLAGS = -mkl -g -check all -check noarg_temp_created -traceback -fpp -fpe0
 #add -fpe0 to check for floating point errors (think lowLike also throws these harmlessly)
 MODOUT = -module $(OUTPUT_DIR)
 LAPACKL =
+
+ifortVer_major = $(shell ifort -v 2>&1 | cut -d " " -f 3 | cut -d. -f 1)
+ifeq ($(shell test $(ifortVer_major) -gt 15; echo $$?),0)
+FFLAGS+= -qopenmp
+DEBUGFLAGS+= -qopenmp
+else
+FFLAGS+= -openmp
+DEBUGFLAGS+= -openmp
+endif
 
 ifeq ($(STATIC),YES)
 #so you can re-distribute the binary to another machine
@@ -36,8 +45,9 @@ MPIF90C = ftn
 endif
 
 else
-#gfortran 5.0 and earlier will not work (many F2003 bugs)
-#gfortran 6 trunk should work, and perhaps GCC 5.2 when available; see virtual machines for up-to-date environments
+#gfortran 5.x and earlier will not work (many F2003 bugs)
+#gfortran 6 should work (though currently still buggy for debug compile); 
+#see CosmoBox virtual machines for stable environments
 F90C = gfortran
 FFLAGS = -cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4
 DEBUGFLAGS = -cpp -g -fbounds-check -fbacktrace -ffree-line-length-none -fopenmp -fmax-errors=4 -ffpe-trap=invalid,overflow,zero
