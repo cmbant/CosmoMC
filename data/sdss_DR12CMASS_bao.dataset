@@ -1,10 +1,13 @@
+#Results from arXiv:1509.06373v2
 name = DR12CMASS
 
-measurement_type = DA_over_rs
+zeff =0.57
 
 alpha_npoints = 300
-prob_dist = sdss_DR12CMASS_consensus.dat
+prob_dist = sdss_DR12CMASS_bao_dilation_qpm.dat
+#prob_dist = sdss_DR12CMASS_bao_dilation_md-patchy.dat
 
-zeff =0.57
-#Note these values are not used in the actual likelihood; latter is with true rs
-bao_measurement = 9.42 0.13
+Hrd_fid = 13827
+DA_rd_fid = 9.330
+
+measurement_type = dilation

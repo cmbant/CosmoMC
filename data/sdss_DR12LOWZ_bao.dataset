@@ -1,13 +1,14 @@
+#Results from arXiv:1509.06373v2
 name = DR12LOWZ
 
 zeff=0.32
 
-measurement_type = DA_over_rs
-bao_measurement = 6.85 0.17
-
 alpha_npoints = 300
-prob_dist = sdss_DR12LOWZ_consensus.dat
+prob_dist = sdss_DR12LOWZ_bao_dilation_qpm.dat
+#prob_dist = sdss_DR12LOWZ_bao_dilation_md-patchy.dat
 
 Hrd_fid = 11914.0
 DA_rd_fid = 6.667
+
+measurement_type = dilation
 
