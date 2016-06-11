@@ -24,7 +24,7 @@
     implicit none
     private
 
-    character(LEN=Ini_Enumeration_Len), parameter :: measurement_types(8) = &
+    character(LEN=Ini_Enumeration_Len), parameter :: measurement_types(9) = &
         [character(Ini_Enumeration_Len)::'Az','DV_over_rs','rs_over_DV','DA_over_rs', &
         'F_AP', 'f_sigma8','bao_Hz_rs','bao_Hz_rs_103','dilation']
 
