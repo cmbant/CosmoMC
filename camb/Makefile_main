@@ -96,7 +96,7 @@ camb_fits: directories writefits.f90 $(CAMBOBJ) $(DRIVER)
 		$(F90CRLINK) $(HEALPIXLD) -DWRITE_FITS -o $@
 
 %.o: ../%.f90
-	$(F90C) $(F90FLAGS) $(IFLAG)../$(FORUTILSPATH)/$(OUTPUT_DIR)/ -c $< -o $*.o
+	$(F90C) $(F90FLAGS) $(IFLAG)$(FORUTILSPATH)/$(OUTPUT_DIR)/ -c $< -o $*.o
 
 
 directories:
