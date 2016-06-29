@@ -3,7 +3,7 @@
     use CosmologyTypes
     use CosmoTheory
     use CAMB, only : CAMB_GetResults, CAMB_GetAge, CAMBParams, CAMB_SetDefParams, &
-        AccuracyBoost,  Cl_scalar, Cl_tensor, Cl_lensed, outNone, w_lam, wa_ppf,&
+        AccuracyBoost,  Cl_scalar, Cl_tensor, Cl_lensed, outNone, &
         CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Nonlinear_lens, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
         CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, Transfer_SetForNonlinearLensing, &
         initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
@@ -31,6 +31,7 @@
         logical :: CAMB_timing = .false.
         real(mcp) :: k_eta_max_scalar = -1._mcp
         logical :: accurate_BB =.false.
+        character(LEN=:), allocatable :: dark_energy_model
         type(CAMBParams)  CAMBP
         character(LEN=:), allocatable :: highL_theory_cl_template_file
         real(mcp), allocatable :: highL_lensedCL_template(:,:)
@@ -74,9 +75,9 @@
     contains
 
     subroutine CAMBCalc_CMBToCAMB(this,CMB,P)
-    use LambdaGeneral
+    use DarkEnergyInterface
     use CAMBmain, only : ALens
-    use constants, only : default_nnu
+    use constants, only : dl, default_nnu
     use lensing, only : ALens_Fiducial
     class(CAMB_Calculator) :: this
     class(CMBParams) CMB
@@ -91,8 +92,8 @@
     P%H0 = CMB%H0
     P%Reion%redshift= CMB%zre
     P%Reion%delta_redshift = CMB%zre_delta
-    w_lam = CMB%w
-    wa_ppf = CMB%wa
+    P%DarkEnergy%w_lam = CMB%w
+    P%DarkEnergy%wa_ppf = CMB%wa
     ALens = CMB%ALens
     ALens_Fiducial = CMB%ALensf
     P%InitialConditionVector(initial_iso_CDM) = &
@@ -717,6 +718,7 @@
     subroutine CAMBCalc_InitCAMBParams(this,P)
     use lensing
     use ModelParams
+    use DarkEnergyPPF
     class(CAMB_Calculator) :: this
     type(CAMBParams)  P
     integer zix
@@ -724,10 +726,15 @@
     !P%Transfer%PK_redshifts and P%Transfer%PK_num_redshifts respectively
     !for nonlinear lensing of CMB + LSS compatibility
     Threadnum =num_threads
-    w_lam = -1
-    wa_ppf = 0._dl
-    call CAMB_SetDefParams(P)
 
+    call CAMB_SetDefParams(P)
+    if (this%dark_energy_model == 'ppf') then
+        deallocate(P%DarkEnergy)
+        allocate(TDarkEnergyPPF::P%DarkEnergy)
+    else if (this%dark_energy_model /= 'fluid') then
+        error stop 'Calculator_CAMB: unknown dark_energy_model'
+    end if
+    
     HighAccuracyDefault = .true.
     P%OutputNormalization = outNone
 
@@ -869,6 +876,7 @@
     class(CAMB_Calculator) :: this
     class(TSettingIni) :: Ini
 
+    
     call this%TCosmologyCalculator%ReadParams(Ini)
     this%calcName ='CAMB'
 
@@ -887,6 +895,8 @@
 
     halofit_version = Ini%Read_Int('halofit_version',halofit_default)
 
+    this%dark_energy_model = Ini%Read_String_Default('dark_energy_model','ppf')
+    
     end subroutine CAMBCalc_ReadParams
 
 

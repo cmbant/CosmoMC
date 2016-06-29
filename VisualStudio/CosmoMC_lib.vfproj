@@ -5,7 +5,7 @@
 		<Platform Name="x64"/></Platforms>
 	<Configurations>
 		<Configuration Name="Debug|x64" ConfigurationType="typeStaticLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" F2003Semantics="true" ErrorLimit="5" StandardWarnings="standardWarningsF08" WarnDeclarations="true" WarnTruncateSource="true" FloatingPointExceptionHandling="fpe0" Traceback="true" BoundsCheck="true" UninitializedVariablesCheck="true" DescriptorDataTypeCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" F2003Semantics="true" ErrorLimit="4" StandardWarnings="standardWarningsF08" WarnDeclarations="true" WarnTruncateSource="true" FloatingPointExceptionHandling="fpe0" Traceback="true" BoundsCheck="true" UninitializedVariablesCheck="true" DescriptorDataTypeCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
 				<Tool Name="VFLibrarianTool"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
@@ -14,7 +14,7 @@
 				<Tool Name="VFPreBuildEventTool"/>
 				<Tool Name="VFPostBuildEventTool"/></Configuration>
 		<Configuration Name="Release|x64" ConfigurationType="typeStaticLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" HeapArrays="0" Preprocess="preprocessYes" OpenMP="OpenMPParallelCode" WarnTruncateSource="true"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" HeapArrays="0" Preprocess="preprocessYes" OpenMP="OpenMPParallelCode" ErrorLimit="4" WarnTruncateSource="true"/>
 				<Tool Name="VFLibrarianTool"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
@@ -23,7 +23,7 @@
 				<Tool Name="VFPreBuildEventTool"/>
 				<Tool Name="VFPostBuildEventTool"/></Configuration>
 		<Configuration Name="DebugMPI|x64" ConfigurationType="typeStaticLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" PreprocessorDefinitions="MPI" StandardWarnings="standardWarningsF08" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Preprocess="preprocessYes" PreprocessorDefinitions="MPI" ErrorLimit="4" StandardWarnings="standardWarningsF08" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
 				<Tool Name="VFLibrarianTool"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
@@ -32,7 +32,7 @@
 				<Tool Name="VFPreBuildEventTool"/>
 				<Tool Name="VFPostBuildEventTool"/></Configuration>
 		<Configuration Name="PICO|x64" ConfigurationType="typeStaticLibrary">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" HeapArrays="0" Preprocess="preprocessYes" PreprocessorDefinitions="PICO" OpenMP="OpenMPParallelCode" StandardWarnings="standardWarningsF08"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" HeapArrays="0" Preprocess="preprocessYes" PreprocessorDefinitions="PICO" OpenMP="OpenMPParallelCode" ErrorLimit="4" StandardWarnings="standardWarningsF08"/>
 				<Tool Name="VFLibrarianTool" AdditionalLibraryDirectories="C:\WorkProgs\Python27\Lib\site-packages\pypico" AdditionalDependencies="pico.lib"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
@@ -111,23 +111,14 @@
 		<File RelativePath="..\source\wigglez.f90"/>
 		<File RelativePath="..\source\wl.f90"/></Filter>
 		<Filter Name="Utils">
-		<File RelativePath="..\source\ArrayUtils.f90"/>
-		<File RelativePath="..\source\FileUtils.f90"/>
-		<File RelativePath="..\source\IniObjects.f90"/>
 		<File RelativePath="..\source\Interpolation.f90"/>
 		<File RelativePath="..\source\IO.f90"/>
-		<File RelativePath="..\source\Matrix_utils_new.f90"/>
-		<File RelativePath="..\source\MiscUtils.f90"/>
-		<File RelativePath="..\source\MpiUtils.f90"/>
-		<File RelativePath="..\source\ObjectLists.f90"/>
 		<File RelativePath="..\source\ObjectParamNames.f90"/>
 		<File RelativePath="..\source\PowellConstrainedMinimize.f90">
 			<FileConfiguration Name="Debug|Win32">
 				<Tool Name="VFFortranCompilerTool" StandardWarnings="standardWarningsNone" WarnDeclarations="false"/></FileConfiguration>
 			<FileConfiguration Name="Debug|x64">
-				<Tool Name="VFFortranCompilerTool" StandardWarnings="standardWarningsNone" WarnDeclarations="false"/></FileConfiguration></File>
-		<File RelativePath="..\source\RandUtils.f90"/>
-		<File RelativePath="..\source\StringUtils.f90"/></Filter>
+				<Tool Name="VFFortranCompilerTool" StandardWarnings="standardWarningsNone" WarnDeclarations="false"/></FileConfiguration></File></Filter>
 		<File RelativePath="..\source\BaseParameters.f90"/>
 		<File RelativePath="..\source\CalcLike.f90"/>
 		<File RelativePath="..\source\GeneralSetup.f90"/>
