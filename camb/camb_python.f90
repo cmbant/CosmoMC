@@ -4,6 +4,8 @@
     use ModelParams
     use Transfer
     use iso_c_binding
+    use DarkEnergyFluid
+    use DarkEnergyPPF
     implicit none
 
     Type c_MatterTransferData
@@ -25,6 +27,12 @@
         type(c_ptr) ls
         !skip limber for now...
     end Type c_ClTransferData
+
+    Type dummyAllocatable
+    class(c_ClTransferData), allocatable :: P
+    end Type dummyAllocatable
+
+    private dummyAllocatable
 
     contains
 
@@ -148,7 +156,7 @@
     Type(c_ClTransferData) :: cData
 
     cData%NumSources = data%NumSources
-    if (associated(Data%q%points)) then
+    if (allocated(Data%q%points)) then
         cData%q_size = size(data%q%points)
         cData%q = c_loc(data%q%points)
     else
@@ -484,6 +492,61 @@
     !$OMP END PARALLEL DO
     err = global_error_flag
     end function CAMB_TimeEvolution
+
+    function GetAllocatableSize() result(sz)
+    Type(dummyAllocatable) :: T
+    integer sz
+
+    sz = storage_size(T)
+
+    end function GetAllocatableSize
+
+    subroutine CAMBparams_SetDarkEnergy(P, i, handle)
+    Type(CAMBparams), target :: P
+    integer, intent(in) :: i
+    type(c_ptr), intent(out)  ::  handle
+
+    if (allocated(P%DarkEnergy)) deallocate(P%DarkEnergy)
+    if (i==0) then
+      allocate(TDarkEnergyFluid::P%DarkEnergy)
+    else if (i==1) then
+      allocate(TDarkEnergyPPF::P%DarkEnergy)
+    else
+      error stop 'Unknown dark energy model'
+    end if
+
+    !can't reference polymorphic type, but can reference first data entry (which is same thing here)
+    handle = c_loc(P%DarkEnergy%w_lam)
+
+    end subroutine CAMBparams_SetDarkEnergy
+
+    subroutine CAMBparams_GetDarkEnergy(P, i,handle)
+    Type(CAMBparams), target :: P
+    integer, intent(out) :: i
+    type(c_ptr), intent(out)  ::  handle
+
+    if (allocated(P%DarkEnergy)) then
+        select type (point => P%DarkEnergy)
+        class is (TDarkEnergyFluid)
+            i =0
+        class is (TDarkEnergyPPF)
+            i =1
+        class default
+            i = -1
+        end select
+        handle = c_loc(P%DarkEnergy%w_lam)
+    else
+        handle = c_null_ptr
+    end if
+
+    end subroutine CAMBparams_GetDarkEnergy
+
+    subroutine CAMBParams_Free(P)
+    Type(CAMBparams) :: P
+
+    if (allocated(P%DarkEnergy)) deallocate(P%DarkEnergy)
+
+    end subroutine CAMBParams_Free
 
     ! END BRIDGE FOR PYTHON
 

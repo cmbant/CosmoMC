@@ -3,19 +3,44 @@
 #Set FISHER=Y to compile bispectrum fisher matrix code
 FISHER=
 
+#Set FORUTILSPATH to the path where the libforutils.a file can be found.
+#The OUTPUT_DIR will be appended.
+
+ifneq "$(wildcard ./forutils)" ""
+FORUTILSPATH ?= ./forutils
+else
+ifneq "$(wildcard ../forutils)" ""
+FORUTILSPATH ?= ../forutils
+else
+$(error First install forutils from https://github.com/cmbant/forutils; or set FORUTILSPATH variable)
+endif
+endif
+
+
 #Will detect ifort/gfortran or edit for your compiler
-ifortErr = $(shell which ifort >/dev/null; echo $$?)
+ifortErr = $(shell which ifort >/dev/null 2>&1; echo $$?)
 ifeq "$(ifortErr)" "0"
 
 #Intel compiler
 # For OSX replace shared by dynamiclib
 F90C     = ifort
-FFLAGS = -openmp -fast -W0 -WB -fpp2 -vec_report0
+ifortVer_major = $(shell ifort -v 2>&1 | cut -d " " -f 3 | cut -d. -f 1)
+COMMON_FFLAGS = -fpp -openmp
+ifneq "$(ifortVer_major)" "14"
+COMMON_FFLAGS += -gen-dep=$$*.d
+endif
+FFLAGS = -openmp -fast -fp-model precise -W0 -WB $(COMMON_FFLAGS)
+DEBUGFLAGS =  -g -check all -check noarg_temp_created -traceback -fpe0 $(COMMON_FFLAGS)
 SFFLAGS = -shared -fpic
-DEBUGFLAGS = -openmp -g -check all -check noarg_temp_created -traceback -fpp -fpe0
 ## This is flag is passed to the Fortran compiler allowing it to link C++ if required (not usually):
 F90CRLINK = -cxxlib
+ifneq "$(ifortVer_major)" "14"
+F90CRLINK += -qopt-report=1 -qopt-report-phase=vec
+else
+F90CRLINK += -vec_report0
+endif
 MODOUT = -module $(OUTPUT_DIR)
+AR     = xiar
 SMODOUT = -module $(DLL_DIR)
 ifneq ($(FISHER),)
 FFLAGS += -mkl
@@ -25,19 +50,22 @@ else
 gfortErr = $(shell which gfortran >/dev/null; echo $$?)
 ifeq "$(gfortErr)" "0"
 
-#Gfortran compiler:
-#The options here work in v4.6+. Python wrapper needs v4.9+.
+#Gfortran compiler (version 6+):
 F90C     = gfortran
+COMMON_FFLAGS = -MMD -cpp -ffree-line-length-none -fmax-errors=4
+# Using -ffast-math causes differences between Debug and Release configurations.
+FFLAGS = -O3 -fopenmp $(COMMON_FFLAGS)
+DEBUGFLAGS = -g -fbacktrace -ffpe-trap=invalid,overflow,zero -fbounds-check $(COMMON_FFLAGS)
 SFFLAGS =  -shared -fPIC
-
-FFLAGS =  -O3 -fopenmp -ffast-math -fmax-errors=4
-DEBUGFLAGS = -cpp -g -fbounds-check -fbacktrace -ffree-line-length-none -fmax-errors=4 -ffpe-trap=invalid,overflow,zero
 MODOUT =  -J$(OUTPUT_DIR)
 SMODOUT = -J$(DLL_DIR)
 
+ifneq ($(FISHER),)
+F90CRLINK += -lblas -llapack
+endif
 ifneq ($(shell uname -s),Darwin)
 #native optimization does not work on Mac
-FFLAGS+=-march=native
+FFLAGS += -march=native
 endif
 endif
 endif
@@ -89,13 +117,11 @@ FITSLIB       = cfitsio
 HEALPIXDIR    ?= /usr/local/healpix
 
 ifneq ($(FISHER),)
+# Its dependencies are all meet by the libutils.a which always added.
 FFLAGS += -DFISHER
-EXTCAMBFILES = Matrix_utils.o
-else
-EXTCAMBFILES =
 endif
 
-DEBUGFLAGS ?= FFLAGS
-Debug: FFLAGS=$(DEBUGFLAGS)
+DEBUGFLAGS ?= $(FFLAGS)
+Debug: FFLAGS = $(DEBUGFLAGS)
 
 include ./Makefile_main

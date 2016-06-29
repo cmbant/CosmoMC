@@ -23,7 +23,7 @@
     contains
 
     subroutine Recombination_ReadParams(R, Ini)
-    use IniFile
+    use IniObjects
     Type(RecombinationParams) :: R
     Type(TIniFile) :: Ini
 

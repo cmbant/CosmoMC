@@ -14,7 +14,7 @@
     !   halofit_bird: arXiv: 1109.4416
     !   halofit_takahashi: arXiv: 1208.2701
     !   halofit_mead: arXiv:1505.07833,1602.02154
-    
+
     ! Adapted for F90 and CAMB, AL March 2005
     !!BR09 Oct 09: generalized expressions for om(z) and ol(z) to include w
 
@@ -35,8 +35,8 @@
 
     module NonLinear
     use ModelParams
+    use DarkEnergyInterface
     use transfer
-    use LambdaGeneral
     implicit none
     private
 
@@ -73,10 +73,10 @@
     contains
 
     subroutine NonLinear_ReadParams(Ini)
-    use IniFile
+    use IniObjects
     Type(TIniFile) :: Ini
 
-    halofit_version = Ini_Read_Int_File(Ini, 'halofit_version', halofit_default)
+    halofit_version = Ini%Read_Int('halofit_version', halofit_default)
 
     end subroutine NonLinear_ReadParams
 
@@ -111,8 +111,8 @@
             ! curvature (rncur) of the power spectrum at the desired redshift, using method
             ! described in Smith et al (2002).
             a = 1/real(1+CAMB_Pk%Redshifts(itf),dl)
-            om_m = omega_m(a, omm0, CP%omegav, w_lam,wa_ppf)
-            om_v = omega_v(a, omm0, CP%omegav, w_lam,wa_ppf)
+            om_m = omega_m(a, omm0, CP%omegav, CP%DarkEnergy%w_lam, CP%DarkEnergy%wa_ppf)
+            om_v = omega_v(a, omm0, CP%omegav, CP%DarkEnergy%w_lam, CP%DarkEnergy%wa_ppf)
             acur = a
             xlogr1=-2.0
             xlogr2=3.5
@@ -152,7 +152,7 @@
                     ! linear power spectrum !! Remeber => plin = k^3 * P(k) * constant
                     ! constant = 4*pi*V/(2*pi)^3
 
-                    plin= MatterPowerData_k(CAMB_PK, rk, itf)*(rk**3/(2*pi**2))
+                    plin= MatterPowerData_k(CAMB_PK, rk, itf)*(rk**3/(2*const_pi**2))
 
                     ! calculate nonlinear power according to halofit: pnl = pq + ph,
                     ! where pq represents the quasi-linear (halo-halo) power and
@@ -214,10 +214,11 @@
         !cosmological models with constant w.
         gam=0.1971-0.0843*rn+0.8460*rncur
         a=1.5222+2.8553*rn+2.3706*rn*rn+0.9903*rn*rn*rn+ &
-            0.2250*rn*rn*rn*rn-0.6038*rncur+0.1749*om_v*(1.+w_lam+wa_ppf*(1-acur))
+            0.2250*rn*rn*rn*rn-0.6038*rncur+0.1749*om_v* &
+            (1.+CP%DarkEnergy%w_lam+CP%DarkEnergy%wa_ppf*(1-acur))
         a=10**a
         b=10**(-0.5642+0.5864*rn+0.5716*rn*rn-1.5474*rncur+ &
-            0.2279*om_v*(1.+w_lam+wa_ppf*(1-acur)))
+            0.2279*om_v*(1.+CP%DarkEnergy%w_lam+CP%DarkEnergy%wa_ppf*(1-acur)))
         c=10**(0.3698+2.0404*rn+0.8161*rn*rn+0.5869*rncur)
         xmu=0.
         xnu=10**(5.2105+3.6902*rn)
@@ -285,7 +286,7 @@
     sum1=0.d0
     sum2=0.d0
     sum3=0.d0
-    anorm = 1/(2*pi**2)
+    anorm = 1/(2*const_pi**2)
     do i=1,nint
         t=(i-0.5_dl)/nint
         y=-1.d0+1.d0/t
@@ -759,8 +760,8 @@
     !Converts CAMB parameters to Meadfit parameters
     cosm%om_m=CP%omegac+CP%omegab+CP%omegan
     cosm%om_v=CP%omegav
-    cosm%w=w_lam
-    cosm%wa=wa_ppf
+    cosm%w=CP%DarkEnergy%w_lam
+    cosm%wa=CP%DarkEnergy%wa_ppf
     cosm%f_nu=CP%omegan/cosm%om_m
     cosm%h=CP%H0/100.
     cosm%Tcmb=CP%tcmb

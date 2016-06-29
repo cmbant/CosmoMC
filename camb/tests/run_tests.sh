@@ -1,3 +1,5 @@
+cd /camb/forutils
+make Release
 cd /camb
 make Release
 

@@ -10,6 +10,7 @@
     use Reionization
     use Recombination
     use lensing
+    use DarkEnergyFluid
     implicit none
 
     Type CAMBdata
@@ -18,8 +19,8 @@
         Type (CAMBparams) :: Params
     end Type CAMBdata
 
-    !         public CAMB_GetTransfers, CAMB_GetResults, CAMB_GetCls, CAMB_SetDefParams, &
-    !                CAMB_ValidateParams, CAMB_GetAge,CAMB_InitCAMBdata,
+    !   public CAMB_GetTransfers, CAMB_GetResults, CAMB_GetCls, CAMB_SetDefParams, &
+    !          CAMB_ValidateParams, CAMB_GetAge,CAMB_InitCAMBdata,
     contains
 
     subroutine CAMB_GetTransfers(Params, OutData, error)
@@ -59,11 +60,6 @@
 
     subroutine CAMB_InitCAMBdata(Dat)
     type (CAMBdata) :: Dat
-
-    !Comment these out to try to avoid intel bugs with status deallocating uninitialized pointers
-    call Ranges_Nullify(Dat%ClTransScal%q)
-    call Ranges_Nullify(Dat%ClTransVec%q)
-    call Ranges_Nullify(Dat%ClTransTens%q)
 
     nullify(Dat%ClTransScal%Delta_p_l_k)
     nullify(Dat%ClTransVec%Delta_p_l_k)
@@ -322,6 +318,10 @@
     P%Scalar_initial_condition =initial_adiabatic
     P%NonLinear = NonLinear_none
     P%Want_CMB = .true.
+    P%Want_CMB_lensing = .true.
+
+    if (allocated(P%DarkEnergy)) deallocate(P%DarkEnergy)
+    allocate(TDarkEnergyFluid::P%DarkEnergy)
 
     call SetDefPowerParams(P%InitPower)
 
@@ -351,7 +351,7 @@
     !JD 08/13 CAMB Fix for for nonlinear lensing of CMB + MPK compatibility
     P%Transfer%PK_num_redshifts=1
     P%Transfer%PK_redshifts=0
-    P%Transfer%NLL_num_redshifts=0
+    P%Transfer%NLL_num_redshifts=0 !AL 11/13, def to zero
     P%Transfer%NLL_redshifts=0
     !End JD
 

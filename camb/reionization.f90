@@ -1,7 +1,7 @@
 
     module Reionization
     use Precision
-    use AMLutils
+    use MiscUtils
     implicit none
 
     !This module puts smooth tanh reionization of specified mid-point (z_{re}) and width
@@ -71,11 +71,7 @@
     real(dl) tgh, xod
     real(dl) xstart
 
-    if (present(xe_recomb)) then
-        xstart = xe_recomb
-    else
-        xstart = 0._dl
-    end if
+    xstart = PresentDefault( 0._dl, xe_recomb)
 
     xod = (ThisReionHist%WindowVarMid - 1._dl/a**Rionization_zexp)/ThisReionHist%WindowVarDelta
     if (xod > 100) then
@@ -113,27 +109,27 @@
     end  function Reionization_timesteps
 
     subroutine Reionization_ReadParams(Reion, Ini)
-    use IniFile
+    use IniObjects
     Type(ReionizationParams) :: Reion
-    Type(TIniFile) :: Ini
+    class(TIniFile) :: Ini
 
-    Reion%Reionization = Ini_Read_Logical_File(Ini,'reionization')
+    Reion%Reionization = Ini%Read_Logical('reionization')
     if (Reion%Reionization) then
 
-        Reion%use_optical_depth = Ini_Read_Logical_File(Ini,'re_use_optical_depth')
+        Reion%use_optical_depth = Ini%Read_Logical('re_use_optical_depth')
 
         if (Reion%use_optical_depth) then
-            Reion%optical_depth = Ini_Read_Double_File(Ini,'re_optical_depth')
+            Reion%optical_depth = Ini%Read_Double('re_optical_depth')
         else
-            Reion%redshift = Ini_Read_Double_File(Ini,'re_redshift')
+            Reion%redshift = Ini%Read_Double('re_redshift')
         end if
 
-        Reion%delta_redshift = Ini_Read_Double_File(Ini,'re_delta_redshift', 0.5_dl) !default similar to CMBFAST original
-        Reion%fraction = Ini_Read_Double_File(Ini,'re_ionization_frac',Reionization_DefFraction)
+        Reion%delta_redshift = Ini%Read_Double('re_delta_redshift', 0.5_dl) !default similar to CMBFAST original
+        Reion%fraction = Ini%Read_Double('re_ionization_frac',Reionization_DefFraction)
 
-        Reion%helium_redshift  = Ini_Read_Double_File(Ini,'re_helium_redshift', 3.5_dl)
-        Reion%helium_delta_redshift  = Ini_Read_Double_File(Ini,'re_helium_delta_redshift', 0.5_dl)
-        Reion%helium_redshiftstart  = Ini_Read_Double_File(Ini,'re_helium_redshiftstart', &
+        Reion%helium_redshift  = Ini%Read_Double('re_helium_redshift', 3.5_dl)
+        Reion%helium_delta_redshift  = Ini%Read_Double('re_helium_delta_redshift', 0.5_dl)
+        Reion%helium_redshiftstart  = Ini%Read_Double('re_helium_redshiftstart', &
             Reion%helium_redshift + 3*Reion%helium_delta_redshift)
 
     end if
@@ -283,6 +279,7 @@
 
     subroutine Reionization_zreFromOptDepth(Reion, ReionHist)
     !General routine to find zre parameter given optical depth
+    use MpiUtils
     Type(ReionizationParams) :: Reion
     Type(ReionizationHistory) :: ReionHist
     real(dl) try_b, try_t
