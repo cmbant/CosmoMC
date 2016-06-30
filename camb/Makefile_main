@@ -99,6 +99,8 @@ camb_fits: directories writefits.f90 $(CAMBOBJ) $(DRIVER)
 %.o: ../%.f90
 	$(F90C) $(F90FLAGS) $(IFLAG)$(FORUTILSPATH)/$(OUTPUT_DIR)/ -c $< -o $*.o
 
+%.o: ../%.F90
+	$(F90C) $(F90FLAGS) $(IFLAG)$(FORUTILSPATH)/$(OUTPUT_DIR)/ -c $< -o $*.o
 
 directories:
 	mkdir -p $(OUTPUT_DIR)
