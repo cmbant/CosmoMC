@@ -6,6 +6,14 @@ BUILD ?= MPI
 
 MPIF90C ?= mpif90
 
+ifneq "$(wildcard ../forutils)" ""
+FORUTILSPATH ?= ../forutils
+else
+$(error First install forutils from https://github.com/cmbant/forutils; or set FORUTILSPATH variable)
+endif
+endif
+
+
 ifortErr = $(shell which ifort >/dev/null; echo $$?)
 
 #these settings for ifort 14 and higher. Earlier versions will not work.
@@ -46,7 +54,7 @@ endif
 
 else
 #gfortran 5.x and earlier will not work (many F2003 bugs)
-#gfortran 6 should work (though currently still buggy for debug compile); 
+#gfortran 6 should work (though currently still buggy for debug compile);
 #see CosmoBox virtual machines for stable environments
 F90C = gfortran
 FFLAGS = -cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4
@@ -113,9 +121,9 @@ CALCFILES = $(OUTPUT_DIR)/Calculator_CAMB.o
 #Can use params_H if you prefer more generic parameters
 PARAMETERIZATION = $(OUTPUT_DIR)/CosmologyParameterizations.o
 
-GETDISTFLAGS = $(FFLAGS)
-F90FLAGS = $(FFLAGS) $(IFLAG)../camb/$(OUTPUT_DIR) $(INCLUDE)
-LINKFLAGS = -L../camb/$(OUTPUT_DIR) -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
+GETDISTFLAGS = $(FFLAGS) $(IFLAG)$(FORUTILSPATH)/$(OUTPUT_DIR)/
+F90FLAGS = $(FFLAGS) $(IFLAG)../camb/$(OUTPUT_DIR) $(IFLAG)$(FORUTILSPATH)/$(OUTPUT_DIR)/ $(INCLUDE)
+LINKFLAGS = -L../camb/$(OUTPUT_DIR) -lcamb_$(RECOMBINATION) -L$(FORUTILSPATH)/$(OUTPUT_DIR) -lforutils $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
 ifneq ($(PICO),)
 CALCFILES += $(OUTPUT_DIR)/fpico_interface.o $(OUTPUT_DIR)/Calculator_PICO.o
