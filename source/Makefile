@@ -313,7 +313,8 @@ getdist: directories $(DISTFILES)
 camb:
 	cd ../camb && \
 	$(MAKE) --file=Makefile_main libcamb OUTPUT_DIR=$(OUTPUT_DIR) \
-	RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf NONLINEAR=halofit_ppf
+	RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf NONLINEAR=halofit_ppf \
+    FORUTILSPATH=$(FORUTILSPATH)
 
 $(highL)/libhigh.a:
 	cd $(highL); make libhigh.a;
