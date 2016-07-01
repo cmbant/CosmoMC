@@ -7,10 +7,10 @@ FISHER=
 #The OUTPUT_DIR will be appended.
 
 ifneq "$(wildcard ./forutils)" ""
-FORUTILSPATH ?= $(pwd)/forutils
+FORUTILSPATH ?= $(shell pwd)/forutils
 else
 ifneq "$(wildcard ../forutils)" ""
-FORUTILSPATH ?= $(pwd)/../forutils
+FORUTILSPATH ?= $(shell pwd)/../forutils
 else
 $(error First install forutils from https://github.com/cmbant/forutils; or set FORUTILSPATH variable)
 endif
