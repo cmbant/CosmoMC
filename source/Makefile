@@ -8,7 +8,7 @@ MPIF90C ?= mpif90
 
 ifneq "$(wildcard ../forutils)" ""
 FORUTILSPATH ?= $(shell pwd)/../forutils
-elsemake
+else
 $(error First install forutils from https://github.com/cmbant/forutils; or set FORUTILSPATH variable)
 endif
 
