@@ -7,8 +7,8 @@ BUILD ?= MPI
 MPIF90C ?= mpif90
 
 ifneq "$(wildcard ../forutils)" ""
-FORUTILSPATH ?= ../forutils
-else
+FORUTILSPATH ?= $(shell pwd)/../forutils
+elsemake
 $(error First install forutils from https://github.com/cmbant/forutils; or set FORUTILSPATH variable)
 endif
 
@@ -132,7 +132,7 @@ endif
 endif
 
 
-UTILS = $(OUTPUT_DIR)/Interpolation.o 
+UTILS = $(OUTPUT_DIR)/Interpolation.o
 
 DISTFILES = $(UTILS) $(OUTPUT_DIR)/ObjectParamNames.o  \
     $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/samples.o $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/GetDist.o
