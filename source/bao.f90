@@ -24,12 +24,12 @@
     implicit none
     private
 
-    character(LEN=Ini_Enumeration_Len), parameter :: measurement_types(8) = &
+    character(LEN=Ini_Enumeration_Len), parameter :: measurement_types(9) = &
         [character(Ini_Enumeration_Len)::'Az','DV_over_rs','rs_over_DV','DA_over_rs', &
-        'F_AP', 'f_sigma8','bao_Hz_rs','bao_Hz_rs_103']
+        'F_AP', 'f_sigma8','bao_Hz_rs','bao_Hz_rs_103','dilation']
 
     integer, parameter :: bao_Az =1, bao_DV_over_rs = 2, bao_rs_over_DV = 3, bao_DA_over_rs = 4, &
-        F_AP= 5, f_sigma8=6, bao_Hz_rs = 7, bao_Hz_rs_103 = 8
+        F_AP= 5, f_sigma8=6, bao_Hz_rs = 7, bao_Hz_rs_103 = 8, dilation = 9
 
     type, extends(TCosmoCalcLikelihood) :: TBAOLikelihood
         integer :: num_bao ! total number of points used
@@ -140,11 +140,13 @@
 
     if (Ini%HasKey('zeff')) then
         this%bao_z = Ini%Read_Double('zeff')
-        bao_measurement  = Ini%Read_String('bao_measurement')
-        if (this%num_bao>1) then
-            read (bao_measurement,*) this%bao_obs(:)
-        else
-            read (bao_measurement,*) this%bao_obs(1),this%bao_err(1)
+        if (this%type_bao(1)<9) then
+                bao_measurement  = Ini%Read_String('bao_measurement')
+                if (this%num_bao>1) then
+                    read (bao_measurement,*) this%bao_obs(:)
+                else
+                    read (bao_measurement,*) this%bao_obs(1),this%bao_err(1)
+                end if
         end if
     else
         bao_measurements_file = Ini%ReadRelativeFileName('bao_measurements_file')
