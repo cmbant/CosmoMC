@@ -16,9 +16,9 @@ rm -f COM_Likelihood_Data-baseline_R2.00.tar.gz
 
 make
 
-mpirun -np 1 ./cosmomc test.ini
+mpirun -np 1 --allow-run-as-root ./cosmomc test.ini
 
-mpirun -np 1 ./cosmomc test_planck.ini
+mpirun -np 1 --allow-run-as-root ./cosmomc test_planck.ini
 rc=$?
 
 
