@@ -10,11 +10,11 @@ cd plc-2.0
 source ./bin/clik_profile.sh
 cd ..
 wget http://irsa.ipac.caltech.edu/data/Planck/release_2/software/COM_Likelihood_Data-baseline_R2.00.tar.gz
-tar xvfj COM_Likelihood_Data-baseline_R2.00.tar.gz
+tar xvfz COM_Likelihood_Data-baseline_R2.00.tar.gz
 ln -s $(pwd)/plc_2.0 ./data/clik
 rm -f COM_Likelihood_Data-baseline_R2.00.tar.gz
 
-make ReleaseMPI
+make
 
 mpirun -np 1 ./cosmomc test.ini
 
