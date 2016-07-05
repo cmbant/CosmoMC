@@ -22,6 +22,10 @@
 
     character(LEN=4), parameter :: CMB_CL_Fields = 'TEBP'
 
+    integer, parameter :: neutrino_hierarcy_normal = 1, neutrino_hierarcy_inverted = 2, neutrino_hierarcy_degenerate = 3
+    character(LEN=Ini_Enumeration_Len), parameter :: neutrino_types(3) = &
+        [character(Ini_Enumeration_Len)::'normal','inverted','degenerate']
+
     Type TCosmoTheoryParams
         logical :: get_sigma8 = .true.
         logical :: Use_LSS = .false.
@@ -60,7 +64,8 @@
 
         logical :: bbn_consistency = .true. !JH
 
-        integer :: num_massive_neutrinos = -1 !if >0, number of massive degenerate eigenstates
+        integer :: num_massive_neutrinos = -1 !if neutrino_hierarcy_degenerate, number of massive degenerate eigenstates
+        integer :: neutrino_hierarchy = neutrino_hierarchy_normal
 
     end Type TCosmoTheoryParams
 
@@ -178,7 +183,11 @@
 
     call Ini%Read('inflation_consistency',this%inflation_consistency)
     call Ini%Read('bbn_consistency',this%bbn_consistency)
-    call Ini%Read('num_massive_neutrinos',this%num_massive_neutrinos)
+
+    this%neutrino_hierarchy = call Ini%Read_Enumeration('neutrino_hierarchy',neutrino_types, neutrino_hierarchy_normal)
+    if (this%neutrino_hierarchy == neutrino_hierarchy_degenerate) then
+        call Ini%Read('num_massive_neutrinos',this%num_massive_neutrinos)
+    end if
     call Ini%Read('lmax_computed_cl',this%lmax_computed_cl)
     call Ini%Read('lmin_computed_cl',this%lmin_computed_cl)
     call Ini%Read('lmin_store_all_cmb',this%lmin_store_all_cmb)

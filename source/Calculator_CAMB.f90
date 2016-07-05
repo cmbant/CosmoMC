@@ -104,18 +104,22 @@
     if (CMB%omnuh2>0) then
         P%Nu_mass_eigenstates=0
         if (CMB%omnuh2>CMB%omnuh2_sterile) then
-            neff_massive_standard = CosmoSettings%num_massive_neutrinos*default_nnu/3
-            P%Num_Nu_Massive = CosmoSettings%num_massive_neutrinos
-            P%Nu_mass_eigenstates=P%Nu_mass_eigenstates+1
-            if (CMB%nnu > neff_massive_standard) then
-                P%Num_Nu_Massless = CMB%nnu - neff_massive_standard
+            if (CosmoSettings%neutrino_hierarchy == neutrino_hierarcy_degenerate) then
+                neff_massive_standard = CosmoSettings%num_massive_neutrinos*default_nnu/3
+                P%Num_Nu_Massive = CosmoSettings%num_massive_neutrinos
+                P%Nu_mass_eigenstates=P%Nu_mass_eigenstates+1
+                if (CMB%nnu > neff_massive_standard) then
+                    P%Num_Nu_Massless = CMB%nnu - neff_massive_standard
+                else
+                    P%Num_Nu_Massless = 0
+                    neff_massive_standard=CMB%nnu
+                end if
+                P%Nu_mass_numbers(P%Nu_mass_eigenstates) = CosmoSettings%num_massive_neutrinos
+                P%Nu_mass_degeneracies(P%Nu_mass_eigenstates) = neff_massive_standard
+                P%Nu_mass_fractions(P%Nu_mass_eigenstates) = (CMB%omnuh2-CMB%omnuh2_sterile)/CMB%omnuh2
             else
-                P%Num_Nu_Massless = 0
-                neff_massive_standard=CMB%nnu
+                
             end if
-            P%Nu_mass_numbers(P%Nu_mass_eigenstates) = CosmoSettings%num_massive_neutrinos
-            P%Nu_mass_degeneracies(P%Nu_mass_eigenstates) = neff_massive_standard
-            P%Nu_mass_fractions(P%Nu_mass_eigenstates) = (CMB%omnuh2-CMB%omnuh2_sterile)/CMB%omnuh2
         else
             neff_massive_standard=0
         end if
