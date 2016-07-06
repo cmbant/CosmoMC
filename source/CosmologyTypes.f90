@@ -22,7 +22,7 @@
 
     character(LEN=4), parameter :: CMB_CL_Fields = 'TEBP'
 
-    integer, parameter :: neutrino_hierarcy_normal = 1, neutrino_hierarcy_inverted = 2, neutrino_hierarcy_degenerate = 3
+    integer, parameter :: neutrino_hierarchy_normal = 1, neutrino_hierarchy_inverted = 2, neutrino_hierarchy_degenerate = 3
     character(LEN=Ini_Enumeration_Len), parameter :: neutrino_types(3) = &
         [character(Ini_Enumeration_Len)::'normal','inverted','degenerate']
 
@@ -116,6 +116,7 @@
         real(mcp) w, wa
         real(mcp) YHe, nnu, iso_cdm_correlated, ALens, Alensf, fdm !fdm is dark matter annihilation, eg,. 0910.3663
         real(mcp) :: omnuh2_sterile = 0._mcp  !note omnhu2 is the sum of this + standard neutrinos
+        real(mcp) :: sum_mnu_standard
         real(mcp) reserved(5)
     end Type CMBParams
 
@@ -184,9 +185,11 @@
     call Ini%Read('inflation_consistency',this%inflation_consistency)
     call Ini%Read('bbn_consistency',this%bbn_consistency)
 
-    this%neutrino_hierarchy = call Ini%Read_Enumeration('neutrino_hierarchy',neutrino_types, neutrino_hierarchy_normal)
+    this%neutrino_hierarchy = Ini%Read_Enumeration('neutrino_hierarchy',neutrino_types, neutrino_hierarchy_normal)
     if (this%neutrino_hierarchy == neutrino_hierarchy_degenerate) then
         call Ini%Read('num_massive_neutrinos',this%num_massive_neutrinos)
+    else if (Ini%Read_Int('num_massive_neutrinos',0)>0) then
+        write(*,*) 'NOTE: num_massive_neutrinos ignored, using specified hierarchy'
     end if
     call Ini%Read('lmax_computed_cl',this%lmax_computed_cl)
     call Ini%Read('lmin_computed_cl',this%lmin_computed_cl)
