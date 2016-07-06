@@ -406,7 +406,6 @@
                 else
                     !One eigenstate
                     P%Num_Nu_Massive = 1
-                    P%Nu_mass_fractions(1) = normal_frac
                 end if
             else if (neutrino_hierarchy == neutrino_hierarchy_inverted) then
                 if (mnu > sqrt(delta_mnu31)+sqrt(delta_mnu31+delta_mnu21) + 1e-4_dl ) then
@@ -416,7 +415,6 @@
                 else
                     !Unphysical low mass case: take one (2-degenerate) eigenstate
                     P%Num_Nu_Massive = 2
-                    P%Nu_mass_fractions(1) = normal_frac
                 end if
             else
                 error stop 'Unknown neutrino_hierarchy setting'
@@ -442,6 +440,7 @@
                 P%Nu_mass_degeneracies(1) = neff_massive_standard
                 P%Nu_mass_numbers(1) = P%Num_Nu_Massive
                 P%Nu_mass_eigenstates = 1
+                P%Nu_mass_fractions(1) = normal_frac
             end if
         end if
     else
