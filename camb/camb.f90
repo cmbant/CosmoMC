@@ -377,7 +377,7 @@
     integer, parameter :: neutrino_hierarchy_normal = 1, neutrino_hierarchy_inverted = 2, neutrino_hierarchy_degenerate = 3
     real(dl) normal_frac, m3, neff_massive_standard, mnu, m1
     real(dl), external :: Newton_Raphson
-    
+
     if (omnuh2==0) return
     P%Nu_mass_eigenstates=0
     if ( omnuh2 > omnuh2_sterile) then

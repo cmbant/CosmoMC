@@ -1439,9 +1439,9 @@
     real(dl), parameter  :: zeta5  = 1.0369277551433699263313_dl
     real(dl), parameter  :: zeta7  = 1.0083492773819228268397_dl
 
-   ! zeta3*3/2/pi^2*4/11*((k_B*COBE_CMBTemp/hbar/c)^3* 8*pi*G/3/(100*km/s/megaparsec)^2/(c^2/eV)
+    ! zeta3*3/2/pi^2*4/11*((k_B*COBE_CMBTemp/hbar/c)^3* 8*pi*G/3/(100*km/s/megaparsec)^2/(c^2/eV)
     real(dl), parameter :: neutrino_mass_fac= 94.07_dl !converts omnuh2 into sum m_nu in eV
-    
+
     integer, parameter  :: nrhopn=2000
     real(dl), parameter :: am_min = 0.01_dl  !0.02_dl
     !smallest a*m_nu to integrate distribution function rather than using series
@@ -1480,8 +1480,6 @@
 
     end subroutine sum_mnu_for_m1
 
-
-    
     subroutine Nu_init
     !  Initialize interpolation tables for massive neutrinos.
     !  Use cubic splines interpolation of log rhonu and pnu vs. log a*m.
