@@ -76,13 +76,16 @@
 
     subroutine CAMBCalc_CMBToCAMB(this,CMB,P)
     use DarkEnergyInterface
+    use camb, only: CAMB_SetNeutrinoHierarchy
     use CAMBmain, only : ALens
-    use constants, only : dl, default_nnu
+    use constants, only : dl, default_nnu,delta_mnu21,delta_mnu31,mnu_min_normal
     use lensing, only : ALens_Fiducial
+    use MassiveNu, only : sum_mnu_for_m1
     class(CAMB_Calculator) :: this
     class(CMBParams) CMB
     type(CAMBParams)  P
-    real(dl) neff_massive_standard
+    real(dl) neff_massive_standard, mnu, m1, m3, normal_frac
+    real(dl), external :: Newton_raphson
 
     P = this%CAMBP
     P%omegab = CMB%omb
@@ -103,32 +106,8 @@
     P%Num_Nu_Massless = CMB%nnu
     P%share_delta_neff = .false.
     if (CMB%omnuh2>0) then
-        P%Nu_mass_eigenstates=0
-        if (CMB%omnuh2>CMB%omnuh2_sterile) then
-            neff_massive_standard = CosmoSettings%num_massive_neutrinos*default_nnu/3
-            P%Num_Nu_Massive = CosmoSettings%num_massive_neutrinos
-            P%Nu_mass_eigenstates=P%Nu_mass_eigenstates+1
-            if (CMB%nnu > neff_massive_standard) then
-                P%Num_Nu_Massless = CMB%nnu - neff_massive_standard
-            else
-                P%Num_Nu_Massless = 0
-                neff_massive_standard=CMB%nnu
-            end if
-            P%Nu_mass_numbers(P%Nu_mass_eigenstates) = CosmoSettings%num_massive_neutrinos
-            P%Nu_mass_degeneracies(P%Nu_mass_eigenstates) = neff_massive_standard
-            P%Nu_mass_fractions(P%Nu_mass_eigenstates) = (CMB%omnuh2-CMB%omnuh2_sterile)/CMB%omnuh2
-        else
-            neff_massive_standard=0
-        end if
-        if (CMB%omnuh2_sterile>0) then
-            if (CMB%nnu<default_nnu) call MpiStop('nnu < 3.046 with massive sterile')
-            P%Num_Nu_Massless = default_nnu - neff_massive_standard
-            P%Num_Nu_Massive=P%Num_Nu_Massive+1
-            P%Nu_mass_eigenstates=P%Nu_mass_eigenstates+1
-            P%Nu_mass_numbers(P%Nu_mass_eigenstates) = 1
-            P%Nu_mass_degeneracies(P%Nu_mass_eigenstates) = max(1d-6,CMB%nnu - default_nnu)
-            P%Nu_mass_fractions(P%Nu_mass_eigenstates) = CMB%omnuh2_sterile/CMB%omnuh2
-        end if
+        call CAMB_SetNeutrinoHierarchy(P, CMB%omnuh2, CMB%omnuh2_sterile, CMB%nnu, &
+            CosmoSettings%neutrino_hierarchy, CosmoSettings%num_massive_neutrinos)
     end if
 
     P%YHe = CMB%YHe
