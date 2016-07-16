@@ -46,7 +46,7 @@ endif
 
 else
 #gfortran 5.x and earlier will not work (many F2003 bugs)
-#gfortran 6 should work (though currently still buggy for debug compile); 
+#gfortran 6 should work (though currently still buggy for debug compile);
 #see CosmoBox virtual machines for stable environments
 F90C = gfortran
 FFLAGS = -cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4
@@ -198,7 +198,7 @@ $(OUTPUT_DIR)/ObjectLists.o: $(OUTPUT_DIR)/FileUtils.o
 $(OUTPUT_DIR)/IniObjects.o: $(OUTPUT_DIR)/FileUtils.o
 $(OUTPUT_DIR)/Interpolation.o: $(OUTPUT_DIR)/ObjectLists.o
 $(OUTPUT_DIR)/Matrix_utils_new.o: $(OUTPUT_DIR)/FileUtils.o
-$(OUTPUT_DIR)/ObjectParamNames.o: $(UTILS)
+$(OUTPUT_DIR)/ObjectParamNames.o: $(UTILS) $(OUTPUT_DIR)/ObjectLists.o
 $(OUTPUT_DIR)/settings.o:  $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectParamNames.o
 $(OUTPUT_DIR)/propose.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/Matrix_utils_new.o  $(OUTPUT_DIR)/GeneralTypes.o
 $(OUTPUT_DIR)/IO.o: $(OUTPUT_DIR)/settings.o

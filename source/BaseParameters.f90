@@ -276,6 +276,9 @@
         call F%WriteLeftAligned('(1A22)', this%NameMapping%NameOrNumber(i))
         call F%Write([this%PMin(i),this%PMax(i)])
     end do
+    do i= 1, this%NameMapping%derived_ranges%Count
+        call F%Write(this%NameMapping%derived_ranges%Item(i))
+    end do
     call F%Close()
 
     end subroutine TBaseParameters_OutputParamRanges
