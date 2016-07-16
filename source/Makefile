@@ -118,9 +118,11 @@ F90FLAGS = $(FFLAGS) $(IFLAG)../camb/$(OUTPUT_DIR) $(INCLUDE)
 LINKFLAGS = -L../camb/$(OUTPUT_DIR) -lcamb_$(RECOMBINATION) $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
 ifneq ($(PICO),)
+ifneq ($(PICO),NO)
 CALCFILES += $(OUTPUT_DIR)/fpico_interface.o $(OUTPUT_DIR)/Calculator_PICO.o
 LINKFLAGS +=  $(shell python -c "import pypico; print pypico.get_link()")
 F90FLAGS += -DPICO $(shell python -c "import pypico; print pypico.get_include()")
+endif
 endif
 
 
