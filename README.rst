@@ -30,7 +30,7 @@ The master branch contains latest changes to the main release version.
 
 The devel branch is a development version, using CAMB devel branch which integrates 
 CAMB and CAMB sources (though CAMB sources functions are not available via CosmoMC yet).
-Includes run-time changing of dark energy model and support for neutrino hierarchies.
+Includes run-time changing of dark energy model between fluid and PPF modes (easily extended).
 Shared general function now taken from the `forutils <https://github.com/cmbant/forutils>`_ library.
 
 .. image:: https://secure.travis-ci.org/cmbant/CosmoMC.png?branch=devel

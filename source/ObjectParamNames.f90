@@ -3,11 +3,12 @@
     use FileUtils
     use StringUtils
     use MiscUtils
+    use ObjectLists
     implicit none
     private
     integer, parameter :: ParamNames_maxlen = 128
 
-    Type TParamNames
+    Type TBaseParamNames
         integer :: nnames =0
         integer :: num_MCMC = 0
         integer :: num_derived = 0
@@ -15,6 +16,10 @@
         character(LEN=ParamNames_maxlen), dimension(:), allocatable ::  label
         character(LEN=ParamNames_maxlen), dimension(:), allocatable ::  comment
         logical, dimension(:), allocatable ::  is_derived
+    end Type TBaseParamNames
+
+    Type, extends(TBaseParamNames) :: TParamNames
+        Type(TStringList) :: Derived_ranges
     contains
     procedure :: AddNames => ParamNames_Add
     procedure :: AddFile => ParamNames_AddFile
@@ -116,6 +121,7 @@
     integer n
     character(LEN=:), allocatable :: InLine
     Type(TTextFile) :: F
+    character(LEN=:), allocatable :: range_name
 
     call F%Open(filename)
     n = F%Lines()
@@ -135,10 +141,17 @@
     this%num_derived = count(this%is_derived)
     this%num_MCMC = this%nnames - this%num_derived
 
+    range_name = trim(filename)
+    call StringReplace('.paramnames','.derived_ranges',range_name)
+    if (range_name /= trim(filename) .and. File%Exists(range_name)) then
+        call this%derived_ranges%AddFromFile(range_name, .true.)
+    end if
+
     end subroutine ParamNames_Init
 
     subroutine ParamNames_AssignItem(this, Names2,n,i)
-    class(TParamNames), target :: this, Names2
+    class(TParamNames), target :: this
+    class(TBaseParamNames), target :: Names2
     integer n, i
 
     this%name(n) = Names2%name(i)
@@ -164,13 +177,13 @@
     class(TParamNames), target :: this, Names
     logical, intent(in), optional :: check_duplicates
     integer n,i, newold, derived
-    class(TParamNames),pointer :: P, NamesOrig
+    class(TBaseParamNames),pointer :: P, NamesOrig
 
-    allocate(NamesOrig, source = this)
+    allocate(NamesOrig, source = this%TBaseParamNames)
 
     n=0
     do i=1, Names%nnames
-        if (NamesOrig%index(Names%name(i))==-1) then
+        if (this%index(Names%name(i))==-1) then
             n=n+1
         else
             if (DefaultFalse(check_duplicates)) &
@@ -198,10 +211,9 @@
     if (this%nnames/= NamesOrig%nnames + n) stop 'ParamNames_Add: duplicate parameters?'
 
     this%num_derived = count(this%is_derived)
-    this%num_MCMC= this%nnames-this%num_derived
-
-    call NamesOrig%Dealloc()
+    this%num_MCMC = this%nnames-this%num_derived
     deallocate(NamesOrig)
+    call this%derived_ranges%AddItems(Names%derived_ranges, .true.)
 
     end subroutine ParamNames_Add
 

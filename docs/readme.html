@@ -366,18 +366,17 @@ plots, samples plots, and performs PCA (principle component analysis). <BR><BR>
 <LI>Set the <b>parameter_names</b> parameter to specify a .paramnames file with the names and labels for parameters corresponding to the various columns in the chain files (see the supplied examples). If this parameter is empty getdist reads the parameters from the file_root.paramnames file that is output when generating the chains.
 <BR><BR><LI>
 If you have a derived parameter which has a prior which cuts off when the posterior is non-negligible
-you need to set the <b>limits[paramname]</b> variables to the corresponding limits
-- for example r02 for the tensor ratio. Otherwise
+you need to either set the limits in a xxx.derived_ranges file analogous to the xxx.paramnames file being when running the chains, or
+set the <b>limits[paramname]</b> variables to the corresponding limits when running GetDist. Otherwise
 limits are computed automatically. <i>DO NOT</i> use limits[paramname] to change
 the bounds on other plots - the program uses the limits information when
-it is estimating the posteriors from the samples. Limits for base MCMC parameters are set automatically from the .ranges file.
-When limits[paramname] are used the .margestats file
- contains one tail statistics - i.e. the lower bound is where 1-x of points are lower and x of the points higher, the upper bound is where 1-x of the points are higher and x lower (usually only one of the limits would be used). If only one end is fixed you can use N the floating end, e.g. "limitsxx = 0 N" for the tensor amplitude which has a greater than zero prior.
+it is estimating the posteriors from the samples. Limits for base MCMC and standard derived parameters are set automatically from the .ranges file produced with the chain.
+If only one end is fixed you can use N the floating end, e.g. "limitsxx = 0 N" for the tensor amplitude which has a greater than zero prior.
 <BLOCKQUOTE>
-<Font color=#FF0000>Example:</font> Since <I>many</I> people get this wrong, here is an illustration of what happens when generating plots from a tensor run set of chains (with prior r>0):<P>
+<Font color=#FF0000>Example:</font> Since often people get this wrong with new parameters, here is an illustration of what happens when generating plots from a tensor run set of chains (with prior r>0):<P>
 <table border=0 Cellpadding=20><TR><TD>
 <IMG SRC="http://cosmologist.info/cosmomc/pics/r_wrong.png"><BR>
-Incorrect result when <B>limits[r02]</B> is not set.</TD><TD> <IMG SRC="http://cosmologist.info/cosmomc/pics/r_correct.png"><BR>Correct result when setting <B>limits[r02]=0 N</B>.</TD></TR></table>
+Incorrect result when no chain.ranges file and  <B>limits[r02]</B> is not set.</TD><TD> <IMG SRC="http://cosmologist.info/cosmomc/pics/r_correct.png"><BR>Correct result when setting <B>limits[r02]=0 N</B> (or using default .ranges file, which includes the equivalent prior information from paramnames/derived_tensors.derived_ranges).</TD></TR></table>
 <P>
 <LI>Various parameters determine how sample densities are computed (see the <A HREF="http://cosmologist.info/notes/GetDist.pdf">Kernel Density Estimation notes</A>).  The <B>smooth_scale_1D</b> and <B>smooth_scale_2D</B> parameters can be set to change the smoothing scale.
 For smooth_scale_1D:
@@ -569,6 +568,7 @@ installed manually or obtained from the cosmomc git repository (access available
 <UL>
 <LI><B>xxx 2016</B><BR>
 <UL>
+<LI>Added .derived_ranges files (in /paramnames folder) to specify hard priors on derived parameters. These are now propagated to output chain .ranges file along with H0 and z_rei priors (and hence limits do not need to be manually specified when running GetDist).
 <LI>Added <b>neutrino_hierarchy</b> (={normal, inverted, degenerate}), to support one or two distinct eigenstate approximation to oscillation constraints.
 </UL>
 

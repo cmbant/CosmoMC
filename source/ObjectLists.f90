@@ -114,7 +114,9 @@
     procedure :: ReadColumnsGetArray => TStringList_ReadColumnsGetArray
     procedure :: IndexOf => TStringList_IndexOf
     procedure :: ValueOf => TStringList_ValueOf
+    procedure :: AddItems
     procedure :: WriteItems
+    procedure :: AddFromFile => TStringList_AddFromFile
     generic :: Item => StringItem
     end Type TStringList
 
@@ -956,5 +958,37 @@
     end do
 
     end subroutine WriteItems
+
+    subroutine AddItems(this, List, nodups)
+    Class(TStringList) :: this, List
+    logical, intent(in) :: nodups
+    integer i
+
+    do i = 1, List%Count
+        if (nodups) then
+            if (this%IndexOf(List%Item(i)) /= -1) cycle
+        end if
+        call this%Add(List%Items(i)%P,List%Items(i)%Object)
+    end do
+
+    end subroutine AddItems
+
+    subroutine TStringList_AddFromFile(this, fname, nodups)
+    Class(TStringList) :: this
+    character(LEN=*), intent(in) :: fname
+    character(LEN=:), allocatable :: InLine
+    logical, intent(in) :: nodups
+    Type(TTextFile) :: F
+
+    call F%Open(fname)
+    do while (F%ReadLineSkipEmptyAndComments(InLine))
+        if (nodups) then
+            if (this%IndexOf(InLine) /= -1) cycle
+        end if
+        call this%Add(InLine)
+    end do
+    call F%close()
+
+    end subroutine TStringList_AddFromFile
 
     end module ObjectLists

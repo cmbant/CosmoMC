@@ -203,7 +203,7 @@ $(OUTPUT_DIR)/ObjectLists.o: $(OUTPUT_DIR)/FileUtils.o
 $(OUTPUT_DIR)/IniObjects.o: $(OUTPUT_DIR)/FileUtils.o
 $(OUTPUT_DIR)/Interpolation.o: $(OUTPUT_DIR)/ObjectLists.o
 $(OUTPUT_DIR)/Matrix_utils_new.o: $(OUTPUT_DIR)/FileUtils.o
-$(OUTPUT_DIR)/ObjectParamNames.o: $(UTILS)
+$(OUTPUT_DIR)/ObjectParamNames.o: $(UTILS) $(OUTPUT_DIR)/ObjectLists.o
 $(OUTPUT_DIR)/settings.o:  $(OUTPUT_DIR)/IniObjects.o $(OUTPUT_DIR)/ObjectParamNames.o
 $(OUTPUT_DIR)/propose.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/Matrix_utils_new.o  $(OUTPUT_DIR)/GeneralTypes.o
 $(OUTPUT_DIR)/IO.o: $(OUTPUT_DIR)/settings.o
