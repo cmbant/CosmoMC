@@ -206,7 +206,7 @@ $(OUTPUT_DIR)/CalcLike_Cosmology.o: $(OUTPUT_DIR)/calclike.o
 
 
 $(OUTPUT_DIR)/likelihood.o: $(OUTPUT_DIR)/GeneralTypes.o
-$(OUTPUT_DIR)/GeneralTypes.o: $(OUTPUT_DIR)/ObjectLists.o $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/IO.o
+$(OUTPUT_DIR)/GeneralTypes.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/IO.o
 $(OUTPUT_DIR)/BaseParameters.o: $(OUTPUT_DIR)/GeneralTypes.o $(OUTPUT_DIR)/IO.o  $(OUTPUT_DIR)/settings.o
 $(OUTPUT_DIR)/ParamSet.o: $(OUTPUT_DIR)/BaseParameters.o $(OUTPUT_DIR)/samples.o
 $(OUTPUT_DIR)/DataLikelihoods.o: $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/ParamSet.o $(DATAMODULES)
