@@ -132,9 +132,7 @@ endif
 endif
 
 
-UTILS = $(OUTPUT_DIR)/Interpolation.o
-
-DISTFILES = $(UTILS) $(OUTPUT_DIR)/ObjectParamNames.o  \
+DISTFILES = $(OUTPUT_DIR)/ObjectParamNames.o  \
     $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/samples.o $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/GetDist.o
 
 
@@ -157,7 +155,7 @@ endif
 
 LIKEFILES =  $(OUTPUT_DIR)/DataLikelihoods.o $(OUTPUT_DIR)/calclike.o
 
-OBJFILES = $(UTILS) $(OUTPUT_DIR)/ObjectParamNames.o $(OUTPUT_DIR)/settings.o \
+OBJFILES = $(OUTPUT_DIR)/ObjectParamNames.o $(OUTPUT_DIR)/settings.o \
 	$(OUTPUT_DIR)/samples.o $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/GeneralTypes.o $(OUTPUT_DIR)/BaseParameters.o \
 	$(OUTPUT_DIR)/propose.o $(OUTPUT_DIR)/ParamSet.o $(OUTPUT_DIR)/PowellConstrainedMinimize.o $(OUTPUT_DIR)/ImportanceSampling.o \
 	$(OUTPUT_DIR)/MCMC.o $(OUTPUT_DIR)/minimize.o $(OUTPUT_DIR)/SampleCollector.o $(OUTPUT_DIR)/GeneralSetup.o
@@ -199,7 +197,7 @@ default: cosmomc
 $(OUTPUT_DIR)/settings.o:  $(OUTPUT_DIR)/ObjectParamNames.o
 $(OUTPUT_DIR)/propose.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/GeneralTypes.o
 $(OUTPUT_DIR)/IO.o: $(OUTPUT_DIR)/settings.o
-$(OUTPUT_DIR)/samples.o: $(OUTPUT_DIR)/settings.o 
+$(OUTPUT_DIR)/samples.o: $(OUTPUT_DIR)/settings.o
 $(OUTPUT_DIR)/GetDist.o: $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/samples.o
 
 $(OUTPUT_DIR)/CalcLike_Cosmology.o: $(OUTPUT_DIR)/calclike.o
@@ -229,8 +227,7 @@ $(OUTPUT_DIR)/Likelihood_Cosmology.o: $(OUTPUT_DIR)/Calculator_Cosmology.o $(OUT
 $(OUTPUT_DIR)/CMBlikes.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/CMB_BK_Planck.o: $(OUTPUT_DIR)/CMBlikes.o
 $(OUTPUT_DIR)/CMB.o: $(OUTPUT_DIR)/CMBlikes.o $(PLANCKLIKEFILES)
-$(OUTPUT_DIR)/bbn.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/Interpolation.o
-$(OUTPUT_DIR)/mpk.o: $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
+$(OUTPUT_DIR)/bbn.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/likelihood.o $(OUTPUT_DIR)/mpk.o: $(OUTPUT_DIR)/CosmoTheory.o $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/wigglez.o: $(OUTPUT_DIR)/mpk.o
 $(OUTPUT_DIR)/bao.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
 $(OUTPUT_DIR)/wl.o: $(OUTPUT_DIR)/Likelihood_Cosmology.o
