@@ -67,8 +67,8 @@
     if (CosmoSettings%use_LSS) call Names%Add('paramnames/derived_LSS.paramnames')
     if (CosmoSettings%compute_tensors) call Names%Add('paramnames/derived_tensors.paramnames')
     !Add output ranges to match priors
-    call Names%Derived_ranges%Add(FormatString('zrei                      %f N',this%use_min_zre))
-    call Names%Derived_ranges%Add(FormatString('H0                        %f %f',this%H0_min, this%H0_max))
+    call Names%AddDerivedRange('zrei', mn=this%use_min_zre)
+    call Names%AddDerivedRange('H0', this%H0_min, this%H0_max)
     this%num_derived = Names%num_derived
     !set number of hard parameters, number of initial power spectrum parameters
     call this%SetTheoryParameterNumbers(16,last_power_index)

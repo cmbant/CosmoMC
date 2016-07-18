@@ -40,6 +40,7 @@
     procedure :: SetLabels => ParamNames_SetLabels
     procedure :: SetUnnamed => ParamNames_SetUnnamed
     procedure :: WriteFile => ParamNames_WriteFile
+    procedure :: AddDerivedRange => ParamNames_AddDerivedRange
     generic :: Add => AddNames, AddFile
     end Type TParamNames
 
@@ -473,6 +474,35 @@
 
     end function ParamNames_HasReadIniForParam
 
+    subroutine ParamNames_AddDerivedRange(this, Name, Mn, Mx)
+    class(TParamNames) :: this
+    character(LEN=*), intent(in) :: Name
+#ifdef SINGLE
+    integer, parameter :: mcp= KIND(1.0)
+#else
+    integer, parameter :: mcp= KIND(1.d0)
+#endif
+    real(mcp), intent(in), optional :: Mn, Mx
+    character(LEN=ParamNames_maxlen) :: tag
+    character(LEN=17) :: Mnn, Mxx
+    character(LEN=22) :: parname
+
+    if (present(Mn)) then
+        write(Mnn,'(E17.7)') Mn
+    else
+        Mnn = '    N'
+    end if
+    if (present(Mx)) then
+        write(Mxx,'(E17.7)') Mx
+    else
+        Mxx = '    N'
+    end if
+    parname = Name
+    write(tag,'(1A22, 1A17, 1A17)') parname, Mnn, Mxx
+    call this%Derived_ranges%Add(tag)
+
+
+    end subroutine ParamNames_AddDerivedRange
 
 
     end module ParamNames

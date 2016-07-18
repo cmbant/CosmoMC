@@ -687,6 +687,8 @@
         LikeNames%name(Like%Original_index) = 'chi2_'//tag
         LikeNames%label(Like%Original_index) = FormatString(trim(chisq_label), StringEscape(tag,'_'))
         LikeNames%is_derived(Like%Original_index) = .true.
+        !Assume chi2 cannot be less than zero
+        call Names%AddDerivedRange('chi2_'//tag, mn=0._mcp)
         if (Like%LikelihoodType/='') then
             ix = LikelihoodTypes%IndexOf(Like%LikelihoodType)
             if (ix==-1) then
@@ -701,6 +703,7 @@
     LikeNames%name(L%Count+1) = 'chi2_prior'
     LikeNames%label(L%Count+1) = FormatString(trim(chisq_label), 'prior')
     LikeNames%is_derived(L%Count+1) = .true.
+    call Names%AddDerivedRange('chi2_prior', mn=0._mcp)
 
     call Names%Add(LikeNames,check_duplicates=.true.)
 
@@ -724,6 +727,7 @@
             LikeNames%name(like_sum_ix) = 'chi2_'//atype
             LikeNames%label(like_sum_ix) = FormatString(trim(chisq_label), StringEscape(trim(atype),'_'))
             LikeNames%is_derived(like_sum_ix) = .true.
+            call Names%AddDerivedRange('chi2_'//atype, mn = 0._mcp)
             deallocate(indices)
         end if
     end do
