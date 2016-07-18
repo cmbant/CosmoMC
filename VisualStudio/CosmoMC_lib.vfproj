@@ -111,7 +111,6 @@
 		<File RelativePath="..\source\wigglez.f90"/>
 		<File RelativePath="..\source\wl.f90"/></Filter>
 		<Filter Name="Utils">
-		<File RelativePath="..\source\Interpolation.f90"/>
 		<File RelativePath="..\source\IO.f90"/>
 		<File RelativePath="..\source\ObjectParamNames.f90"/>
 		<File RelativePath="..\source\PowellConstrainedMinimize.f90">
