@@ -1,0 +1,16 @@
+name = Lycross
+
+measurement_type = DV_over_rs
+
+num_bao = 1
+
+alpha_npoints = 41
+alpha_npoints_per = 31
+
+prob_dist = lyabaocross.scan
+
+zeff = 2.36
+
+#Note these values are not used in the actual likelihood; latter is with true rs
+bao_measurement = 13.773  0.134
+
