@@ -60,3 +60,8 @@ bandpass[P353_E] = bandpass_P353.txt
 bandpass[P353_B] = bandpass_P353.txt
 
 nuisance_params = BK14.paramnames
+
+# Pivot frequencies (in GHz) for dust and sync foregrounds.
+# Note that BKPlanck analysis used 150 GHz pivot for sync.
+fpivot_dust = 353.0
+fpivot_sync = 23.0
