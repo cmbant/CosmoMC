@@ -14,11 +14,12 @@
     Type TBandpass
         real(mcp), allocatable :: R(:,:)
         real(mcp), allocatable :: dnu(:)
-        real(mcp) :: th353, th150
+        real(mcp) :: th_dust, th_sync
     end Type TBandpass
 
     Type, extends(TCMBLikes) :: TBK_planck
         Type(TBandpass), allocatable :: Bandpasses(:)
+        real(mcp) :: fpivot_dust, fpivot_sync
     contains
     procedure :: ReadIni => TBK_planck_ReadIni
     procedure :: AddForegrounds => TBK_planck_AddForegrounds
@@ -39,6 +40,11 @@
     this%has_foregrounds = .true.
     !Set up nuisance parameters
     call this%loadParamNames(Ini%ReadFileName('nuisance_params',relative=.true.,NotFoundFail=.true.))
+
+    !Assign foreground pivot frequencies.
+    !Defaults are 353 GHz for dust, 23 GHz for sync.
+    this%fpivot_dust = Ini%Read_Double('fpivot_dust', 353.0_mcp)
+    this%fpivot_sync = Ini%Read_Double('fpivot_sync', 23.0_mcp)
 
     !Load in the bandpass files for each map
     allocate(this%Bandpasses(this%nmaps_required))
@@ -71,23 +77,23 @@
     ! sync).
     th_int = sum( Bandpass%dnu * Bandpass%R(:,2) * Bandpass%R(:,1)**4 * exp(Ghz_Kelvin*bandpass%R(:,1)/T_CMB) &
         / (exp(Ghz_Kelvin*bandpass%R(:,1)/T_CMB) - 1)**2)
-    nu0=353
+    nu0 = this%fpivot_dust
     th0 = nu0**4 * exp(Ghz_Kelvin*nu0/T_CMB) / (exp(Ghz_Kelvin*nu0/T_CMB) - 1)**2
-    Bandpass%th353 = th_int / th0
-    nu0=150
+    Bandpass%th_dust = th_int / th0
+    nu0 = this%fpivot_sync
     th0 = nu0**4 * exp(Ghz_Kelvin*nu0/T_CMB) / (exp(Ghz_Kelvin*nu0/T_CMB) - 1)**2
-    Bandpass%th150 = th_int / th0
+    Bandpass%th_sync = th_int / th0
 
     end subroutine TBK_planck_Read_Bandpass
 
     ! Calculates greybody scaling of dust signal defined at 353 GHz
     ! to specified bandpass.
-    subroutine DustScaling(beta,Tdust,bandpass,fdust)
+    subroutine DustScaling(beta,Tdust,bandpass,nu0,fdust)
     real(mcp), intent(in) :: beta
     real(mcp), intent(in) :: Tdust
     Type(TBandpass), intent(in) :: bandpass
+    real(mcp), intent(in) :: nu0 ! Pivot frequency
     real(mcp), intent(out) :: fdust
-    real(mcp), parameter :: nu0 = 353._mcp  ! Pivot frequency for dust (353 GHz).
     real(mcp) :: gb_int  ! Integrate greybody scaling.
     real(mcp) :: gb0     ! Greybody scaling at pivot.
 
@@ -100,17 +106,17 @@
     gb0 = nu0**(3+beta) / (exp(Ghz_Kelvin*nu0/Tdust) - 1)
 
     ! Calculate dust scaling.
-    fdust = (gb_int / gb0) / bandpass%th353
+    fdust = (gb_int / gb0) / bandpass%th_dust
 
     end subroutine DustScaling
 
     ! Calculates power-law scaling of synchrotron signal defined at 150 GHz
     ! to specified bandpass.
-    subroutine SyncScaling(beta,bandpass,fsync)
+    subroutine SyncScaling(beta,bandpass,nu0,fsync)
     real(mcp), intent(in) :: beta
     Type(TBandpass), intent(in) :: bandpass
+    real(mcp), intent(in) :: nu0 ! Pivot frequency
     real(mcp), intent(out) :: fsync
-    real(mcp), parameter :: nu0 = 150.0_mcp ! Pivot frequency for sync (150 GHz).
     real(mcp) :: pl_int  ! Integrate power-law scaling.
     real(mcp) :: pl0     ! Power-law scaling at pivot.
 
@@ -121,8 +127,8 @@
     ! Calculate values at pivot frequency.
     pl0 = nu0**(2+beta)
 
-    ! Calculate dust scaling.
-    fsync = (pl_int / pl0) / bandpass%th150
+    ! Calculate sync scaling.
+    fsync = (pl_int / pl0) / bandpass%th_sync
 
     end subroutine SyncScaling
 
@@ -152,8 +158,8 @@
     EEtoBB_sync = DataParams(10)
 
     do i=1, this%nmaps_required
-        call DustScaling(betadust,Tdust,this%Bandpasses(i),fdust(i))
-        call SyncScaling(betasync, this%Bandpasses(i), fsync(i))
+        call DustScaling(betadust,Tdust,this%Bandpasses(i),this%fpivot_dust,fdust(i))
+        call SyncScaling(betasync, this%Bandpasses(i),this%fpivot_sync,fsync(i))
     end do
 
     do i=1, this%nmaps_required
