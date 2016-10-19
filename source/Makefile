@@ -30,6 +30,12 @@ FFLAGS+= -openmp
 DEBUGFLAGS+= -openmp
 endif
 
+ifneq ($(NERSC_HOST),)
+#setting for Edison/Cori on NERSC
+MPIF90C = ftn
+FFLAGS += -dynamic
+endif
+else
 ifeq ($(STATIC),YES)
 #so you can re-distribute the binary to another machine
 #static link details from https://software.intel.com/en-us/articles/intel-mkl-link-line-advisor
@@ -38,15 +44,11 @@ FFLAGS+=  -axAVX,SEE4.2 -static-intel
 else
 FFLAGS += -xHost
 endif
-
-ifneq ($(NERSC_HOST),)
-#setting for Edison/Hopper on NERSC
-MPIF90C = ftn
 endif
 
 else
 #gfortran 5.x and earlier will not work (many F2003 bugs)
-#gfortran 6 should work (though currently still buggy for debug compile);
+#gfortran 6 should work
 #see CosmoBox virtual machines for stable environments
 F90C = gfortran
 FFLAGS = -cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4
