@@ -310,7 +310,6 @@ class MCSamples(Chains):
         ini.setAttr('corr_length_thin', self)
         ini.setAttr('corr_length_steps', self)
 
-
     def _initLimits(self, ini=None):
         bin_limits = ""
         if ini: bin_limits = ini.string('all_limits', '')
@@ -1263,7 +1262,7 @@ class MCSamples(Chains):
         fine_bins = kwargs.get('fine_bins', self.fine_bins)
 
         paramrange = par.range_max - par.range_min
-        if paramrange == 0: raise MCSamplesError('Parameter range is zero: ' + par.name)
+        if paramrange <= 0: raise MCSamplesError('Parameter range is <= 0: ' + par.name)
         width = paramrange / (num_bins - 1)
 
         bin_indices, fine_width, binmin, binmax = self._binSamples(self.samples[:, j], par, fine_bins)
@@ -1690,7 +1689,6 @@ class MCSamples(Chains):
                 #       res.likes = bin2Dlikes
         return density
 
-
     def _setRawEdgeMaskND(self, parv, prior_mask):
         ndim = len(parv)
         vrap = parv[::-1]
@@ -1713,8 +1711,6 @@ class MCSamples(Chains):
                 prior_mask[mskSlices] /= 2
                 mskSlices[i] = slice(None)
 
-
-
     def _flattenValues(self, ixs, xsizes):
         ndim = len(ixs)
 
@@ -1722,8 +1718,6 @@ class MCSamples(Chains):
         for i in range(1, ndim):
             q = q + np.prod(xsizes[0:i]) * ixs[i]
         return q
-
-
 
     def _unflattenValues(self, q, xsizes):
         ndim = len(xsizes)
@@ -1739,14 +1733,12 @@ class MCSamples(Chains):
         acc = 0
         for k in range(ndim - 2, -1, -1):
             acc = acc + ixs[k + 1] * np.prod(xsizes[0:k + 1])
-            if k > 0 :
+            if k > 0:
                 ixs[k] = (q - acc) / np.prod(xsizes[0:k])
             else:
                 ixs[k] = q - acc
 
         return ixs
-
-
 
     def _makeNDhist(self, ixs, xsizes):
 
@@ -1763,7 +1755,6 @@ class MCSamples(Chains):
         return np.bincount(flatixv, weights=self.weights,
                            minlength=np.prod(xsizes)).reshape(xsizes[::-1], order='C'), flatixv
 
-
     def getRawNDDensity(self, xs, normalized=False, **kwargs):
         """
         Returns a :class:`~.densties.DensityND` instance with marginalized ND density.
@@ -1778,7 +1769,6 @@ class MCSamples(Chains):
         if normalized:
             density.normalize(in_place=True)
         return density
-
 
     def getRawNDDensityGridData(self, js, writeDataToFile=False,
                                 num_plot_contours=None, get_density=False,
@@ -1811,7 +1801,6 @@ class MCSamples(Chains):
         boundary_correction_order = kwargs.get('boundary_correction_order', self.boundary_correction_order)
         has_prior = np.any([parv[i].has_limits for i in range(ndim)])
 
-
         nbinsND = kwargs.get('num_bins_ND', self.num_bins_ND)
         ixv, widthv, xminv, xmaxv = zip(*[self._binSamples(self.samples[:, jv[i]],
                                                            parv[i], nbinsND) for i in range(ndim)])
@@ -1827,14 +1816,12 @@ class MCSamples(Chains):
             self._setRawEdgeMaskND(parv, prior_mask)
             binsND /= prior_mask
 
-
         if meanlikes:
             likeweights = self.weights * np.exp(self.mean_loglike - self.loglikes)
             binNDlikes = np.bincount(flatixv, weights=likeweights,
                                      minlength=np.prod(xsizev)).reshape(xsizev[::-1], order='C')
         else:
             binNDlikes = None
-
 
         if maxlikes:
             binNDmaxlikes = np.zeros(binsND.shape)
@@ -1843,10 +1830,9 @@ class MCSamples(Chains):
 
             for irec in range(len(self.loglikes)):
                 binNDmaxlikes[ndindex[irec]] = max(binNDmaxlikes[ndindex[irec]],
-                                                              np.exp(-bestfit - self.loglikes[irec]))
+                                                   np.exp(-bestfit - self.loglikes[irec]))
         else:
             binNDmaxlikes = None
-
 
         xv = [np.linspace(xminv[i], xmaxv[i], xsizev[i]) for i in range(ndim)]
         views = [(parv[i].range_min, parv[i].range_max) for i in range(ndim)]
@@ -1857,15 +1843,12 @@ class MCSamples(Chains):
         density.normalize('max', in_place=True)
         if get_density: return density
 
-
-
         ncontours = len(self.contours)
         if num_plot_contours: ncontours = min(num_plot_contours, ncontours)
         contours = self.contours[:ncontours]
 
         # Get contour containing contours(:) of the probability
         density.contours = density.getContourLevels(contours)
-
 
         if meanlikes:
             binNDlikes /= np.max(binNDlikes)
@@ -1878,8 +1861,6 @@ class MCSamples(Chains):
             density.maxcontours = getOtherContourLevels(binNDmaxlikes, contours, half_edge=False)
         else:
             density.maxlikes = None
-
-
 
         if writeDataToFile:
             # note store things in confusing transpose form
@@ -1912,8 +1893,6 @@ class MCSamples(Chains):
                 np.savetxt(filename, np.transpose(allND), "%16.7E")
 
         return density
-
-
 
     def _setLikeStats(self):
         """
