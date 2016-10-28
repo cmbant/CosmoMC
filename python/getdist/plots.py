@@ -395,7 +395,8 @@ class MCSampleAnalysis(object):
                 batch = batchjob.readobject(chain_dir)
             self.chain_dirs.append(batch)
             # this gets things like specific parameter limits etc. specific to the grid
-            # TODO: yuk, should get rid of this next refactor when grids should store this information
+            # yuk, this should only be for old Planck grids. New ones don't need getdist_common
+            # should instead set custom settings in the grid setting file
             if os.path.exists(batch.commonPath + 'getdist_common.ini'):
                 batchini = IniFile(batch.commonPath + 'getdist_common.ini')
                 if self.ini:

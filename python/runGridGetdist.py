@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 import os
 import subprocess
+import getdist
 from getdist import IniFile
 import time
 from paramgrid import batchjob_args
@@ -20,16 +21,16 @@ Opts.parser.add_argument('--burn_removed', action='store_true', help="if burn in
 Opts.parser.add_argument('--no_plots', action='store_true', help="just make non-plot outputs (faster)")
 Opts.parser.add_argument('--delay', type=int, help="run after delay of some number of seconds")
 Opts.parser.add_argument('--procs', type=int, default=1, help="number of getdist instances to run in parallel")
-Opts.parser.add_argument('--command', default='./getdist', help="program to run")
+Opts.parser.add_argument('--base_ini', default=getdist.default_getdist_settings, help="default getdist settings")
+Opts.parser.add_argument('--command', default='python', help="program to run")
+Opts.parser.add_argument('--command_params', nargs='*',
+                         default=['python/GetDist.py'], help="arguments program to run (excl. ini name)")
 
 (batch, args) = Opts.parseForBatch()
-
-base_ini = 'getdist_common.ini'
 
 plot_ext = 'py'
 plot_cmd = 'python'
 
-# the plotting matlab run is optional and only if you are using plot_ext=m in getdist
 plot_types = ['.', '_2D.']
 # you don't need these for python plots generated separately
 # '_tri' is very slow for so many
@@ -59,7 +60,12 @@ if not args.plots:
             ini.includes.append(custom_plot2)
         elif os.path.exists(custom_plot):
             ini.includes.append(custom_plot)
-        ini.defaults.append(batch.commonPath + base_ini)
+        if os.path.exists(args.base_ini):
+            ini.defaults.append(args.base_ini)
+        elif os.path.exists(batch.commonPath + args.base_ini):
+            ini.defaults.append(batch.commonPath + args.base_ini)
+        else:
+            raise ValueError("base_ini file not found")
         tag = ''
         if jobItem.isImportanceJob or args.burn_removed or jobItem.isBurnRemoved():
             ini.params['ignore_rows'] = 0
@@ -74,10 +80,9 @@ if not args.plots:
                     not args.update_only or jobItem.getDistNeedsUpdate()):
             if jobItem.chainExists():
                 print("running: " + fname)
-                processes.add(subprocess.Popen([args.command, fname]))
+                processes.add(subprocess.Popen([args.command] + args.command_params + [fname]))
                 while len(processes) >= args.procs:
                     time.sleep(.1)
                     processes.difference_update([p for p in processes if p.poll() is not None])
             else:
                 print("Chains do not exist yet: " + jobItem.chainRoot)
-
