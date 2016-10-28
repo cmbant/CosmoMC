@@ -5,13 +5,15 @@
     !Sept 2014: refactored structure using new "bao_dataset[NAME] = file.dataset" syntax
     !           added refactoed DR7 MGS code (thanks Lado Samushia)
     !Jan 2014 added bao_HZ_rs, f_sigma8, F_AP, and more general .dat format
-    !Feb 2016: TC 1) H(z)rs in km units, 
+    !Feb 2016: TC 1) H(z)rs in km units,
     !             2) DR12 BAO Likelihoods from alpha_par and alpha_plel
     !             3) consensus likelihood distribution for LOWZ and CMASS
     !             4) RSD DR12 results included with QPM and MD-PATCHY inverse
     !             covariance matrices
     !             5) corrected DR11 rs_rescale factor (leads to ~0.1% bias
     !             correction at most)
+    !Oct 2016: add support for dataset files no measurement_type, instead
+    !              specified for each point in data file
 
     module bao
     use MatrixUtils
@@ -115,6 +117,8 @@
     integer i,iopb
     real (mcp) :: rd_fid,H_fid,DA_fid
     Type(TTextFile) :: F
+    logical :: hastype
+    character(LEN=Ini_Enumeration_Len) :: tp
 
     if (Feedback > 0 .and. MpiRank==0) write (*,*) 'reading BAO data set: '//trim(this%name)
     this%num_bao = Ini%Read_Int('num_bao',1)
@@ -125,7 +129,12 @@
     allocate(this%bao_obs(this%num_bao))
     allocate(this%bao_err(this%num_bao))
 
-    call Ini%Read_Enumeration_List('measurement_type',measurement_types, this%type_bao, nvalues = this%num_bao)
+    hasType = Ini%HasKey('measurement_type')
+    if (hasType) then
+        call Ini%Read_Enumeration_List('measurement_type',measurement_types, this%type_bao, nvalues = this%num_bao)
+    else
+        allocate(this%type_bao(this%num_bao))
+    end if
 
     if ((Ini%HasKey('Hrd_fid')).and.(Ini%HasKey('DA_rd_fid'))) then
         this%Hrd_fid = Ini%Read_Double('Hrd_fid')
@@ -141,18 +150,23 @@
     if (Ini%HasKey('zeff')) then
         this%bao_z = Ini%Read_Double('zeff')
         if (this%type_bao(1)<9) then
-                bao_measurement  = Ini%Read_String('bao_measurement')
-                if (this%num_bao>1) then
-                    read (bao_measurement,*) this%bao_obs(:)
-                else
-                    read (bao_measurement,*) this%bao_obs(1),this%bao_err(1)
-                end if
+            bao_measurement  = Ini%Read_String('bao_measurement')
+            if (this%num_bao>1) then
+                read (bao_measurement,*) this%bao_obs(:)
+            else
+                read (bao_measurement,*) this%bao_obs(1),this%bao_err(1)
+            end if
         end if
     else
         bao_measurements_file = Ini%ReadRelativeFileName('bao_measurements_file')
         call F%Open(bao_measurements_file)
         do i=1,this%num_bao
-            read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
+            if (hasType) then
+                read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
+            else
+                read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i), tp
+                this%type_bao(i) = Ini%EnumerationValue(tp, measurement_types)
+            end if
             if (iopb /= 0) call MpiStop('BAO_ReadIni: Error reading bao_measurements_file: ' &
                 //trim(this%name))
         end do

@@ -395,7 +395,8 @@ class MCSampleAnalysis(object):
                 batch = batchjob.readobject(chain_dir)
             self.chain_dirs.append(batch)
             # this gets things like specific parameter limits etc. specific to the grid
-            # TODO: yuk, should get rid of this next refactor when grids should store this information
+            # yuk, this should only be for old Planck grids. New ones don't need getdist_common
+            # should instead set custom settings in the grid setting file
             if os.path.exists(batch.commonPath + 'getdist_common.ini'):
                 batchini = IniFile(batch.commonPath + 'getdist_common.ini')
                 if self.ini:
@@ -904,7 +905,7 @@ class GetDistPlotter(object):
             cols = [args['color']]
             kwargs = self._get_plot_args(plotno, **kwargs)
             kwargs['alpha'] = alpha
-            CS = ax.contour(density.x, density.y, density.P, contour_levels, colors=cols, linestyles=linestyles,
+            CS = ax.contour(density.x, density.y, density.P, sorted(contour_levels), colors=cols, linestyles=linestyles,
                             linewidths=self.settings.lw_contour, **kwargs)
             dashes = args.get('dashes')
             if dashes:
@@ -2072,7 +2073,7 @@ class GetDistPlotter(object):
         :return: (xmin, xmax), (ymin, ymax) bounds for the axes.
         """
 
-        kwargs = {'fixed_color':color}
+        kwargs = {'fixed_color': color}
         return self.add_3d_scatter(root, [x, y], False, alpha, extra_thin, scatter_size, ax, **kwargs)
 
     def add_3d_scatter(self, root, params, color_bar=True, alpha=1, extra_thin=1, scatter_size=None, ax=None, **kwargs):
@@ -2102,10 +2103,12 @@ class GetDistPlotter(object):
         if extra_thin > 1:
             samples = [pts[::extra_thin] for pts in samples]
         self.last_scatter = (ax or plt.gca()).scatter(samples[0], samples[1], edgecolors='none',
-                                        s=scatter_size or self.settings.scatter_size, c=fixed_color or samples[2],
-                                        cmap=self.settings.colormap_scatter, alpha=alpha)
+                                                      s=scatter_size or self.settings.scatter_size,
+                                                      c=fixed_color or samples[2],
+                                                      cmap=self.settings.colormap_scatter, alpha=alpha)
         if not ax: plt.sci(self.last_scatter)
-        if color_bar and not fixed_color: self.last_colorbar = self.add_colorbar(params[2], mappable=self.last_scatter, ax=ax, **kwargs)
+        if color_bar and not fixed_color: self.last_colorbar = self.add_colorbar(params[2], mappable=self.last_scatter,
+                                                                                 ax=ax, **kwargs)
         xbounds = [min(samples[0]), max(samples[0])]
         r = xbounds[1] - xbounds[0]
         xbounds[0] -= r / 20

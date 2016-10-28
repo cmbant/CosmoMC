@@ -570,6 +570,7 @@ installed manually or obtained from the cosmomc git repository (access available
 <UL>
 <LI>Added .derived_ranges files (in /paramnames folder) to specify hard priors on derived parameters. These are now propagated to output chain .ranges file along with H0 and z_rei priors (and hence limits do not need to be manually specified when running GetDist).
 <LI>Added <b>neutrino_hierarchy</b> (={normal, inverted, degenerate}), to support one or two distinct eigenstate approximation to oscillation constraints.
+<LI>python/runGridGetDist.py script now uses python getdist. Batch3-based grids no longer use getdist_common.ini, but default getdist settings (+ what's set in the grid setting file).
 </UL>
 
 <LI><B>June 2016</B><BR>

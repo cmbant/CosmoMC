@@ -85,7 +85,7 @@
     subroutine IO_OutputChainRow(F, mult, like, values)
     class(TFileStream) :: F
     real(mcp) mult, like, values(:)
-    
+
     call F%Write([mult, like, values])
 
     if (flush_write) call F%Flush()
@@ -190,9 +190,9 @@
     subroutine IO_ReadParamNames(Names, in_root, prior_ranges)
     class(TParamNames) :: Names
     character(LEN=*), intent(in) :: in_root
-    character(LEN=ParamNames_maxlen) name
+    character(LEN=ParamNames_maxlen) name, mn,mx
     character(LEN=:), allocatable :: infile
-    real(mcp) :: prior_ranges(:,:), minmax(2)
+    real(mcp) :: prior_ranges(:,:)
     integer ix, status
     Type(TTextFile) :: F
 
@@ -204,10 +204,21 @@
         if (File%Exists(infile)) then
             call F%Open(infile)
             do
-                read(F%unit, *, iostat=status) name, minmax
+                read(F%unit, *, iostat=status) name, mn, mx
                 if (status/=0) exit
                 ix = Names%index(name)
-                if (ix/=-1) prior_ranges(:,ix) = minmax
+                if (ix/=-1) then
+                    if (trim(adjustl(mn))=='N') then
+                        prior_ranges(1,ix)=-1e32
+                    else
+                        read(mn,*) prior_ranges(1,ix)
+                    end if
+                    if (trim(adjustl(mx))=='N') then
+                        prior_ranges(2,ix)=1e32
+                    else
+                        read(mx,*) prior_ranges(2,ix)
+                    end if
+                end if
             end do
             call F%Close()
         end if
