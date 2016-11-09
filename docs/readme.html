@@ -568,9 +568,12 @@ installed manually or obtained from the cosmomc git repository (access available
 <UL>
 <LI><B>November 2016</B><BR>
 <UL>
-<LI>Updated getdist to 0.2.6 (fixing compatibility issue with latest matplotlib for 2D contours)
 <LI>Added .derived_ranges files (in /paramnames folder) to specify hard priors on derived parameters. These are now propagated to output chain .ranges file along with H0 and z_rei priors (and hence limits do not need to be manually specified when running GetDist).
 <LI>Added <b>neutrino_hierarchy</b> (={normal, inverted, degenerate}), to support one or two distinct eigenstate approximation to oscillation constraints.
+<LI>Bicep BK14 data files and CMB_BK_Planck update (thanks Colin Bischoff)
+<LI>Support for BAO .dataset files with no measurement_type keyword (set in data file for each point instead)
+<LI>Updated getdist to 0.2.6 (fixing compatibility issue with latest matplotlib for 2D contours)
+<LI>Update CAMB to Nov 2016 version
 </UL>
 
 <LI><B>June 2016</B><BR>
