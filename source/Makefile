@@ -4,7 +4,6 @@ OUTPUT_DIR ?= Release
 BUILD ?= MPI
 #set BUILD to MPI to force MPI, should be set in ../Makefile
 
-MPIF90C ?= mpif90
 
 ifortErr = $(shell which ifort >/dev/null; echo $$?)
 
@@ -13,6 +12,8 @@ ifeq "$(ifortErr)" "0"
 #ifort; Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
 
 F90C     = ifort
+MPIF90C ?= mpif90 -f90=ifort
+
 #use this if mpif90 is trying to use gfortran: MPIF90C = mpif90 -f90=ifort
 
 FFLAGS = -mkl -O3 -no-prec-div -fpp
@@ -64,6 +65,9 @@ FFLAGS+=-march=native
 endif
 
 endif
+
+MPIF90C ?= mpif90
+
 
 #use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
 RECOMBINATION ?=recfast
