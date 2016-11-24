@@ -12,7 +12,8 @@ ifeq "$(ifortErr)" "0"
 #ifort; Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
 
 F90C     = ifort
-MPIF90C ?= mpif90 -f90=ifort
+#Can use this if mpif90 not picking up ifort:
+#MPIF90C ?= mpif90 -f90=ifort
 
 #use this if mpif90 is trying to use gfortran: MPIF90C = mpif90 -f90=ifort
 
