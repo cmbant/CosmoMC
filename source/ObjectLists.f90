@@ -968,7 +968,11 @@
         if (nodups) then
             if (this%IndexOf(List%Item(i)) /= -1) cycle
         end if
-        call this%Add(List%Items(i)%P,List%Items(i)%Object)
+        if (associated(List%Items(i)%Object)) then
+            call this%Add(List%Items(i)%P,List%Items(i)%Object)
+        else
+            call this%Add(List%Items(i)%P)
+        end if
     end do
 
     end subroutine AddItems
