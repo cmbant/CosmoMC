@@ -26,12 +26,12 @@
     implicit none
     private
 
-    character(LEN=Ini_Enumeration_Len), parameter :: measurement_types(9) = &
+    character(LEN=Ini_Enumeration_Len), parameter :: measurement_types(10) = &
         [character(Ini_Enumeration_Len)::'Az','DV_over_rs','rs_over_DV','DA_over_rs', &
-        'F_AP', 'f_sigma8','bao_Hz_rs','bao_Hz_rs_103','dilation']
+        'F_AP', 'f_sigma8','bao_Hz_rs','bao_Hz_rs_103','dilation','DM_over_rs']
 
     integer, parameter :: bao_Az =1, bao_DV_over_rs = 2, bao_rs_over_DV = 3, bao_DA_over_rs = 4, &
-        F_AP= 5, f_sigma8=6, bao_Hz_rs = 7, bao_Hz_rs_103 = 8, dilation = 9
+        F_AP= 5, f_sigma8=6, bao_Hz_rs = 7, bao_Hz_rs_103 = 8, dilation = 9, bao_DM_over_rs = 10
 
     type, extends(TCosmoCalcLikelihood) :: TBAOLikelihood
         integer :: num_bao ! total number of points used
@@ -117,7 +117,8 @@
     integer i,iopb
     real (mcp) :: rd_fid,H_fid,DA_fid
     Type(TTextFile) :: F
-    logical :: hastype
+    logical :: hastype, haserror
+    integer :: status
     character(LEN=Ini_Enumeration_Len) :: tp
 
     if (Feedback > 0 .and. MpiRank==0) write (*,*) 'reading BAO data set: '//trim(this%name)
@@ -148,8 +149,12 @@
     end if
 
     if (Ini%HasKey('zeff')) then
-        this%bao_z = Ini%Read_Double('zeff')
-        if (this%type_bao(1)<9) then
+        bao_measurement  = Ini%Read_String('zeff')
+        read (bao_measurement,*, iostat=status) this%bao_z
+        if (status/=0) then !assume just one redshift
+            this%bao_z = Ini%Read_Double('zeff')
+        end if
+        if (this%type_bao(1) /= dilation) then
             bao_measurement  = Ini%Read_String('bao_measurement')
             if (this%num_bao>1) then
                 read (bao_measurement,*) this%bao_obs(:)
@@ -159,13 +164,23 @@
         end if
     else
         bao_measurements_file = Ini%ReadRelativeFileName('bao_measurements_file')
+        haserror = Ini%Read_Logical('bao_measurements_file_has_error',.true.)
         call F%Open(bao_measurements_file)
-        do i=1,this%num_bao
-            if (hasType) then
-                read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
+        do i=1,this%num_bao            
+            if (haserror) then
+                if (hasType) then
+                    read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
+                else
+                    read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i), tp
+                    this%type_bao(i) = Ini%EnumerationValue(tp, measurement_types)
+                end if
             else
-                read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i), tp
-                this%type_bao(i) = Ini%EnumerationValue(tp, measurement_types)
+                if (hasType) then
+                    read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i)
+                else
+                    read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i), tp
+                    this%type_bao(i) = Ini%EnumerationValue(tp, measurement_types)
+                end if
             end if
             if (iopb /= 0) call MpiStop('BAO_ReadIni: Error reading bao_measurements_file: ' &
                 //trim(this%name))
@@ -199,6 +214,10 @@
     if (Ini%HasKey('bao_invcov_file')) then
         bao_invcov_file  = Ini%ReadRelativeFileName('bao_invcov_file')
         call File%ReadTextMatrix(bao_invcov_file, this%bao_invcov)
+    else if (Ini%HasKey('bao_cov_file')) then
+        bao_invcov_file  = Ini%ReadRelativeFileName('bao_cov_file')
+        call File%ReadTextMatrix(bao_invcov_file, this%bao_invcov)
+        call Matrix_Inverse(this%bao_invcov)
     else
         do i=1,this%num_bao
             !diagonal, or actually just 1..
@@ -263,6 +282,8 @@
             BAO_theory(j) = this%Acoustic(CMB,z)
         case (bao_DA_over_rs)
             BAO_theory(j) = this%Calculator%AngularDiameterDistance(z)/rs
+        case (bao_DM_over_rs)
+            BAO_theory(j) = (1+z)*this%Calculator%AngularDiameterDistance(z)/rs
         case (F_AP)
             BAO_theory(j) = (1+z)*this%Calculator%AngularDiameterDistance(z)* &
                 this%Calculator%Hofz(z)
