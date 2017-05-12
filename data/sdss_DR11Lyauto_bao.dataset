@@ -1,0 +1,16 @@
+name = Lyauto
+
+measurement_type = DV_over_rs
+
+num_bao = 1
+
+alpha_npoints = 61
+alpha_npoints_per = 61
+
+prob_dist = chi2_surface_dr11_test_v3.txt
+
+zeff = 2.34
+
+#Note these values are not used in the actual likelihood; latter is with true rs
+bao_measurement = 13.773  0.134
+

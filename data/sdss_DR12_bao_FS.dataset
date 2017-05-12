@@ -1,0 +1,17 @@
+
+name = BAO_FS
+
+zeff = 0.38 0.38 0.38 0.51 0.51 0.51 0.61 0.61 0.61
+
+num_bao = 9
+
+# rs_rescale = 1./147.78 
+rs_rescale = 0.006767 
+
+#DA here is comoving
+measurement_type =  DA_over_rs bao_Hz_rs f_sigma8 DA_over_rs bao_Hz_rs f_sigma8 DA_over_rs bao_Hz_rs f_sigma8
+bao_measurement =  1518.36 81.5095 0.49749 1977.44 90.4474 0.457523 2283.18 97.2556 0.436148
+
+bao_invcov_file = sdss_DR12_bao_FS_invcov.txt
+
+

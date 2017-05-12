@@ -11,6 +11,7 @@
     use snovae
     use CMBLikelihoods
     use bao
+    use bao_FS
     use mpk
     use wigglez
     use szcounts !Anna
@@ -33,6 +34,8 @@
     if (use_mpk) call WiggleZLikelihood_Add(DataLikelihoods, Ini)
 
     call BAOLikelihood_Add(DataLikelihoods, Ini)
+
+    call BAO_FSLikelihood_Add(DataLikelihoods, Ini)
 
     call SZLikelihood_Add(DataLikelihoods, Ini) !Anna
 
