@@ -120,6 +120,7 @@
     logical :: hastype, haserror
     integer :: status
     character(LEN=Ini_Enumeration_Len) :: tp
+    character(LEN=:), allocatable :: InLine
 
     if (Feedback > 0 .and. MpiRank==0) write (*,*) 'reading BAO data set: '//trim(this%name)
     this%num_bao = Ini%Read_Int('num_bao',1)
@@ -166,24 +167,29 @@
         bao_measurements_file = Ini%ReadRelativeFileName('bao_measurements_file')
         haserror = Ini%Read_Logical('bao_measurements_file_has_error',.true.)
         call F%Open(bao_measurements_file)
-        do i=1,this%num_bao            
-            if (haserror) then
-                if (hasType) then
-                    read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
+        do i=1,this%num_bao
+            if (F%ReadLineSkipEmptyAndComments(InLine)) then
+                if (haserror) then
+                    if (hasType) then
+                        read (InLine,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i)
+                    else
+                        read (InLine,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i), tp
+                        this%type_bao(i) = Ini%EnumerationValue(tp, measurement_types)
+                    end if
                 else
-                    read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i),this%bao_err(i), tp
-                    this%type_bao(i) = Ini%EnumerationValue(tp, measurement_types)
+                    if (hasType) then
+                        read (InLine,*, iostat=iopb) this%bao_z(i),this%bao_obs(i)
+                    else
+                        read (InLine,*, iostat=iopb) this%bao_z(i),this%bao_obs(i), tp
+                        this%type_bao(i) = Ini%EnumerationValue(tp, measurement_types)
+                    end if
                 end if
+                if (iopb /= 0) call MpiStop('BAO_ReadIni: Error reading bao_measurements_file: ' &
+                    //trim(this%name))
             else
-                if (hasType) then
-                    read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i)
-                else
-                    read (F%unit,*, iostat=iopb) this%bao_z(i),this%bao_obs(i), tp
-                    this%type_bao(i) = Ini%EnumerationValue(tp, measurement_types)
-                end if
+                call MpiStop('BAO_ReadIni: Missing line in bao_measurements_file: ' &
+                    //trim(this%name))
             end if
-            if (iopb /= 0) call MpiStop('BAO_ReadIni: Error reading bao_measurements_file: ' &
-                //trim(this%name))
         end do
         call F%Close()
     end if

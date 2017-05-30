@@ -1,0 +1,13 @@
+#DR12 full shape (FS) consensus results, Alam et al. 2016
+#https://arxiv.org/abs/1607.03155
+
+name = DR12FSDV
+
+num_bao=9
+
+bao_measurements_file = FS_consensus_results_dV_FAP_fsig.dat
+bao_measurements_file_has_error = F
+
+bao_cov_file = FS_consensus_covtot_dV_FAP_fsig.txt
+
+

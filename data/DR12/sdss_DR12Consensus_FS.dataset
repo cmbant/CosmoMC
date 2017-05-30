@@ -8,6 +8,7 @@ num_bao=9
 bao_measurements_file = sdss_DR12Consensus_FS.dat
 bao_measurements_file_has_error = F
 
+#stored values are actually scaled by r_fid, so include that here
 #rs_rescale = 1/147.78 
 rs_rescale = .6766815537e-2
 
