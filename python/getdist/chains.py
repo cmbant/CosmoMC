@@ -2,7 +2,7 @@ from __future__ import print_function
 import os
 import random
 import numpy as np
-from getdist.paramnames import ParamNames, ParamInfo
+from getdist.paramnames import ParamNames, ParamInfo, escapeLatex
 from getdist.convolve import autoConvolve
 import pickle
 import six
@@ -54,7 +54,7 @@ def chainFiles(root, chain_indices=None, ext='.txt', first_chain=0, last_chain=-
         index += 1
         fname = root + ('', '_' + str(index))[index > 0]
         if not ext in fname: fname += ext
-        if index > 0 and not os.path.exists(fname) or 0 < last_chain < index: break
+        if index > first_chain and not os.path.exists(fname) or 0 < last_chain < index: break
         if (chain_indices is None or index in chain_indices) \
                 and (chain_exclude is None or not index in chain_exclude) \
                 and index >= first_chain and os.path.exists(fname):
@@ -143,7 +143,7 @@ class WeightedSamples(object):
     """
 
     def __init__(self, filename=None, ignore_rows=0, samples=None, weights=None, loglikes=None, name_tag=None,
-                 files_are_chains=True):
+                 label=None, files_are_chains=True):
         """
         :param filename: A filename of a plain text file to load from
         :param ignore_rows: 
@@ -153,9 +153,11 @@ class WeightedSamples(object):
         :param weights: array of weights
         :param loglikes: array of -log(Likelihood)
         :param name_tag: The name of this instance.
+        :param label: latex label for these samples
         :param files_are_chains: use False if the samples file (filename) does not start with two columns giving weights and -log(Likelihoods)
         """
 
+        self.precision = '%.8e'
         if filename:
             cols = loadNumpyTxt(filename, skiprows=ignore_rows)
             self.setColData(cols, are_chains=files_are_chains)
@@ -163,6 +165,7 @@ class WeightedSamples(object):
         else:
             self.setSamples(samples, weights, loglikes)
             self.name_tag = name_tag
+        self.label = label
         self.needs_update = True
 
     def setColData(self, coldata, are_chains=True):
@@ -176,6 +179,14 @@ class WeightedSamples(object):
             self.setSamples(coldata[:, 2:], coldata[:, 0], coldata[:, 1])
         else:
             self.setSamples(coldata)
+
+    def getLabel(self):
+        """
+        Return the latex label for the samples
+
+        :return: the label 
+        """
+        return self.label or escapeLatex(self.getName())
 
     def getName(self):
         """
@@ -786,7 +797,6 @@ class Chains(WeightedSamples):
         """
         WeightedSamples.__init__(self, **kwargs)
         self.jobItem = jobItem
-        self.precision = '%.8e'
         self.ignore_lines = float(kwargs.get('ignore_rows', 0))
         self.root = root
         if not paramNamesFile and root and os.path.exists(root + '.paramnames'):
@@ -868,6 +878,17 @@ class Chains(WeightedSamples):
         pars = ParSamples()
         self.setParams(pars)
         return pars
+
+    def getParamSampleDict(self, ix):
+        """
+        Returns a dictionary of parameter values for sample number ix
+        """
+        res = {}
+        for i, name in enumerate(self.paramNames.names):
+            res[name.name] = self.samples[ix, i]
+        res['weight'] = self.weights[i]
+        res['loglike'] = self.loglikes[i]
+        return res
 
     def _makeParamvec(self, par):
         if self.needs_update: self.updateBaseStatistics()
