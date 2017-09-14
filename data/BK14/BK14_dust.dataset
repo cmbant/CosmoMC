@@ -65,3 +65,14 @@ nuisance_params = BK14.paramnames
 # Note that BKPlanck analysis used 150 GHz pivot for sync.
 fpivot_dust = 353.0
 fpivot_sync = 23.0
+
+# Pairs of frequencies used to define foreground decorrelation
+# amplitude.
+fpivot_dust_decorr(1) = 217.0
+fpivot_dust_decorr(2) = 353.0
+fpivot_sync_decorr(1) = 23.0
+fpivot_sync_decorr(2) = 33.0
+
+# Functional form for ell scaling of foreground decorrelation.
+lform_dust_decorr = lin
+lform_sync_decorr = lin

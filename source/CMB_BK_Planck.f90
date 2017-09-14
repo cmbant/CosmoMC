@@ -15,15 +15,19 @@
         real(mcp), allocatable :: R(:,:)
         real(mcp), allocatable :: dnu(:)
         real(mcp) :: th_dust, th_sync
+        real(mcp) :: nu_bar
     end Type TBandpass
 
     Type, extends(TCMBLikes) :: TBK_planck
         Type(TBandpass), allocatable :: Bandpasses(:)
         real(mcp) :: fpivot_dust, fpivot_sync
+        real(mcp) :: fpivot_dust_decorr(2), fpivot_sync_decorr(2)
+        character(LEN=:), allocatable :: lform_dust_decorr, lform_sync_decorr
     contains
     procedure :: ReadIni => TBK_planck_ReadIni
     procedure :: AddForegrounds => TBK_planck_AddForegrounds
     procedure :: ReadBandpass => TBK_planck_Read_Bandpass
+    procedure :: Decorrelation
     end Type TBK_planck
 
     public TBK_planck
@@ -45,6 +49,16 @@
     !Defaults are 353 GHz for dust, 23 GHz for sync.
     this%fpivot_dust = Ini%Read_Double('fpivot_dust', 353.0_mcp)
     this%fpivot_sync = Ini%Read_Double('fpivot_sync', 23.0_mcp)
+
+    ! Assign pivot frequencies for foreground decorrelation model.
+    this%fpivot_dust_decorr(1) = Ini%Read_Double_Array('fpivot_dust_decorr', 1, 217.0_mcp)
+    this%fpivot_dust_decorr(2) = Ini%Read_Double_Array('fpivot_dust_decorr', 2, 353.0_mcp)
+    this%fpivot_sync_decorr(1) = Ini%Read_Double_Array('fpivot_sync_decorr', 1, 23.0_mcp)
+    this%fpivot_sync_decorr(2) = Ini%Read_Double_Array('fpivot_sync_decorr', 2, 33.0_mcp)
+    
+    ! Functional form of ell scaling for foreground decorrelation model.
+    this%lform_dust_decorr = Ini%Read_String_Default('lform_dust_decorr', 'flat')
+    this%lform_sync_decorr = Ini%Read_String_Default('lform_sync_decorr', 'flat')
 
     !Load in the bandpass files for each map
     allocate(this%Bandpasses(this%nmaps_required))
@@ -84,6 +98,10 @@
     th0 = nu0**4 * exp(Ghz_Kelvin*nu0/T_CMB) / (exp(Ghz_Kelvin*nu0/T_CMB) - 1)**2
     Bandpass%th_sync = th_int / th0
 
+    ! Calculate bandpass center-of-mass (i.e. mean frequency).
+    Bandpass%nu_bar = sum(Bandpass%dnu * Bandpass%R(:,1) * Bandpass%R(:,2)) / &
+         sum(Bandpass%dnu * Bandpass%R(:,2))
+
     end subroutine TBK_planck_Read_Bandpass
 
     ! Calculates greybody scaling of dust signal defined at 353 GHz
@@ -107,6 +125,7 @@
 
     ! Calculate dust scaling.
     fdust = (gb_int / gb0) / bandpass%th_dust
+    print *, bandpass%nu_bar, fdust
 
     end subroutine DustScaling
 
@@ -132,6 +151,45 @@
 
     end subroutine SyncScaling
 
+    ! Calculate factor by which foreground (dust or sync) power is decreased
+    ! for a cross-spectrum between two different frequencies.
+    subroutine Decorrelation(this, cval, nu0, nu1, l, lform, fcorr)
+    class(TBK_planck) :: this
+    real(mcp), intent(in) :: cval, nu0, nu1
+    integer l
+    character(len=*), intent(in) :: lform
+    real(mcp), intent(out) :: fcorr
+    real(mcp) :: lpivot = 80.0_mcp
+    real(mcp) :: scl_nu, scl_ell
+
+    ! Decorrelation scales as log^2(nu0/nu1)
+    scl_nu = (log(nu0 / nu1)**2) / (log(this%fpivot_dust_decorr(1) / this%fpivot_dust_decorr(2))**2)
+    ! Functional form for ell scaling is specified in .dataset file.
+    select case (lform)
+       case ("flat")
+          scl_ell = 1.0_mcp
+       case ("lin")
+          scl_ell = l / lpivot
+       case ("quad")
+          scl_ell = (l / lpivot)**2
+       case default
+          scl_ell = 1.0_mcp
+    end select
+
+    ! Even for small cval, correlation can become negative for sufficiently large frequency 
+    ! difference or ell value (with linear or quadratic scaling).
+    ! Following Vansyngel et al, A&A, 603, A62 (2017), we use an exponential function to
+    ! remap the correlation coefficient on to the range [0,1]. 
+    ! We symmetrically extend this function to (non-physical) correlation coefficients
+    ! greater than 1 -- this is only used for validation tests of the likelihood model.
+    if (cval > 1) then
+       fcorr = 2.0_mcp - exp((1.0_mcp - cval) * scl_nu * scl_ell)
+    else
+       fcorr = exp(-1.0_mcp * (1.0_mcp - cval) * scl_nu * scl_ell)
+    end if
+
+    end subroutine Decorrelation
+
     subroutine TBK_planck_AddForegrounds(this,Cls,DataParams)
     class(TBK_planck) :: this
     class(TMapCrossPowerSpectrum), target, intent(inout) :: Cls(:,:)
@@ -141,8 +199,9 @@
     real(mcp) :: alphasync, betasync, dustsync_corr
     real(mcp) :: fdust(this%nmaps_required)
     real(mcp) :: fsync(this%nmaps_required)
-    real(mcp) :: dust, sync, dustsync
+    real(mcp) :: dust, corr_dust, sync, corr_sync, dustsync
     real(mcp) :: EEtoBB_dust,EEtoBB_sync
+    real(mcp) :: rho_dust, rho_sync
     integer i,j,l
     real(mcp) :: lpivot = 80.0_mcp
 
@@ -156,6 +215,8 @@
     dustsync_corr = DataParams(8)
     EEtoBB_dust = DataParams(9)
     EEtoBB_sync = DataParams(10)
+    rho_dust = DataParams(11)
+    rho_sync = DataParams(12)
 
     do i=1, this%nmaps_required
         call DustScaling(betadust,Tdust,this%Bandpasses(i),this%fpivot_dust,fdust(i))
@@ -168,7 +229,7 @@
             dust = fdust(i)*fdust(j)
             sync = fsync(i)*fsync(j)
             dustsync = fdust(i)*fsync(j) + fsync(i)*fdust(j)
-            If (CL%theory_i==2 .and. CL%theory_j==2) then
+            if (CL%theory_i==2 .and. CL%theory_j==2) then
                 ! EE spectrum: multiply foregrounds by EE/BB ratio
                 dust = dust * EEtoBB_dust
                 sync = sync * EEtoBB_sync
@@ -178,9 +239,16 @@
             if ((CL%theory_i==2 .and. CL%theory_j==2) .or. (CL%theory_i==3 .and. CL%theory_j==3)) then
                 ! Only add foregrounds to EE or BB.
                 do l=this%pcl_lmin,this%pcl_lmax
-                    CL%CL(l) = CL%CL(l) + &
-                        dust*Adust*(l/lpivot)**(alphadust) + &
-                        sync*Async*(l/lpivot)**(alphasync) + &
+                   ! Calculate correlation factors for dust and sync.
+                   ! If map_i and map_j have the same observing frequency, these factors will be one.
+                   call this%Decorrelation(rho_dust, this%Bandpasses(i)%nu_bar, &
+                        this%Bandpasses(j)%nu_bar, l, this%lform_dust_decorr, corr_dust)
+                   call this%Decorrelation(rho_sync, this%Bandpasses(i)%nu_bar, &
+                        this%Bandpasses(j)%nu_bar, l, this%lform_sync_decorr, corr_sync)
+                   ! Add foreground model to theory spectrum.
+                   CL%CL(l) = CL%CL(l) + &
+                        dust*corr_dust*Adust*(l/lpivot)**(alphadust) + &
+                        sync*corr_sync*Async*(l/lpivot)**(alphasync) + &
                         dustsync_corr*dustsync*sqrt(Adust*Async)*(l/lpivot)**((alphadust+alphasync)/2)
                 end do
             end if
