@@ -6,7 +6,7 @@
     implicit none
     private
 
-    real(mcp), parameter :: T_CMB = 2.7255_mcp     ! CMB temperature
+    real(mcp), parameter :: T_CMB = 2.72548_mcp    ! CMB temperature
     real(mcp), parameter :: h = 6.62606957e-34_mcp ! Planck's constant
     real(mcp), parameter :: kB = 1.3806488e-23_mcp ! Boltzmann constant
     real(mcp), parameter :: Ghz_Kelvin = h/kB*1e9_mcp
@@ -80,9 +80,9 @@
     call File%LoadTxt(fname, Bandpass%R, n)
     nu => Bandpass%R(:,1)
     allocate(Bandpass%dnu(n))
-    Bandpass%dnu(1) = nu(2) -nu(1)
+    Bandpass%dnu(1) = nu(2) - nu(1)
     do i=2, n-1
-        Bandpass%dnu(i) = (nu(i+1)-nu(i-1))/2
+        Bandpass%dnu(i) = (nu(i+1) - nu(i-1))/2
     end do
     Bandpass%dnu(n) = nu(n) - nu(n-1)
 
@@ -125,7 +125,7 @@
 
     ! Calculate dust scaling.
     fdust = (gb_int / gb0) / bandpass%th_dust
-    print *, bandpass%nu_bar, fdust
+    !print *, bandpass%nu_bar, fdust
 
     end subroutine DustScaling
 
@@ -148,6 +148,7 @@
 
     ! Calculate sync scaling.
     fsync = (pl_int / pl0) / bandpass%th_sync
+    !print *, bandpass%nu_bar, fsync
 
     end subroutine SyncScaling
 
