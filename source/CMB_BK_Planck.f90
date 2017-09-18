@@ -154,9 +154,10 @@
 
     ! Calculate factor by which foreground (dust or sync) power is decreased
     ! for a cross-spectrum between two different frequencies.
-    subroutine Decorrelation(this, cval, nu0, nu1, l, lform, fcorr)
+    subroutine Decorrelation(this, cval, nu0, nu1, nupivot, l, lform, fcorr)
     class(TBK_planck) :: this
     real(mcp), intent(in) :: cval, nu0, nu1
+    real(mcp), intent(in) :: nupivot(:)
     integer l
     character(len=*), intent(in) :: lform
     real(mcp), intent(out) :: fcorr
@@ -164,7 +165,7 @@
     real(mcp) :: scl_nu, scl_ell
 
     ! Decorrelation scales as log^2(nu0/nu1)
-    scl_nu = (log(nu0 / nu1)**2) / (log(this%fpivot_dust_decorr(1) / this%fpivot_dust_decorr(2))**2)
+    scl_nu = (log(nu0 / nu1)**2) / (log(nupivot(1) / nupivot(2))**2)
     ! Functional form for ell scaling is specified in .dataset file.
     select case (lform)
        case ("flat")
@@ -243,9 +244,11 @@
                    ! Calculate correlation factors for dust and sync.
                    ! If map_i and map_j have the same observing frequency, these factors will be one.
                    call this%Decorrelation(rho_dust, this%Bandpasses(i)%nu_bar, &
-                        this%Bandpasses(j)%nu_bar, l, this%lform_dust_decorr, corr_dust)
+                        this%Bandpasses(j)%nu_bar, this%fpivot_dust_decorr, l, this%lform_dust_decorr, &
+                        corr_dust)
                    call this%Decorrelation(rho_sync, this%Bandpasses(i)%nu_bar, &
-                        this%Bandpasses(j)%nu_bar, l, this%lform_sync_decorr, corr_sync)
+                        this%Bandpasses(j)%nu_bar, this%fpivot_sync_decorr, l, this%lform_sync_decorr, &
+                        corr_sync)
                    ! Add foreground model to theory spectrum.
                    CL%CL(l) = CL%CL(l) + &
                         dust*corr_dust*Adust*(l/lpivot)**(alphadust) + &
