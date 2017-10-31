@@ -558,7 +558,7 @@ class MCSamples(Chains):
             param_map = ''
             for par in self.paramNames.parsWithNames(params):
                 self._initParamRanges(par.name)
-                if par.param_max < 0 or par.param_min < par.param_max - par.param_min:
+                if par.param_max < 0 or par.param_min < (par.param_max - par.param_min) / 10:
                     param_map += 'N'
                 else:
                     param_map += 'L'
@@ -1036,7 +1036,7 @@ class MCSamples(Chains):
 
     def getAutoBandwidth1D(self, bins, par, param, mult_bias_correction_order=None, kernel_order=1, N_eff=None):
         """
-        Get optimized kernel density bandwidth (in units the range of the bins)
+        Get optimized kernel density bandwidth (in units of the range of the bins)
         Based on optimal Improved Sheather-Jones bandwidth for basic Parzen kernel, then scaled if higher-order method being used.
         For details see the `notes <http://cosmologist.info/notes/GetDist.pdf>`_.
 
@@ -1051,6 +1051,13 @@ class MCSamples(Chains):
         if N_eff is None:
             N_eff = self._get1DNeff(par, param)
         h = kde.gaussian_kde_bandwidth_binned(bins, Neff=N_eff)
+        if h is None or h < 0.01 * N_eff ** (-1. / 5):
+            hnew = 1.06 * par.sigma_range * N_eff ** (-1. / 5) / (par.range_max - par.range_min)
+            logging.warning(
+                'auto bandwidth for %s very small or failed (h=%s,N_eff=%s). Using fallback (h=%s)' % (
+                    par.name, h, N_eff, hnew))
+            h = hnew
+
         par.kde_h = h
         m = mult_bias_correction_order
         if m is None: m = self.mult_bias_correction_order
@@ -1134,10 +1141,17 @@ class MCSamples(Chains):
             hx = parx.sigma_range / N_eff ** (1. / 6)
             hy = pary.sigma_range / N_eff ** (1. / 6)
         else:
-            opt = kde.KernelOptimizer2D(bins, N_eff, corr, do_correlation=not has_limits)
-            hx, hy, c = opt.get_h()
-            hx *= rangex
-            hy *= rangey
+            try:
+                opt = kde.KernelOptimizer2D(bins, N_eff, corr, do_correlation=not has_limits)
+                hx, hy, c = opt.get_h()
+                hx *= rangex
+                hy *= rangey
+            except ValueError:
+                logging.warning('2D kernel density bandwidth optimizer failed for %s, %s. Using fallback width.' % (
+                    parx.name, pary.name))
+                c = max(min(corr, self.max_corr_2D), -self.max_corr_2D)
+                hx = parx.sigma_range / N_eff ** (1. / 6)
+                hy = pary.sigma_range / N_eff ** (1. / 6)
 
         if mult_bias_correction_order is None: mult_bias_correction_order = self.mult_bias_correction_order
         logging.debug('hx/sig, hy/sig, corr =%s, %s, %s', hx / parx.err, hy / pary.err, c)
@@ -1284,6 +1298,7 @@ class MCSamples(Chains):
             # Set automatically.
             smooth_1D = self.getAutoBandwidth1D(bins, par, j, mult_bias_correction_order, boundary_correction_order) \
                         * (binmax - binmin) * abs(smooth_scale_1D) / fine_width
+
         elif smooth_scale_1D < 1.0:
             smooth_1D = smooth_scale_1D * par.err / fine_width
         else:

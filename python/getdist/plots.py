@@ -1392,13 +1392,15 @@ class GetDistPlotter(object):
                 plotroot = root
         if plotparam is None: raise GetDistPlotError('No roots have parameter: ' + str(param))
         if marker is not None: self.add_x_marker(marker, marker_color)
-        if not 'lims' in kwargs:
+        if 'lims' in kwargs and kwargs['lims'] is not None:
+            xmin, xmax = kwargs['lims']
+        else:
             xmin, xmax = self._check_param_ranges(plotroot, plotparam.name, xmin, xmax)
-            if normalized:
-                mx = plt.gca().yaxis.get_view_interval()[-1]
-            else:
-                mx = 1.099
-            kwargs['lims'] = [xmin, xmax, 0, mx]
+        if normalized:
+            mx = plt.gca().yaxis.get_view_interval()[-1]
+        else:
+            mx = 1.099
+        kwargs['lims'] = [xmin, xmax, 0, mx]
         ax = self.setAxes([plotparam], **kwargs)
 
         if normalized:
@@ -1627,6 +1629,8 @@ class GetDistPlotter(object):
             root = root.label
         elif hasattr(root, 'getName'):
             root = escapeLatex(root.getName())
+        elif isinstance(root, six.string_types):
+            root = escapeLatex(root)
         if not root: root = 'samples' + str(i)
         return root
 
@@ -1852,7 +1856,8 @@ class GetDistPlotter(object):
 
     def triangle_plot(self, roots, params=None, legend_labels=None, plot_3d_with_param=None, filled=False, shaded=False,
                       contour_args=None, contour_colors=None, contour_ls=None, contour_lws=None, line_args=None,
-                      label_order=None, legend_ncol=None, legend_loc=None, upper_roots=None, upper_kwargs={}, **kwargs):
+                      label_order=None, legend_ncol=None, legend_loc=None, upper_roots=None, upper_kwargs={},
+                      param_limits={}, **kwargs):
         """
         Make a trianglular array of 1D and 2D plots.
 
@@ -1876,6 +1881,7 @@ class GetDistPlotter(object):
         :param upper_roots: set to fill the upper triangle with subplots using this list of sample root names
                              (TODO: this needs some work to easily work without a lot of tweaking)
         :param upper_kwargs: list of dict for arguments when making upper-triangle 2D plots
+        :param param_limits: a dictionary holding a mapping from parameter names to axis limits for that parameter
         :param kwargs: optional keyword arguments for :func:`~GetDistPlotter.plot_2d` or :func:`~GetDistPlotter.plot_3d` (lower triangle only)
 
         .. plot::
@@ -1946,7 +1952,8 @@ class GetDistPlotter(object):
             self._inner_ticks(ax, False)
             self.plot_1d(roots1d, param, do_xlabel=i == plot_col - 1,
                          no_label_no_numbers=self.settings.no_triangle_axis_labels,
-                         label_right=True, no_zero=True, no_ylabel=True, no_ytick=True, line_args=line_args)
+                         label_right=True, no_zero=True, no_ylabel=True, no_ytick=True, line_args=line_args,
+                         lims=param_limits.get(param.name,None))
             # set no_ylabel=True for now, can't see how to not screw up spacing with right-sided y label
             if self.settings.no_triangle_axis_labels:
                 self._spaceTicks(ax.xaxis, bounds=self._get_param_bounds(roots1d, param.name))
@@ -2003,6 +2010,7 @@ class GetDistPlotter(object):
             self._setAxisProperties(label_ax.yaxis, False)
 
         if self.settings.no_triangle_axis_labels: plt.subplots_adjust(wspace=0, hspace=0)
+
         if plot_3d_with_param is not None:
             bottom = 0.5
             if len(params) == 2: bottom += 0.1;
@@ -2018,6 +2026,7 @@ class GetDistPlotter(object):
                          legend_ncol=legend_ncol or (None if upper_roots is None else len(labels)),
                          legend_loc=legend_loc, no_gap=self.settings.no_triangle_axis_labels,
                          no_extra_legend_space=upper_roots is None)
+        if self.settings.no_triangle_axis_labels: plt.subplots_adjust(wspace=0, hspace=0)
 
     def rectangle_plot(self, xparams, yparams, yroots=None, roots=None, plot_roots=None, plot_texts=None,
                        xmarkers=None, ymarkers=None, marker_args={}, param_limits={},
@@ -2107,6 +2116,7 @@ class GetDistPlotter(object):
         if roots: legend_labels = self._default_legend_labels(legend_labels, roots)
         self.finish_plot(no_gap=True, legend_labels=legend_labels, label_order=label_order,
                          legend_ncol=legend_ncol or len(legend_labels))
+        plt.subplots_adjust(wspace=0, hspace=0)
         return ax_arr
 
     def rotate_yticklabels(self, ax=None, rotation=90):

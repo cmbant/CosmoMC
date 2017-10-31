@@ -54,13 +54,14 @@ class GetDistFileTest(unittest.TestCase):
 
         def callGetDist(args):
             if os.getenv('TRAVIS', None):
-                return str(subprocess.check_output(['GetDist.py'] + args))
+                return str(subprocess.check_output(['GetDist.py'] + args, env={'PATH': os.getenv('PATH')}))
             else:
                 return str(subprocess.check_output(
                     ['python', os.path.join(os.path.dirname(__file__), '..' + os.sep, 'GetDist.py')] + args))
 
         os.chdir(self.tempdir)
         res = callGetDist([self.root])
+        # Note this can fail if your local analysis defaults changes the default ignore_rows
         self.assertTrue('-Ln(mean like)  = 2.30' in res)
         fname = 'testchain_pars.ini'
         callGetDist(['--make_param_file', fname])
@@ -171,7 +172,7 @@ class GetDistTest(unittest.TestCase):
         samples = mixture.MCSamples(3000, label='Samples')
         g = plots.getSubplotPlotter()
         g.triangle_plot([samples, mixture], filled=False)
-        g.plot_1d(cond,'t')
+        g.plot_1d(cond, 't')
 
         s1 = 0.0003
         covariance = [[s1 ** 2, 0.6 * s1 * 0.05, 0], [0.6 * s1 * 0.05, 0.05 ** 2, 0.2 ** 2], [0, 0.2 ** 2, 2 ** 2]]
