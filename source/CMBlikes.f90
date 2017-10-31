@@ -386,7 +386,6 @@
     norder = size(binWindows%bin_cols_in,2)
     if (norder/=size(binWindows%bin_cols_out)) &
         & call MpiStop(bin_type // '_in_order and '//bin_type // '_out_order must have same numebr of CL')
-
     allocate(tmp_ar(norder))
     binWindows%lmin = this%pcl_lmin
     binWindows%lmax = this%pcl_lmax
@@ -1104,13 +1103,13 @@
     real(mcp) vecp(this%ncl)
     real(mcp) bigX((this%bin_max-this%bin_min+1)*this%ncl_used)
     integer  i,j, bin
-    logical :: quadratic
     class(TMapCrossPowerSpectrum), pointer :: TheoryCls(:,:)
 
     chisq =0
 
     call this%GetTheoryMapCls(Theory, TheoryCls, DataParams)
 
+    !$OMP PARALLEL DO DEFAULT(SHARED),PRIVATE(i,j,C,vecp), reduction(+:chisq)
     do bin = this%bin_min, this%bin_max
         if (this%binned .or. bin_test) then
             if (this%like_approx == like_approx_fullsky_exact) call mpiStop('CMBLikes: exact like cannot be binned!')
@@ -1127,34 +1126,28 @@
                     C(j,i) = C(i,j)
                 end do
             end do
-
         end if
-
         if (allocated(this%NoiseM)) then
             C = C + this%NoiseM(bin)%M
         end if
 
-        if (this%like_approx == like_approx_HL) then
+        if (this%like_approx == like_approx_fullsky_exact) then
+            chisq = chisq  + this%ExactChisq(C,this%ChatM(bin)%M,bin)
+            cycle
+        else if (this%like_approx == like_approx_HL) then
             call this%Transform(C, this%ChatM(bin)%M, this%sqrt_fiducial(bin)%M)
             call this%MatrixToElements(C, vecp)
-            quadratic = .true.
         else if (this%like_approx == like_approx_fid_gaussian) then
             call this%MatrixToElements(C- this%ChatM(bin)%M, vecp)
-            quadratic = .true.
-        else if (this%like_approx == like_approx_fullsky_exact) then
-            quadratic = .false.
-            chisq = chisq  + this%ExactChisq(C,this%ChatM(bin)%M,bin)
         else
             call MpiStop('Unknown like_approx')
         end if
-
-        if (quadratic) then
-            bigX( (bin-this%bin_min)*this%ncl_used + 1:(bin-this%bin_min+1)*this%ncl_used) = vecp(this%cl_use_index)
-        end if
+        bigX( (bin-this%bin_min)*this%ncl_used + 1:(bin-this%bin_min+1)*this%ncl_used) = vecp(this%cl_use_index)
     end do
+    !$OMP END PARALLEL DO
 
-    if (quadratic) chisq = chisq + Matrix_QuadForm(this%inv_covariance,BigX)
 
+    if (this%like_approx /= like_approx_fullsky_exact) chisq = chisq + Matrix_QuadForm(this%inv_covariance,BigX)
 
     LogLike = chisq/2
 
