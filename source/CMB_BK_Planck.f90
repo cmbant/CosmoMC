@@ -185,9 +185,9 @@
     ! We symmetrically extend this function to (non-physical) correlation coefficients
     ! greater than 1 -- this is only used for validation tests of the likelihood model.
     if (cval > 1) then
-       fcorr = 2.0_mcp - exp((1.0_mcp - cval) * scl_nu * scl_ell)
+       fcorr = 2.0_mcp - exp(-1.0 * log(cval) * scl_nu * scl_ell)
     else
-       fcorr = exp(-1.0_mcp * (1.0_mcp - cval) * scl_nu * scl_ell)
+       fcorr = exp(log(cval) * scl_nu * scl_ell)
     end if
 
     end subroutine Decorrelation
