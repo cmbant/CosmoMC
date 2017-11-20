@@ -196,6 +196,8 @@
             InLine = Ini%Read_String(Ini%NamedKey('linear_combination_weights',Comb%name), NotFoundFail=.true.)
             print *, 'Ini%Read_String(Ini%NamedKey(linear_combination_weights,Comb%name), NotFoundFail=.true.)', InLine
             read(InLine,*, iostat=status) Comb%Combination(params(:num_lin))
+            print *, 'params, num lin', params, num_lin, params(:num_lin)
+            print *, 'Comb%Combination(params(:num_lin))', Comb%Combination(params(:num_lin))
             if (status/=0) call MpiStop('Error reading linear_combination_weights: '//trim(InLIne))
             InLine = Ini%Read_String(Ini%NamedKey('prior',Comb%name))
             print *, 'Ini%Read_String(Ini%NamedKey(prior,Comb%name))', InLine
