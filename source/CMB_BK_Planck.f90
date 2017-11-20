@@ -38,6 +38,7 @@
     class(TSettingIni) :: Ini
     character(LEN=:), allocatable :: fname
     integer i
+    character(LEN=:), allocatable :: S
 
     !Read all standard parameters
     call this%TCMBLikes%ReadIni(Ini)
@@ -65,8 +66,12 @@
     do i = 1, this%nmaps_required
         fname = Ini%ReadFileName('bandpass['//this%used_map_order%Item(i)//']',relative = .true., NotFoundFail=.true.)
         call this%ReadBandpass(fname, this%Bandpasses(i))
+        !print *, 'item ', this%used_map_order%Item(i)
+        !print *, 'fname ', fname
     end do
 
+    !S = Ini%Read_String('maps_use')
+    !print *, 'S ',S
     end subroutine TBK_planck_ReadIni
 
     subroutine TBK_planck_Read_Bandpass(this, fname, Bandpass)
@@ -206,6 +211,8 @@
     real(mcp) :: rho_dust, rho_sync
     integer i,j,l
     real(mcp) :: lpivot = 80.0_mcp
+    character(LEN=:), allocatable :: S
+
 
     Adust = DataParams(1)
     Async = DataParams(2)
@@ -220,7 +227,12 @@
     rho_dust = DataParams(11)
     rho_sync = DataParams(12)
 
+    !print *, 'maps required ', this%nmaps_required
+    !print *, 'map_fields ', this%map_fields
+    !print *, 'mas_used ', this%use_map 
+
     do i=1, this%nmaps_required
+        print *, 'use map order', this%used_map_order%Item(i)
         call DustScaling(betadust,Tdust,this%Bandpasses(i),this%fpivot_dust,fdust(i))
         call SyncScaling(betasync, this%Bandpasses(i),this%fpivot_sync,fsync(i))
     end do
