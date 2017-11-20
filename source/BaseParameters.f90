@@ -190,7 +190,7 @@
             num_lin = -1
             call this%NameMapping%ReadIndices(Combs%Value(i), params, num_lin)
             print *, 'params', params
-            print *, 'Combs%Value(i)', Combs%Value(i)
+            print *, 'Combs%Value(i) ', Combs%Value(i)
             allocate(Comb%Combination(num_params),source = 0._mcp)
             print *, 'num_params', num_params
             InLine = Ini%Read_String(Ini%NamedKey('linear_combination_weights',Comb%name), NotFoundFail=.true.)
