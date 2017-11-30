@@ -38,7 +38,7 @@
     class(TSettingIni) :: Ini
     character(LEN=:), allocatable :: fname
     integer i
-    character(LEN=:), allocatable :: S
+    character(LEN=:), allocatable :: InLine
 
     !Read all standard parameters
     call this%TCMBLikes%ReadIni(Ini)
@@ -70,8 +70,6 @@
         !print *, 'fname ', fname
     end do
 
-    !S = Ini%Read_String('maps_use')
-    !print *, 'S ',S
     end subroutine TBK_planck_ReadIni
 
     subroutine TBK_planck_Read_Bandpass(this, fname, Bandpass)
@@ -111,14 +109,16 @@
 
     ! Calculates greybody scaling of dust signal defined at 353 GHz
     ! to specified bandpass.
-    subroutine DustScaling(beta,Tdust,bandpass,nu0,fdust)
+    subroutine DustScaling(beta,Tdust,bandpass,nu0,bandcenter_err,fdust)
     real(mcp), intent(in) :: beta
     real(mcp), intent(in) :: Tdust
     Type(TBandpass), intent(in) :: bandpass
     real(mcp), intent(in) :: nu0 ! Pivot frequency
+    real(mcp), intent(in) :: bandcenter_err
     real(mcp), intent(out) :: fdust
     real(mcp) :: gb_int  ! Integrate greybody scaling.
     real(mcp) :: gb0     ! Greybody scaling at pivot.
+    real(mcp) :: gb_err  ! Greybody error due to bandcenter error.
 
     ! Integrate greybody scaling and thermodynamic temperature conversion
     ! across experimental bandpass.
@@ -127,22 +127,32 @@
 
     ! Calculate values at pivot frequency.
     gb0 = nu0**(3+beta) / (exp(Ghz_Kelvin*nu0/Tdust) - 1)
+    if (bandcenter_err /= 1.) then
+        print *, bandcenter_err
+        gb_err= (bandcenter_err)**(beta-1)*(exp(Ghz_Kelvin*bandpass%nu_bar*bandcenter_err/Tdust) - 1) &
+        / (exp(Ghz_Kelvin*bandpass%nu_bar*(bandcenter_err-1)/Tdust)*(exp(Ghz_Kelvin*bandpass%nu_bar/Tdust) - 1))
+    else
+        gb_err=1.
+    end if
 
     ! Calculate dust scaling.
-    fdust = (gb_int / gb0) / bandpass%th_dust
+    fdust = (gb_int / gb0) * gb_err / bandpass%th_dust
     !print *, bandpass%nu_bar, fdust
 
     end subroutine DustScaling
 
     ! Calculates power-law scaling of synchrotron signal defined at 150 GHz
     ! to specified bandpass.
-    subroutine SyncScaling(beta,bandpass,nu0,fsync)
+    subroutine SyncScaling(beta,Tdust,bandpass,nu0,bandcenter_err,fsync)
     real(mcp), intent(in) :: beta
+    real(mcp), intent(in) :: Tdust
     Type(TBandpass), intent(in) :: bandpass
     real(mcp), intent(in) :: nu0 ! Pivot frequency
+    real(mcp), intent(in) :: bandcenter_err
     real(mcp), intent(out) :: fsync
     real(mcp) :: pl_int  ! Integrate power-law scaling.
     real(mcp) :: pl0     ! Power-law scaling at pivot.
+    real(mcp) :: pl_err     ! Power-law error due to bandcenter error.
 
     ! Integrate power-law scaling and thermodynamic temperature conversion
     ! across experimental bandpass.
@@ -151,8 +161,16 @@
     ! Calculate values at pivot frequency.
     pl0 = nu0**(2+beta)
 
+
+    if (bandcenter_err /= 1.) then
+        pl_err= (bandcenter_err)**(beta-2)*(exp(Ghz_Kelvin*bandpass%nu_bar*bandcenter_err/Tdust) - 1)**2 &
+        / (exp(Ghz_Kelvin*bandpass%nu_bar*(bandcenter_err-1)/Tdust)*(exp(Ghz_Kelvin*bandpass%nu_bar/Tdust) - 1)**2)
+    else
+        pl_err=1.
+    end if
+
     ! Calculate sync scaling.
-    fsync = (pl_int / pl0) / bandpass%th_sync
+    fsync = (pl_int / pl0) * pl_err / bandpass%th_sync
     !print *, bandpass%nu_bar, fsync
 
     end subroutine SyncScaling
@@ -168,7 +186,7 @@
     real(mcp), intent(out) :: fcorr
     real(mcp) :: lpivot = 80.0_mcp
     real(mcp) :: scl_nu, scl_ell
-
+   
     ! Decorrelation scales as log^2(nu0/nu1)
     scl_nu = (log(nu0 / nu1)**2) / (log(nupivot(1) / nupivot(2))**2)
     ! Functional form for ell scaling is specified in .dataset file.
@@ -211,8 +229,8 @@
     real(mcp) :: rho_dust, rho_sync
     integer i,j,l
     real(mcp) :: lpivot = 80.0_mcp
+    real(mcp) :: bandcenter_err(this%nmaps_required)
     character(LEN=:), allocatable :: S
-
 
     Adust = DataParams(1)
     Async = DataParams(2)
@@ -226,16 +244,31 @@
     EEtoBB_sync = DataParams(10)
     rho_dust = DataParams(11)
     rho_sync = DataParams(12)
-
-    !print *, 'maps required ', this%nmaps_required
-    !print *, 'map_fields ', this%map_fields
-    !print *, 'mas_used ', this%use_map 
+   
 
     do i=1, this%nmaps_required
-        print *, 'use map order', this%used_map_order%Item(i)
-        call DustScaling(betadust,Tdust,this%Bandpasses(i),this%fpivot_dust,fdust(i))
-        call SyncScaling(betasync, this%Bandpasses(i),this%fpivot_sync,fsync(i))
+        if (index(this%used_map_order%Item(i) , '95') > 0) then
+            bandcenter_err(i)= DataParams(13)+ DataParams(14) + 1.
+        else if (index(this%used_map_order%Item(i),'150') > 0) then
+            bandcenter_err(i)= DataParams(13)+ DataParams(15) + 1. 
+        else if (index(this%used_map_order%Item(i), '220') > 0) then
+            bandcenter_err(i)= DataParams(13)+ DataParams(16) + 1. 
+        else
+            bandcenter_err(i)= 1.
+        end if
+  
+        !print *, "compare",  index(this%used_map_order%Item(i) , '95'), this%used_map_order%Item(i)
+        print *, bandcenter_err(i)
+        call DustScaling(betadust,Tdust,this%Bandpasses(i),this%fpivot_dust,bandcenter_err(i),fdust(i))
+        call SyncScaling(betasync,Tdust,this%Bandpasses(i),this%fpivot_sync,bandcenter_err(i),fsync(i))
+        !print *, 'use map order', this%used_map_order%Item(i)
+        !print *, 'use map order', this%used_map_order%Item(i)
     end do
+
+    !print *, DataParams(13)
+    !print *, DataParams(14)
+    !print *, DataParams(15)
+    !print *, DataParams(16)
 
     do i=1, this%nmaps_required
         do j=1, i
@@ -255,11 +288,11 @@
                 do l=this%pcl_lmin,this%pcl_lmax
                    ! Calculate correlation factors for dust and sync.
                    ! If map_i and map_j have the same observing frequency, these factors will be one.
-                   call this%Decorrelation(rho_dust, this%Bandpasses(i)%nu_bar, &
-                        this%Bandpasses(j)%nu_bar, this%fpivot_dust_decorr, l, this%lform_dust_decorr, &
+                   call this%Decorrelation(rho_dust,this%Bandpasses(i)%nu_bar*bandcenter_err(i), &
+                        this%Bandpasses(j)%nu_bar*bandcenter_err(j),this%fpivot_dust_decorr, l, this%lform_dust_decorr, &
                         corr_dust)
-                   call this%Decorrelation(rho_sync, this%Bandpasses(i)%nu_bar, &
-                        this%Bandpasses(j)%nu_bar, this%fpivot_sync_decorr, l, this%lform_sync_decorr, &
+                   call this%Decorrelation(rho_sync,this%Bandpasses(i)%nu_bar*bandcenter_err(i), &
+                        this%Bandpasses(j)%nu_bar*bandcenter_err(j),this%fpivot_sync_decorr, l, this%lform_sync_decorr, &
                         corr_sync)
                    ! Add foreground model to theory spectrum.
                    CL%CL(l) = CL%CL(l) + &
