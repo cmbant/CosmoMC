@@ -129,8 +129,13 @@
     gb0 = nu0**(3+beta) / (exp(Ghz_Kelvin*nu0/Tdust) - 1)
     if (bandcenter_err /= 1.) then
         print *, bandcenter_err
-        gb_err= (bandcenter_err)**(beta-1)*(exp(Ghz_Kelvin*bandpass%nu_bar*bandcenter_err/Tdust) - 1) &
-        / (exp(Ghz_Kelvin*bandpass%nu_bar*(bandcenter_err-1)/Tdust)*(exp(Ghz_Kelvin*bandpass%nu_bar/Tdust) - 1))
+       
+        gb_err= (bandcenter_err)**(beta-1) &
+                *(exp(Ghz_Kelvin*bandpass%nu_bar*bandcenter_err/T_CMB)-1)**2 &
+                *(exp(Ghz_Kelvin*bandpass%nu_bar /Tdust)-1) &
+                /(exp(Ghz_Kelvin*bandpass%nu_bar *(bandcenter_err-1)/T_CMB) &
+                *(exp(Ghz_Kelvin*bandpass%nu_bar*bandcenter_err/Tdust)-1) &
+                *(exp(Ghz_Kelvin*bandpass%nu_bar/T_CMB)- 1)**2)
     else
         gb_err=1.
     end if
@@ -159,12 +164,13 @@
     pl_int = sum( bandpass%dnu * bandpass%R(:,2) * bandpass%R(:,1)**(2+beta))
 
     ! Calculate values at pivot frequency.
-    pl0 = nu0**(2+beta)
-
+    pl0 =nu0**(2+beta)
 
     if (bandcenter_err /= 1.) then
-        pl_err= (bandcenter_err)**(beta-2)*(exp(Ghz_Kelvin*bandpass%nu_bar*bandcenter_err/Tdust) - 1)**2 &
-        / (exp(Ghz_Kelvin*bandpass%nu_bar*(bandcenter_err-1)/Tdust)*(exp(Ghz_Kelvin*bandpass%nu_bar/Tdust) - 1)**2)
+        pl_err= (bandcenter_err)**(beta-2) &
+               *(exp(Ghz_Kelvin*bandpass%nu_bar*bandcenter_err/T_CMB) - 1)**2 &
+               / (exp(Ghz_Kelvin*bandpass%nu_bar*(bandcenter_err-1)/T_CMB) &
+               *(exp(Ghz_Kelvin*bandpass%nu_bar/T_CMB) - 1)**2)
     else
         pl_err=1.
     end if
@@ -288,12 +294,16 @@
                 do l=this%pcl_lmin,this%pcl_lmax
                    ! Calculate correlation factors for dust and sync.
                    ! If map_i and map_j have the same observing frequency, these factors will be one.
-                   call this%Decorrelation(rho_dust,this%Bandpasses(i)%nu_bar*bandcenter_err(i), &
-                        this%Bandpasses(j)%nu_bar*bandcenter_err(j),this%fpivot_dust_decorr, l, this%lform_dust_decorr, &
-                        corr_dust)
-                   call this%Decorrelation(rho_sync,this%Bandpasses(i)%nu_bar*bandcenter_err(i), &
-                        this%Bandpasses(j)%nu_bar*bandcenter_err(j),this%fpivot_sync_decorr, l, this%lform_sync_decorr, &
-                        corr_sync)
+                   call this%Decorrelation(rho_dust,this%Bandpasses(i)%nu_bar &
+                        *bandcenter_err(i),&
+                        this%Bandpasses(j)%nu_bar*bandcenter_err(j), &
+                        this%fpivot_dust_decorr, l, &
+                        this%lform_dust_decorr, corr_dust)
+                   call this%Decorrelation(rho_sync,this%Bandpasses(i)%nu_bar &
+                        *bandcenter_err(i),&
+                        this%Bandpasses(j)%nu_bar*bandcenter_err(j), &
+                        this%fpivot_sync_decorr, l, &
+                        this%lform_sync_decorr, corr_sync)
                    ! Add foreground model to theory spectrum.
                    CL%CL(l) = CL%CL(l) + &
                         dust*corr_dust*Adust*(l/lpivot)**(alphadust) + &
