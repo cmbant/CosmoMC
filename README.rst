@@ -40,3 +40,10 @@ Both branches now have a travis unit test to check they work with the Planck 201
 does a test install of forutils, CosmoMC and the Planck likelihood code and checks the likelihood is as expected.
 See tests/run_tests.sh for the setup and test code. There are small changes in the absolute likelihood value between branches
 due to small changes in the CAMB version (e.g. implied optical depth changes very slightly due to changes in time sampling).
+
+=============
+
+.. raw:: html
+
+    <a href="http://www.sussex.ac.uk/astronomy/"><img src="https://cdn.cosmologist.info/antony/Sussex.png" height="170px"></a>
+    <a href="http://erc.europa.eu/"><img src="https://erc.europa.eu/sites/default/files/content/erc_banner-vertical.jpg" height="200px"></a>
