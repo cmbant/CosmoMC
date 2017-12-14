@@ -38,7 +38,6 @@
     class(TSettingIni) :: Ini
     character(LEN=:), allocatable :: fname
     integer i
-    character(LEN=:), allocatable :: InLine
 
     !Read all standard parameters
     call this%TCMBLikes%ReadIni(Ini)
@@ -66,8 +65,6 @@
     do i = 1, this%nmaps_required
         fname = Ini%ReadFileName('bandpass['//this%used_map_order%Item(i)//']',relative = .true., NotFoundFail=.true.)
         call this%ReadBandpass(fname, this%Bandpasses(i))
-        !print *, 'item ', this%used_map_order%Item(i)
-        !print *, 'fname ', fname
     end do
 
     end subroutine TBK_planck_ReadIni
@@ -127,9 +124,9 @@
 
     ! Calculate values at pivot frequency.
     gb0 = nu0**(3+beta) / (exp(Ghz_Kelvin*nu0/Tdust) - 1)
+
+    ! Add correction for band center error
     if (bandcenter_err /= 1.) then
-        print *, bandcenter_err
-       
         gb_err= (bandcenter_err)**(beta-1) &
                 *(exp(Ghz_Kelvin*bandpass%nu_bar*bandcenter_err/T_CMB)-1)**2 &
                 *(exp(Ghz_Kelvin*bandpass%nu_bar /Tdust)-1) &
@@ -148,9 +145,8 @@
 
     ! Calculates power-law scaling of synchrotron signal defined at 150 GHz
     ! to specified bandpass.
-    subroutine SyncScaling(beta,Tdust,bandpass,nu0,bandcenter_err,fsync)
+    subroutine SyncScaling(beta,bandpass,nu0,bandcenter_err,fsync)
     real(mcp), intent(in) :: beta
-    real(mcp), intent(in) :: Tdust
     Type(TBandpass), intent(in) :: bandpass
     real(mcp), intent(in) :: nu0 ! Pivot frequency
     real(mcp), intent(in) :: bandcenter_err
@@ -164,8 +160,9 @@
     pl_int = sum( bandpass%dnu * bandpass%R(:,2) * bandpass%R(:,1)**(2+beta))
 
     ! Calculate values at pivot frequency.
-    pl0 =nu0**(2+beta)
+    pl0 = nu0**(2+beta)
 
+    ! Add correction for band center error
     if (bandcenter_err /= 1.) then
         pl_err= (bandcenter_err)**(beta-2) &
                *(exp(Ghz_Kelvin*bandpass%nu_bar*bandcenter_err/T_CMB) - 1)**2 &
@@ -214,7 +211,7 @@
     ! We symmetrically extend this function to (non-physical) correlation coefficients
     ! greater than 1 -- this is only used for validation tests of the likelihood model.
     if (cval > 1) then
-       fcorr = 2.0_mcp - exp(-1.0 * log(cval) * scl_nu * scl_ell)
+       fcorr = 2.0_mcp - exp(log(2.0_mcp - cval) * scl_nu * scl_ell)
     else
        fcorr = exp(log(cval) * scl_nu * scl_ell)
     end if
@@ -236,7 +233,6 @@
     integer i,j,l
     real(mcp) :: lpivot = 80.0_mcp
     real(mcp) :: bandcenter_err(this%nmaps_required)
-    character(LEN=:), allocatable :: S
 
     Adust = DataParams(1)
     Async = DataParams(2)
@@ -251,7 +247,7 @@
     rho_dust = DataParams(11)
     rho_sync = DataParams(12)
    
-
+    !Read and assign values to band center error params
     do i=1, this%nmaps_required
         if (index(this%used_map_order%Item(i) , '95') > 0) then
             bandcenter_err(i)= DataParams(13)+ DataParams(14) + 1.
@@ -263,18 +259,9 @@
             bandcenter_err(i)= 1.
         end if
   
-        !print *, "compare",  index(this%used_map_order%Item(i) , '95'), this%used_map_order%Item(i)
-        print *, bandcenter_err(i)
         call DustScaling(betadust,Tdust,this%Bandpasses(i),this%fpivot_dust,bandcenter_err(i),fdust(i))
-        call SyncScaling(betasync,Tdust,this%Bandpasses(i),this%fpivot_sync,bandcenter_err(i),fsync(i))
-        !print *, 'use map order', this%used_map_order%Item(i)
-        !print *, 'use map order', this%used_map_order%Item(i)
+        call SyncScaling(betasync,this%Bandpasses(i),this%fpivot_sync,bandcenter_err(i),fsync(i))
     end do
-
-    !print *, DataParams(13)
-    !print *, DataParams(14)
-    !print *, DataParams(15)
-    !print *, DataParams(16)
 
     do i=1, this%nmaps_required
         do j=1, i
