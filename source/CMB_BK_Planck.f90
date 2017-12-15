@@ -60,7 +60,7 @@
     this%lform_dust_decorr = Ini%Read_String_Default('lform_dust_decorr', 'flat')
     this%lform_sync_decorr = Ini%Read_String_Default('lform_sync_decorr', 'flat')
 
-    !Load in the bandpass files for each map
+    ! Load in the bandpass files for each map
     allocate(this%Bandpasses(this%nmaps_required))
     do i = 1, this%nmaps_required
         fname = Ini%ReadFileName('bandpass['//this%used_map_order%Item(i)//']',relative = .true., NotFoundFail=.true.)
