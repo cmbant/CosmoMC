@@ -63,12 +63,17 @@
         integer like_approx
         real(mcp) :: fullsky_exact_fksy = 1 ! only used for testing with exactly fullsky
         integer :: calibration_index = 0 !if non-zero, index into nuisance parameter array of global calibration of TEB
+        real(mcp) :: calibration_prior = -1 ! if > 0 & calibration_index is set, add a prior to the LnL 
         real(mcp), dimension(:,:), allocatable :: ClFiducial, ClNoise, ClHat
         !These are all L(L+1)C_L/2pi
 
         real(mcp), dimension(:,:), allocatable :: inv_covariance
 
         logical has_lensing
+        
+        !aberration will be corrected if aberration_coeff is non-zero
+        real(mcp) :: aberration_coeff
+        real(mcp), allocatable, dimension(:) :: ells, cl_deriv
 
         !Binning parameters
         integer bin_width
@@ -112,6 +117,7 @@
     procedure :: GetTheoryMapCls !take theory calcualtion and add foregrounds etc using sub below
     procedure :: AdaptTheoryForMaps !call AddForegrounds etc for calibrations, beams, etc
     procedure :: AddForegrounds
+    procedure :: AddAberration
     procedure :: WriteLikelihoodData => CMBLikes_WriteLikelihoodData
     end Type TCMBLikes
 
@@ -591,6 +597,17 @@
             Write(*,*) 'WARNING: Unbinned likelihoods untested in this version'
     end if
 
+    this%aberration_coeff = Ini%Read_Real('aberration_coeff',0.0)
+    if (this%aberration_coeff .ne. 0)  then
+       if (feedback > 2) &
+            print*,'Requested aberration correction'
+       
+       allocate(this%ells(this%pcl_lmin:this%pcl_lmax),this%cl_deriv(this%pcl_lmin:this%pcl_lmax))
+       do i=this%pcl_lmin,this%pcl_lmax
+          this%ells(i)=i
+       enddo
+    endif
+    
     if (bin_test) then
         call MpiStop('bin_test not updated/tested yet')
         if (this%binned) call MpiStop('nbins/=0 with bin_test')
@@ -714,6 +731,7 @@
     if (S/='') then
         call this%loadParamNames(S)
         this%calibration_index = this%nuisance_params%nnames
+        this%calibration_prior = Ini%Read_Real('calibration_prior',-1.0)
     end if
 
     call this%TCMBLikelihood%ReadIni(Ini)
@@ -1033,12 +1051,51 @@
 
     end subroutine AddForegrounds
 
+    subroutine AddAberration(this,Cls)
+      class(TCMBLikes) :: this
+      class(TMapCrossPowerSpectrum), target, intent(inout) :: Cls(:,:)
+      integer i,j
+      
+      if (this%aberration_coeff == 0) return    !nothing to do.
+
+      do i=1, this%nmaps_required
+         do j=1, i
+            ! first get Cl instead of Dl 
+            this%cl_deriv = Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) /&
+                 (this%ells * (this%ells+1))
+            
+            !second take derivative dCl/dl
+            this%cl_deriv(this%pcl_lmin+1:this%pcl_lmax-1) = 0.5* &
+                 (this%cl_deriv(this%pcl_lmin+2:this%pcl_lmax) - &
+                 this%cl_deriv(this%pcl_lmin:this%pcl_lmax-2) )
+            
+            !handle endpoints approximately
+            this%cl_deriv(this%pcl_lmin) = this%cl_deriv(this%pcl_lmin+1)
+            this%cl_deriv(this%pcl_lmax) = this%cl_deriv(this%pcl_lmax-1)
+
+            ! reapply to Dl's.
+            ! note never took 2pi out, so not putting it back either
+            ! also multiply by ell since really wanted ldCl/dl 
+            this%cl_deriv = this%ells**2 * (this%ells+1) * this%cl_deriv
+            
+            !add this to theory
+            Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) = &
+                 Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) + &
+                 this%aberration_coeff * this%cl_deriv
+         enddo
+      enddo
+      
+    end subroutine AddAberration
+
+
     subroutine AdaptTheoryForMaps(this,Cls,DataParams)
     class(TCMBLikes) :: this
     class(TMapCrossPowerSpectrum), intent(inout) :: Cls(:,:)
     real(mcp), intent(in) :: DataParams(:)
     integer i,j
 
+    call this%AddAberration(Cls)
+    
     call this%AddForegrounds(Cls, DataParams)
     if (this%calibration_index > 0) then
         !Scale T, E, B spectra by the calibration parameter
@@ -1148,6 +1205,9 @@
 
 
     if (this%like_approx /= like_approx_fullsky_exact) chisq = chisq + Matrix_QuadForm(this%inv_covariance,BigX)
+
+    if (this%calibration_prior > 0 .and. this%calibration_index > 0) &
+         chisq = chisq +  (log(DataParams(this%calibration_index))/this%calibration_prior)**2
 
     LogLike = chisq/2
 
