@@ -27,7 +27,6 @@ data/clik
 cosmomc
 cosmomc_debug
 CosmoMC/
-
 *.py[cod]
 *$py.class
 __pycache__/
