@@ -2,11 +2,13 @@ plot_data/
 dist/
 scripts/
 chains/
+python/
 *.mod
 *.a
 *.o
 *.sm
 *~
+BK15*
 .metadata
 .project
 .pydevproject
