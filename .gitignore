@@ -26,7 +26,6 @@ ReleaseMPI/
 data/clik
 cosmomc
 cosmomc_debug
-data/BK15_simd
 CosmoMC/
 *.py[cod]
 *$py.class
