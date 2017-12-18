@@ -63,7 +63,7 @@
         integer like_approx
         real(mcp) :: fullsky_exact_fksy = 1 ! only used for testing with exactly fullsky
         integer :: calibration_index = 0 !if non-zero, index into nuisance parameter array of global calibration of TEB
-        real(mcp) :: calibration_prior = -1 ! if > 0 & calibration_index is set, add a prior to the LnL 
+        real(mcp) :: log_calibration_prior = -1 ! if > 0 & calibration_index is set, add a prior to the LnL 
         real(mcp), dimension(:,:), allocatable :: ClFiducial, ClNoise, ClHat
         !These are all L(L+1)C_L/2pi
 
@@ -72,8 +72,8 @@
         logical has_lensing
         
         !aberration will be corrected if aberration_coeff is non-zero
-        real(mcp) :: aberration_coeff
-        real(mcp), allocatable, dimension(:) :: ells, cl_deriv
+        real(mcp) :: aberration_coeff = 0.0
+        real(mcp), allocatable, dimension(:) :: ells
 
         !Binning parameters
         integer bin_width
@@ -597,12 +597,13 @@
             Write(*,*) 'WARNING: Unbinned likelihoods untested in this version'
     end if
 
-    this%aberration_coeff = Ini%Read_Real('aberration_coeff',0.0)
+    call Ini%Read('aberration_coeff',this%aberration_coeff)
+
     if (this%aberration_coeff .ne. 0)  then
        if (feedback > 2) &
             print*,'Requested aberration correction'
        
-       allocate(this%ells(this%pcl_lmin:this%pcl_lmax),this%cl_deriv(this%pcl_lmin:this%pcl_lmax))
+       allocate(this%ells(this%pcl_lmin:this%pcl_lmax))
        do i=this%pcl_lmin,this%pcl_lmax
           this%ells(i)=i
        enddo
@@ -731,7 +732,7 @@
     if (S/='') then
         call this%loadParamNames(S)
         this%calibration_index = this%nuisance_params%nnames
-        this%calibration_prior = Ini%Read_Real('calibration_prior',-1.0)
+        call Ini%Read('log_calibration_prior',this%log_calibration_prior)
     end if
 
     call this%TCMBLikelihood%ReadIni(Ini)
@@ -1055,33 +1056,36 @@
       class(TCMBLikes) :: this
       class(TMapCrossPowerSpectrum), target, intent(inout) :: Cls(:,:)
       integer i,j
+      real(mcp) :: cl_deriv(this%pcl_lmin:this%pcl_lmax)
       
       if (this%aberration_coeff == 0) return    !nothing to do.
-
+      
       do i=1, this%nmaps_required
          do j=1, i
-            ! first get Cl instead of Dl 
-            this%cl_deriv = Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) /&
-                 (this%ells * (this%ells+1))
-            
-            !second take derivative dCl/dl
-            this%cl_deriv(this%pcl_lmin+1:this%pcl_lmax-1) = 0.5* &
-                 (this%cl_deriv(this%pcl_lmin+2:this%pcl_lmax) - &
-                 this%cl_deriv(this%pcl_lmin:this%pcl_lmax-2) )
-            
-            !handle endpoints approximately
-            this%cl_deriv(this%pcl_lmin) = this%cl_deriv(this%pcl_lmin+1)
-            this%cl_deriv(this%pcl_lmax) = this%cl_deriv(this%pcl_lmax-1)
-
-            ! reapply to Dl's.
-            ! note never took 2pi out, so not putting it back either
-            ! also multiply by ell since really wanted ldCl/dl 
-            this%cl_deriv = this%ells**2 * (this%ells+1) * this%cl_deriv
-            
-            !add this to theory
-            Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) = &
-                 Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) + &
-                 this%aberration_coeff * this%cl_deriv
+            if (allocated(Cls(i,j)%CL) ) then ! only apply to CMB spectra, not lensing or others
+               ! first get Cl instead of Dl 
+               cl_deriv = Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) /&
+                    (this%ells * (this%ells+1))
+               
+               !second take derivative dCl/dl
+               cl_deriv(this%pcl_lmin+1:this%pcl_lmax-1) = 0.5* &
+                    (cl_deriv(this%pcl_lmin+2:this%pcl_lmax) - &
+                    cl_deriv(this%pcl_lmin:this%pcl_lmax-2) )
+               
+               !handle endpoints approximately
+               cl_deriv(this%pcl_lmin) = cl_deriv(this%pcl_lmin+1)
+               cl_deriv(this%pcl_lmax) = cl_deriv(this%pcl_lmax-1)
+               
+               ! reapply to Dl's.
+               ! note never took 2pi out, so not putting it back either
+               ! also multiply by ell since really wanted ldCl/dl 
+               cl_deriv = this%ells**2 * (this%ells+1) * cl_deriv
+               
+               !add this to theory
+               Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) = &
+                    Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) + &
+                    this%aberration_coeff * cl_deriv
+            endif
          enddo
       enddo
       
@@ -1206,8 +1210,8 @@
 
     if (this%like_approx /= like_approx_fullsky_exact) chisq = chisq + Matrix_QuadForm(this%inv_covariance,BigX)
 
-    if (this%calibration_prior > 0 .and. this%calibration_index > 0) &
-         chisq = chisq +  (log(DataParams(this%calibration_index))/this%calibration_prior)**2
+    if (this%log_calibration_prior > 0 .and. this%calibration_index > 0) &
+         chisq = chisq +  (log(DataParams(this%calibration_index))/this%log_calibration_prior)**2
 
     LogLike = chisq/2
 
