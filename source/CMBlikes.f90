@@ -1063,28 +1063,30 @@
       do i=1, this%nmaps_required
          do j=1, i
             if (allocated(Cls(i,j)%CL) ) then ! only apply to CMB spectra, not lensing or others
-               ! first get Cl instead of Dl 
-               cl_deriv = Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) /&
-                    (this%ells * (this%ells+1))
-               
-               !second take derivative dCl/dl
-               cl_deriv(this%pcl_lmin+1:this%pcl_lmax-1) = 0.5* &
-                    (cl_deriv(this%pcl_lmin+2:this%pcl_lmax) - &
-                    cl_deriv(this%pcl_lmin:this%pcl_lmax-2) )
-               
-               !handle endpoints approximately
-               cl_deriv(this%pcl_lmin) = cl_deriv(this%pcl_lmin+1)
-               cl_deriv(this%pcl_lmax) = cl_deriv(this%pcl_lmax-1)
-               
-               ! reapply to Dl's.
-               ! note never took 2pi out, so not putting it back either
-               ! also multiply by ell since really wanted ldCl/dl 
-               cl_deriv = this%ells**2 * (this%ells+1) * cl_deriv
-               
-               !add this to theory
-               Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) = &
-                    Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) + &
-                    this%aberration_coeff * cl_deriv
+               if (Cls(i,j)%theory_i<=CL_B .and. Cls(i,j)%theory_j<=CL_B) then
+                  ! first get Cl instead of Dl 
+                  cl_deriv = Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) /&
+                       (this%ells * (this%ells+1))
+                  
+                  !second take derivative dCl/dl
+                  cl_deriv(this%pcl_lmin+1:this%pcl_lmax-1) = 0.5* &
+                       (cl_deriv(this%pcl_lmin+2:this%pcl_lmax) - &
+                       cl_deriv(this%pcl_lmin:this%pcl_lmax-2) )
+                  
+                  !handle endpoints approximately
+                  cl_deriv(this%pcl_lmin) = cl_deriv(this%pcl_lmin+1)
+                  cl_deriv(this%pcl_lmax) = cl_deriv(this%pcl_lmax-1)
+                  
+                  ! reapply to Dl's.
+                  ! note never took 2pi out, so not putting it back either
+                  ! also multiply by ell since really wanted ldCl/dl 
+                  cl_deriv = this%ells**2 * (this%ells+1) * cl_deriv
+                  
+                  !add this to theory
+                  Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) = &
+                       Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) + &
+                       this%aberration_coeff * cl_deriv
+               endif
             endif
          enddo
       enddo
