@@ -21,7 +21,11 @@ def find_version():
 
 def get_long_description():
     with open('README.rst') as f:
-        return f.read()
+        lines = f.readlines()
+        i = -1
+        while not '=====' in lines[i]: i -= 1
+        return "".join(lines[:i])
+
 
 setup(name='GetDist',
       version=find_version(),
@@ -37,8 +41,8 @@ setup(name='GetDist',
           'numpy',
           'matplotlib',
           'six',
-          "scipy (>=0.11.0)",
-          'PySide'],
+          "scipy (>=0.11.0)"],
+      # PySide is needed for the GUI
       #  optional (for faster file read)
       # 'pandas (>=0.14.0)'
       classifiers=[

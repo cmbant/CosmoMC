@@ -71,12 +71,17 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, settings={}
     if not os.path.exists(path): os.mkdir(path)
     cachefile = os.path.join(path, name) + '.py_mcsamples'
     samples = MCSamples(file_root, jobItem=jobItem, ini=ini, settings=settings)
-    allfiles = files + [file_root + '.ranges', file_root + '.paramnames', file_root + '.properties.ini']
+    if os.path.isfile(file_root + '.paramnames'):
+        allfiles = files + [file_root + '.ranges', file_root + '.paramnames', file_root + '.properties.ini']
+    else:  # new format (txt+yaml)
+        mid = "" if file_root.endswith("/") else "__"
+        allfiles = files + [file_root + mid + ending for ending in ['input.yaml', 'full.yaml']]
     if not no_cache and os.path.exists(cachefile) and lastModified(allfiles) < os.path.getmtime(cachefile):
         try:
             with open(cachefile, 'rb') as inp:
                 cache = pickle.load(inp)
-            if cache.version == pickle_version and samples.ignore_rows == cache.ignore_rows:
+            if cache.version == pickle_version and samples.ignore_rows == cache.ignore_rows \
+                    and samples.min_weight_ratio == cache.min_weight_ratio:
                 changed = len(samples.contours) != len(cache.contours) or \
                           np.any(np.array(samples.contours) != np.array(cache.contours))
                 cache.updateSettings(ini=ini, settings=settings, doUpdate=changed)
@@ -179,6 +184,9 @@ class MCSamples(Chains):
 
         self.rootdirname = ""
         self.indep_thin = 0
+        if 'ignore_rows' in kwargs:
+            if settings is None: settings = {}
+            settings['ignore_rows'] = kwargs['ignore_rows']
         self.ignore_rows = float(kwargs.get('ignore_rows', 0))
         self.subplot_size_inch = 4.0
         self.subplot_size_inch2 = self.subplot_size_inch
@@ -207,6 +215,8 @@ class MCSamples(Chains):
                 self.ignore_lines = 0
         else:
             self.properties = None
+        if self.ignore_rows and self.samples is not None or self.chains is not None:
+            self.removeBurnFraction(self.ignore_rows)
 
     def setRanges(self, ranges):
         """
@@ -259,6 +269,7 @@ class MCSamples(Chains):
             self.ignore_frac = self.ignore_rows
         else:
             self.ignore_frac = 0
+        ini.setAttr('min_weight_ratio', self)
 
     def initParameters(self, ini):
         """
@@ -375,7 +386,7 @@ class MCSamples(Chains):
         self.loadChains(self.root, chain_files)
 
         if self.ignore_frac and (not self.jobItem or
-                                     (not self.jobItem.isImportanceJob and not self.jobItem.isBurnRemoved())):
+                                 (not self.jobItem.isImportanceJob and not self.jobItem.isBurnRemoved())):
             self.removeBurnFraction(self.ignore_frac)
             if chains.print_load_details: print('Removed %s as burn in' % self.ignore_frac)
         else:
@@ -418,8 +429,8 @@ class MCSamples(Chains):
         Make file of weight-1 samples by choosing samples
         with probability given by their weight.
 
-        :param filename: The filename to write to, Leave empty if no output file is needed
-        :param single_thin: factor to thin by; if not set generates as many samples as it can
+        :param filename: The filename to write to, leave empty if no output file is needed
+        :param single_thin: factor to thin by; if not set generates as many samples as it can up to self.max_scatter_points
         :return: numpy array of selected weight-1 samples
         """
         if single_thin is None:
@@ -684,8 +695,8 @@ class MCSamples(Chains):
             PCAtext += '%4i' % (j + 1)
             for i in range(n):
                 PCAtext += '%8.3f' % (
-                    np.sum(self.weights * PCdata[:, i]
-                           * (self.samples[:, j] - self.means[j]) / self.sddev[j]) / self.norm)
+                        np.sum(self.weights * PCdata[:, i]
+                               * (self.samples[:, j] - self.means[j]) / self.sddev[j]) / self.norm)
 
             PCAtext += '   (%s)\n' % (self.parLabel(j))
 
@@ -804,7 +815,7 @@ class MCSamples(Chains):
             # Return the rms ([change in upper/lower quantile]/[standard deviation])
             # when data split into 2, 3,.. sets
             lines += "Split tests: rms_n([delta(upper/lower quantile)]/sd) n={2,3,4}, limit=%.0f%%:\n" % (
-                100 * self.converge_test_limit)
+                    100 * self.converge_test_limit)
             lines += "i.e. mean sample splitting change in the quantiles in units of the st. dev.\n"
             lines += "\n"
 
@@ -1051,8 +1062,9 @@ class MCSamples(Chains):
         if N_eff is None:
             N_eff = self._get1DNeff(par, param)
         h = kde.gaussian_kde_bandwidth_binned(bins, Neff=N_eff)
-        if h is None or h < 0.01 * N_eff ** (-1. / 5):
-            hnew = 1.06 * par.sigma_range * N_eff ** (-1. / 5) / (par.range_max - par.range_min)
+        bin_range = max(par.param_max, par.range_max) - min(par.param_min, par.range_min)
+        if h is None or h < 0.01 * N_eff ** (-1. / 5) * (par.range_max - par.range_min) / bin_range:
+            hnew = 1.06 * par.sigma_range * N_eff ** (-1. / 5) / bin_range
             logging.warning(
                 'auto bandwidth for %s very small or failed (h=%s,N_eff=%s). Using fallback (h=%s)' % (
                     par.name, h, N_eff, hnew))
@@ -1099,6 +1111,14 @@ class MCSamples(Chains):
         has_limits = parx.has_limits or pary.has_limits
         do_correlated = not parx.has_limits or not pary.has_limits
 
+        def fallback_widths():
+            logging.warning('2D kernel density bandwidth optimizer failed for %s, %s. Using fallback width.' % (
+                parx.name, pary.name))
+            c = max(min(corr, self.max_corr_2D), -self.max_corr_2D)
+            hx = parx.sigma_range / N_eff ** (1. / 6)
+            hy = pary.sigma_range / N_eff ** (1. / 6)
+            return hx, hy, c
+
         if min_corr < abs(corr) <= self.max_corr_2D and do_correlated:
             # 'shear' the data so fairly uncorrelated, making sure shear keeps any bounds on one parameter unchanged
             # the binning step will rescale to make roughly isotropic as assumed by the 2D kernel optimizer psi_{ab} derivatives
@@ -1126,16 +1146,19 @@ class MCSamples(Chains):
             bin1, R1 = kde.bin_samples(p1, nbins=base_fine_bins_2D, range_min=imin, range_max=imax)
             bin2, R2 = kde.bin_samples(p2, nbins=base_fine_bins_2D)
             rotbins, _ = self._make2Dhist(bin1, bin2, base_fine_bins_2D, base_fine_bins_2D)
-            opt = kde.KernelOptimizer2D(rotbins, N_eff, 0, do_correlation=not has_limits)
-            hx, hy, c = opt.get_h()
-            hx *= R1
-            hy *= R2
-            kernelC = S.dot(np.array([[hx ** 2, hx * hy * c], [hx * hy * c, hy ** 2]])).dot(S.T)
-            hx, hy, c = np.sqrt(kernelC[0, 0]), np.sqrt(kernelC[1, 1]), kernelC[0, 1] / np.sqrt(
-                kernelC[0, 0] * kernelC[1, 1])
-            if pary.has_limits:
-                hx, hy = hy, hx
-                # print 'derotated pars', hx, hy, c
+            try:
+                opt = kde.KernelOptimizer2D(rotbins, N_eff, 0, do_correlation=not has_limits)
+                hx, hy, c = opt.get_h()
+                hx *= R1
+                hy *= R2
+                kernelC = S.dot(np.array([[hx ** 2, hx * hy * c], [hx * hy * c, hy ** 2]])).dot(S.T)
+                hx, hy, c = np.sqrt(kernelC[0, 0]), np.sqrt(kernelC[1, 1]), kernelC[0, 1] / np.sqrt(
+                    kernelC[0, 0] * kernelC[1, 1])
+                if pary.has_limits:
+                    hx, hy = hy, hx
+                    # print 'derotated pars', hx, hy, c
+            except ValueError:
+                hx, hy, c = fallback_widths()
         elif abs(corr) > self.max_corr_2D or not do_correlated and corr > 0.8:
             c = max(min(corr, self.max_corr_2D), -self.max_corr_2D)
             hx = parx.sigma_range / N_eff ** (1. / 6)
@@ -1147,11 +1170,7 @@ class MCSamples(Chains):
                 hx *= rangex
                 hy *= rangey
             except ValueError:
-                logging.warning('2D kernel density bandwidth optimizer failed for %s, %s. Using fallback width.' % (
-                    parx.name, pary.name))
-                c = max(min(corr, self.max_corr_2D), -self.max_corr_2D)
-                hx = parx.sigma_range / N_eff ** (1. / 6)
-                hy = pary.sigma_range / N_eff ** (1. / 6)
+                hx, hy, c = fallback_widths()
 
         if mult_bias_correction_order is None: mult_bias_correction_order = self.mult_bias_correction_order
         logging.debug('hx/sig, hy/sig, corr =%s, %s, %s', hx / parx.err, hy / pary.err, c)
@@ -1270,6 +1289,8 @@ class MCSamples(Chains):
                - **num_bins**
         :return: A :class:`~.densities.Density1D` instance
         """
+
+        if self.needs_update: self.updateBaseStatistics()
         j = self._parAndNumber(j)[0]
         if j is None: return None
 
@@ -1567,6 +1588,7 @@ class MCSamples(Chains):
 
         # smooth_x and smooth_y should be in rotated bin units
         if smooth_scale_2D < 0:
+
             rx, ry, corr = self.getAutoBandwidth2D(histbins, parx, pary, j, j2, corr, xbinmax - xbinmin,
                                                    ybinmax - ybinmin,
                                                    base_fine_bins_2D,
@@ -1960,10 +1982,13 @@ class MCSamples(Chains):
 
     def _readRanges(self):
         if self.root:
-            ranges_file = self.root + '.ranges'
-            if os.path.isfile(ranges_file):
-                self.ranges = ParamBounds(ranges_file)
-                return
+            ranges_file_classic = self.root + '.ranges'
+            ranges_file_new = (
+                    self.root + ('' if self.root.endswith('/') else '__') + 'full.yaml')
+            for ranges_file in [ranges_file_classic, ranges_file_new]:
+                if os.path.isfile(ranges_file):
+                    self.ranges = ParamBounds(ranges_file)
+                    return
         self.ranges = ParamBounds()
 
     def getBounds(self):
@@ -2154,7 +2179,7 @@ class MCSamples(Chains):
                 if not marge_limits_bot and not marge_limits_top:
                     # Two tail, check if limits are at very different density
                     if (math.fabs(density1D.Prob(tail_confid_top) -
-                                      density1D.Prob(tail_confid_bot)) < self.credible_interval_threshold):
+                                  density1D.Prob(tail_confid_bot)) < self.credible_interval_threshold):
                         tail_limit_top = tail_confid_top
                         tail_limit_bot = tail_confid_bot
 
@@ -2199,6 +2224,22 @@ class MCSamples(Chains):
             cust2DPlots.append([self.parName(x), self.parName(y)])
 
         return cust2DPlots
+
+    def addDerived(self, paramVec, name, label='', comment='', range=None):
+        """
+        Adds a new derived parameter
+
+        :param paramVec: The vector of parameter values to add. For example a combination of parameter arrays from MCSamples.getParams()
+        :param name: The name for the new parameter
+        :param label: optional latex label for the parameter
+        :param comment: optional comment describing the parameter
+        :param range: if specified, a tuple of min, max values for the new parameter hard prior bounds (either can be None for one-side bound)
+        :return: The added parameter's :class:`~.paramnames.ParamInfo` object
+        """
+
+        if range is not None:
+            self.ranges.setRange(name, range)
+        return super(MCSamples, self).addDerived(paramVec, name, label=label, comment=comment)
 
     def getParamSampleDict(self, ix):
         """
@@ -2352,6 +2393,9 @@ def GetChainRootFiles(rootdir):
     """
     pattern = os.path.join(rootdir, '*.paramnames')
     files = [os.path.splitext(f)[0] for f in glob.glob(pattern)]
+    ending = 'full.yaml'
+    pattern = os.path.join(rootdir, "*" + ending)
+    files += [f[:-len(ending)].rstrip("_") for f in glob.glob(pattern)]
     files.sort()
     return files
 
