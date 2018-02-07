@@ -7,7 +7,7 @@ CosmoMC
 Description and installation
 =============================
 
-For full details see the `ReadMe <https://cosmologist.info/cosmomc/readme.html>`_.
+For full details see the `ReadMe <http://cosmologist.info/cosmomc/readme.html>`_.
 
 Algorithm details
 ==================
