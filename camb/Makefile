@@ -14,7 +14,7 @@ ifeq "$(ifortErr)" "0"
 #Intel compiler
 # For OSX replace shared by dynamiclib
 F90C     = ifort
-FFLAGS = -fast -W0 -WB -fpp 
+FFLAGS = -fast -W0 -WB -fpp
 SFFLAGS = -shared -fpic
 DEBUGFLAGS = -g -check all -check noarg_temp_created -traceback -fpp -fpe0
 

@@ -41,9 +41,10 @@ derived_names = ['age', 'zstar', 'rstar', 'thetastar', 'DAstar', 'zdrag',
 transfer_names = ['k/h', 'delta_cdm', 'delta_baryon', 'delta_photon', 'delta_neutrino', 'delta_nu', 'delta_tot',
                   'delta_nonu', 'delta_tot_de', 'Weyl', 'v_newtonian_cdm', 'v_newtonian_baryon', 'v_baryon_cdm']
 
-evolve_names = transfer_names + ['a', 'etak', 'H', 'growth', 'v_photon', 'pi_photon', 'E_2', 'v_neutrino']
+evolve_names = transfer_names + ['a', 'etak', 'H', 'growth', 'v_photon', 'pi_photon', \
+                                 'E_2', 'v_neutrino', 'T_source', 'E_source', 'lens_potential_source']
 
-background_names = ['x_e', 'opacity', 'visibility', 'cs2b']
+background_names = ['x_e', 'opacity', 'visibility', 'cs2b', 'T_b']
 
 neutrino_hierarchies = ['normal', 'inverted', 'degenerate']
 neutrino_hierarchy_normal = 1
@@ -112,6 +113,8 @@ num_extra_redshiftwindows = dll_import(c_int, "modelparams", "num_extra_redshift
 
 num_redshiftwindows = dll_import(c_int, "modelparams", "num_redshiftwindows")
 
+num_custom_sources = dll_import(c_int, "modelparams", "num_custom_sources")
+
 # logical
 use_spline_template = dll_import(c_bool, "modelparams", "use_spline_template")
 # use_spline_template.value = True
@@ -170,6 +173,7 @@ class TransferParams(CAMB_Structure):
     """
     _fields_ = [
         ("high_precision", c_int),  # logical
+        ("accurate_massive_neutrinos", c_int),  # logical
         ("num_redshifts", c_int),
         ("kmax", c_double),
         ("k_per_logint", c_int),
@@ -332,15 +336,15 @@ class CAMBparams(CAMB_Structure):
 
         if YHe is None:
             # use BBN prediction
-            bbn_predictor = bbn_predictor or bbn.get_default_predictor()
-            YHe = bbn_predictor.Y_He(ombh2, nnu - standard_neutrino_neff)
+            self.bbn_predictor = bbn_predictor or bbn.get_default_predictor()
+            YHe = self.bbn_predictor.Y_He(ombh2, nnu - standard_neutrino_neff)
         self.YHe = YHe
 
         if cosmomc_theta is not None:
             if not (0.001 < cosmomc_theta < 0.1):
                 raise CAMBParamRangeError('cosmomc_theta looks wrong (parameter is just theta, not 100*theta)')
 
-            kw = locals();
+            kw = locals()
             [kw.pop(x) for x in ['self', 'H0', 'cosmomc_theta']]
 
             if H0 is not None:
@@ -457,19 +461,82 @@ class CAMBparams(CAMB_Structure):
         """
         return 1 - self.omegab - self.omegac - self.omegan - self.omegav
 
-    def set_matter_power(self, redshifts=[0.], kmax=1.2, k_per_logint=None, silent=False):
+    def get_zre(self):
+        if self.Reion.use_optical_depth:
+            from . import camb
+            return camb.get_zre_from_tau(self, self.Reion.optical_depth)
+        else:
+            return self.Reion.redshift
+
+    def N_eff(self):
+        """
+        :return: Effective number of degrees of freedom in relativistic species at early times.
+        """
+        return sum(self.nu_mass_degeneracies[:self.nu_mass_eigenstates]) + self.num_nu_massless
+
+    def get_Y_p(self, ombh2=None, delta_neff=None):
+        """
+        Get BBN helium nucleon fraction (NOT the same as the mass fraction Y_He) by intepolation using the
+        :class:`.bbn.BBNPredictor` instance passed to :meth:`.model.CAMBparams.set_cosmology`
+        (or the default one, if `Y_He` has not been set).
+
+        :param ombh2:  Omega_b h^2 (default: value passed to :meth:`.model.CAMBparams.set_cosmology`)
+        :param delta_neff:  additional N_eff relative to standard value (of 3.046) (default: from values passed to :meth:`.model.CAMBparams.set_cosmology`)
+        :return:  Y_p helium nucleon fraction predicted by BBN.
+        """
+        try:
+            ombh2 = ombh2 if ombh2 != None else self.omegab * (self.H0 / 100.) ** 2
+            delta_neff = delta_neff if delta_neff != None else self.N_eff() - 3.046
+            return self.bbn_predictor.Y_p(ombh2, delta_neff)
+        except AttributeError:
+            raise CAMBError('Not able to compute Y_p: not using an interpolation table for BBN abundances.')
+
+    def get_DH(self, ombh2=None, delta_neff=None):
+        """
+        Get deuterium ration D/H by intepolation using the
+        :class:`.bbn.BBNPredictor` instance passed to :meth:`.model.CAMBparams.set_cosmology`
+        (or the default one, if `Y_He` has not been set).
+
+        :param ombh2:  Omega_b h^2 (default: value passed to :meth:`.model.CAMBparams.set_cosmology`)
+        :param delta_neff:  additional N_eff relative to standard value (of 3.046) (default: from values passed to :meth:`.model.CAMBparams.set_cosmology`)
+        :return: BBN helium nucleon fraction D/H
+        """
+        try:
+            ombh2 = ombh2 if ombh2 != None else self.omegab * (self.H0 / 100.) ** 2
+            delta_neff = delta_neff if delta_neff != None else self.N_eff() - 3.046
+            return self.bbn_predictor.DH(ombh2, delta_neff)
+        except AttributeError:
+            raise CAMBError('Not able to compute DH: not using an interpolation table for BBN abundances.')
+
+    def set_matter_power(self, redshifts=[0.], kmax=1.2, k_per_logint=None, nonlinear=None,
+                         accurate_massive_neutrino_transfers=False, silent=False):
         """
         Set parameters for calculating matter power spectra and transfer functions.
 
         :param redshifts: array of redshifts to calculate
         :param kmax: maximum k to calculate
         :param k_per_logint: number of k steps per log k. Set to zero to use default optimized spacing.
+        :param nonlinear: if None, uses existing setting, otherwise boolean for whether to use non-linear matter power.
+        :param accurate_massive_neutrino_transfers: if you want the massive neutrino transfers accurately
         :param silent: if True, don't give warnings about sort order
-        :return:  self
+        :return: self
         """
+
         self.WantTransfer = True
         self.Transfer.high_precision = True
+        self.Transfer.accurate_massive_neutrinos = accurate_massive_neutrino_transfers
         self.Transfer.kmax = kmax
+        if nonlinear is not None:
+            if nonlinear:
+                if self.NonLinear in [NonLinear_lens, NonLinear_both]:
+                    self.NonLinear = NonLinear_both
+                else:
+                    self.NonLinear = NonLinear_pk
+            else:
+                if self.NonLinear in [NonLinear_lens, NonLinear_both]:
+                    self.NonLinear = NonLinear_lens
+                else:
+                    self.NonLinear = NonLinear_none
         if not k_per_logint:
             self.Transfer.k_per_logint = 0
         else:
@@ -483,6 +550,24 @@ class CAMBparams(CAMB_Structure):
         for i, z in enumerate(zs):
             self.Transfer.PK_redshifts[i] = z
         return self
+
+    def set_nonlinear_lensing(self, nonlinear):
+        """
+        Settings for whether or not to use non-linear corrections for the CMB lensing potential.
+        Note that set_for_lmax also sets lensing to be non-linear if lens_potential_accuracy>0
+
+        :param nonlinear: true to use non-linear corrections
+        """
+        if nonlinear:
+            if self.NonLinear in [NonLinear_pk, NonLinear_both]:
+                self.NonLinear = NonLinear_both
+            else:
+                self.NonLinear = NonLinear_lens
+        else:
+            if self.NonLinear in [NonLinear_pk, NonLinear_both]:
+                self.NonLinear = NonLinear_pk
+            else:
+                self.NonLinear = NonLinear_none
 
     def set_for_lmax(self, lmax, max_eta_k=None, lens_potential_accuracy=0,
                      lens_margin=150, k_eta_fac=2.5, lens_k_eta_reference=18000.0):
@@ -505,10 +590,7 @@ class CAMBparams(CAMB_Structure):
             self.max_l = lmax
         self.max_eta_k = max_eta_k or self.max_l * k_eta_fac
         if lens_potential_accuracy:
-            if self.NonLinear == NonLinear_none:
-                self.NonLinear = NonLinear_lens
-            else:
-                self.NonLinear = NonLinear_both
+            self.set_nonlinear_lensing(True)
             self.max_eta_k = max(self.max_eta_k, lens_k_eta_reference * lens_potential_accuracy)
         return self
 

@@ -5,6 +5,10 @@
 import numpy as np
 import os
 import io
+from .baseconfig import mock_load
+
+if not mock_load:
+    from scipy.interpolate import RectBivariateSpline
 
 # Various useful constants
 hbar = 1.05457e-34
@@ -37,6 +41,10 @@ def ypBBN_to_yhe(YBBN):
 
 
 class BBNPredictor(object):
+    """
+    The base class for making BBN predictions for Helium abundance
+    """
+
     def Y_p(self, ombh2, delta_neff=0.):
         """
         Get BBN helium nucleon fraction. Must be implemented by extensions.
@@ -69,7 +77,6 @@ class BBN_table_interpolator(BBNPredictor):
 
         :param interpolation_table: filename of interpolation table to use.
         """
-        from scipy.interpolate import RectBivariateSpline
 
         if not os.sep in interpolation_table:
             interpolation_table = os.path.join(os.path.dirname(__file__), interpolation_table)
@@ -84,7 +91,7 @@ class BBN_table_interpolator(BBNPredictor):
                         comment = line[1:]
                     else:
                         break
-        assert (comment)
+        assert comment
         columns = comment.split()
         ombh2_i = columns.index('ombh2')
         DeltaN_i = columns.index('DeltaN')
@@ -145,6 +152,7 @@ class BBN_fitting_parthenope(BBNPredictor):
 
         :param ombh2: Omega_b h^2
         :param delta_neff:  additional N_eff relative to standard value (of 3.046)
+        :param tau_neutron: neutron lifetime
         :return:  Y_p helium nucleon fraction predicted by BBN
         """
         return (
