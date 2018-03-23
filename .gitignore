@@ -8,7 +8,6 @@ python/
 *.o
 *.sm
 *~
-BK15*
 .metadata
 .project
 .pydevproject
