@@ -4,13 +4,17 @@
 FISHER=
 
 #Will detect ifort/gfortran or edit for your compiler
+ifneq ($(COMPILER),gfortran)
 ifortErr = $(shell which ifort >/dev/null; echo $$?)
+else
+ifortErr = 1
+endif
 ifeq "$(ifortErr)" "0"
 
 #Intel compiler
 # For OSX replace shared by dynamiclib
 F90C     = ifort
-FFLAGS = -fast -W0 -WB -fpp 
+FFLAGS = -fast -W0 -WB -fpp
 SFFLAGS = -shared -fpic
 DEBUGFLAGS = -g -check all -check noarg_temp_created -traceback -fpp -fpe0
 
@@ -34,7 +38,7 @@ endif
 else
 gfortErr = $(shell which gfortran >/dev/null; echo $$?)
 ifeq "$(gfortErr)" "0"
-
+COMPILER = gfortran
 #Gfortran compiler:
 #The options here work in v4.6+. Python wrapper needs v4.9+.
 F90C     = gfortran

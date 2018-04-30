@@ -3,7 +3,7 @@ import os
 
 class ParamBounds(object):
     """
-    Class for holding list of parameter bounds (e.g. for plotting, or hard priors). 
+    Class for holding list of parameter bounds (e.g. for plotting, or hard priors).
     A limit is None if not specified, denoted by 'N' if read from a string or file
 
     :ivar names: list of parameter names
@@ -22,11 +22,18 @@ class ParamBounds(object):
 
     def loadFromFile(self, fileName):
         self.filenameLoadedFrom = os.path.split(fileName)[1]
-        with open(fileName) as f:
-            for line in f:
-                strings = [text.strip() for text in line.split()]
-                if len(strings) == 3:
-                    self.setRange(strings[0], strings[1:])
+        extension = os.path.splitext(fileName)[-1]
+        if extension in ('.ranges', '.bounds'):
+            with open(fileName) as f:
+                for line in f:
+                    strings = [text.strip() for text in line.split()]
+                    if len(strings) == 3:
+                        self.setRange(strings[0], strings[1:])
+        elif extension in ('.yaml', '.yml'):
+            from getdist.yaml_format_tools import yaml_load_file, get_info_params, get_range
+            info_params = get_info_params(yaml_load_file(fileName))
+            for p, info in info_params.items():
+                self.setRange(p, get_range(info))
 
     def __str__(self):
         s = ''

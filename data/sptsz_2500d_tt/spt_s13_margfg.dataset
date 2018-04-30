@@ -1,0 +1,24 @@
+like_approx = gaussian
+
+fields_use = T
+binned = T
+nbins = 47
+use_min =        1
+use_max =       47
+cl_lmin = 50
+cl_lmax = 3300
+bin_window_files = windows/window_%u
+bin_window_in_order = TT
+bin_window_out_order = TT
+covmat_cl = TT
+covmat_fiducial = spt_s13_margfg_covmat.dat
+ncl_hat = 1
+cl_hat_order = TT
+cl_hat_includes_noise = F
+cl_hat_file = spt_s13_margfg_cl_hat.dat
+
+aberration_coeff = 0.0003198
+
+
+calibration_param = spt_s13_calibration.paramnames
+log_calibration_prior = 0.00170000

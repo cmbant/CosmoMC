@@ -54,13 +54,14 @@ class GetDistFileTest(unittest.TestCase):
 
         def callGetDist(args):
             if os.getenv('TRAVIS', None):
-                return str(subprocess.check_output(['GetDist.py'] + args))
+                return str(subprocess.check_output(['GetDist.py'] + args, env={'PATH': os.getenv('PATH')}))
             else:
                 return str(subprocess.check_output(
                     ['python', os.path.join(os.path.dirname(__file__), '..' + os.sep, 'GetDist.py')] + args))
 
         os.chdir(self.tempdir)
         res = callGetDist([self.root])
+        # Note this can fail if your local analysis defaults changes the default ignore_rows
         self.assertTrue('-Ln(mean like)  = 2.30' in res)
         fname = 'testchain_pars.ini'
         callGetDist(['--make_param_file', fname])
@@ -153,6 +154,16 @@ class GetDistTest(unittest.TestCase):
         d2 = samps.get2DDensity('x', 'y')
         self.assertTrue(np.allclose(d.P, d2.P[::-1, ::], atol=1e-5))
 
+    def testLoads(self):
+        # test initiating from multiple chain arrays
+        samps = []
+        for i in range(3):
+            samps.append(Gaussian2D([1.5, -2], np.diagflat([1, 2])).MCSamples(1001 + i * 10, names=['x', 'y']))
+        fromChains = MCSamples(samples=[s.samples for s in samps], names=['x', 'y'])
+        mean = np.sum([s.norm * s.mean('x') for s in samps]) / np.sum([s.norm for s in samps])
+        meanChains = fromChains.mean('x')
+        self.assertAlmostEqual(mean, meanChains)
+
     def testMixtures(self):
         from getdist.gaussian_mixtures import Mixture2D, GaussianND
 
@@ -171,7 +182,7 @@ class GetDistTest(unittest.TestCase):
         samples = mixture.MCSamples(3000, label='Samples')
         g = plots.getSubplotPlotter()
         g.triangle_plot([samples, mixture], filled=False)
-        g.plot_1d(cond,'t')
+        g.plot_1d(cond, 't')
 
         s1 = 0.0003
         covariance = [[s1 ** 2, 0.6 * s1 * 0.05, 0], [0.6 * s1 * 0.05, 0.05 ** 2, 0.2 ** 2], [0, 0.2 ** 2, 2 ** 2]]
@@ -221,7 +232,7 @@ class GetDistTest(unittest.TestCase):
         g.newPlot()
         g.plots_2d([samples, samples2], 'x', ['z', 'y'])
         g.newPlot()
-        self.assertEquals([name.name for name in samples.paramNames.parsWithNames('x.*')], ['x.yx', 'x.2'])
+        self.assertEqual([name.name for name in samples.paramNames.parsWithNames('x.*')], ['x.yx', 'x.2'])
         g.triangle_plot(samples, 'x.*')
         samples.updateSettings({'contours': '0.68 0.95 0.99'})
         g.settings.num_contours = 3
