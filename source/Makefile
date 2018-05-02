@@ -4,7 +4,6 @@ OUTPUT_DIR ?= Release
 BUILD ?= MPI
 #set BUILD to MPI to force MPI, should be set in ../Makefile
 
-MPIF90C ?= mpif90
 
 ifneq "$(wildcard ../forutils)" ""
 FORUTILSPATH ?= $(shell pwd)/../forutils
@@ -19,6 +18,9 @@ ifeq "$(ifortErr)" "0"
 #ifort; Can remove -xHost if your cluster is not uniform, or specify specific processor optimizations -x...
 
 F90C     = ifort
+#Can use this if mpif90 not picking up ifort:
+#MPIF90C ?= mpif90 -f90=ifort
+
 #use this if mpif90 is trying to use gfortran: MPIF90C = mpif90 -f90=ifort
 
 FFLAGS = -mkl -O3 -no-prec-div -fpp
@@ -47,7 +49,10 @@ ifeq ($(STATIC),YES)
 LAPACKL =  -Wl,--start-group $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_core.a $(MKLROOT)/lib/intel64/libmkl_intel_thread.a -Wl,--end-group -lpthread -lm
 FFLAGS+=  -axAVX,SEE4.2 -static-intel
 else
+ifneq ($(HOSTNAME),apollo-login)
+#Remove this if your cluster is not uniform (different CPUs)
 FFLAGS += -xHost
+endif
 endif
 endif
 
@@ -70,6 +75,9 @@ FFLAGS+=-march=native
 endif
 
 endif
+
+MPIF90C ?= mpif90
+
 
 #use "make RECOMBINATION=cosmorec" to build with CosmoRec rather than RECFAST default
 RECOMBINATION ?=recfast

@@ -12,13 +12,27 @@ else
 ifneq "$(wildcard ../forutils)" ""
 FORUTILSPATH ?= $(shell pwd)/../forutils
 else
+ifneq "$(wildcard ../../forutils)" ""
+FORUTILSPATH ?= $(shell pwd)/../../forutils
+endif
+endif
+endif
+
+ifeq ($(FORUTILSPATH),)
 $(error First install forutils from https://github.com/cmbant/forutils; or set FORUTILSPATH variable)
 endif
+
+ifeq ($(MAKECMDGOALS),camblib.so)
+COMPILER ?= gfortran
 endif
 
-
 #Will detect ifort/gfortran or edit for your compiler
+ifneq ($(COMPILER),gfortran)
 ifortErr = $(shell which ifort >/dev/null 2>&1; echo $$?)
+else
+ifortErr = 1
+endif
+
 ifeq "$(ifortErr)" "0"
 
 #Intel compiler
@@ -52,8 +66,8 @@ endif
 else
 gfortErr = $(shell which gfortran >/dev/null; echo $$?)
 ifeq "$(gfortErr)" "0"
-
 #Gfortran compiler (version 6+):
+COMPILER = gfortran
 F90C     = gfortran
 COMMON_FFLAGS = -MMD -cpp -ffree-line-length-none -fmax-errors=4
 # Using -ffast-math causes differences between Debug and Release configurations.
@@ -66,9 +80,16 @@ SMODOUT = -J$(DLL_DIR)
 ifneq ($(FISHER),)
 F90CRLINK += -lblas -llapack
 endif
-ifneq ($(shell uname -s),Darwin)
-#native optimization does not work on Mac
-FFLAGS += -march=native
+#native optimization does not work on Mac or heterogeneous clusters
+CLUSTER_SAFE ?= 0
+ifneq ($(CLUSTER_SAFE), 0)
+NONNATIVE = 1
+endif
+ifeq ($(shell uname -s),Darwin)
+NONNATIVE = 1
+endif
+ifndef NONNATIVE
+FFLAGS+=-march=native
 endif
 endif
 endif

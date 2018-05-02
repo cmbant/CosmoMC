@@ -174,7 +174,7 @@ def getSubplotPlotter(plot_data=None, chain_dir=None, subplot_size=2, **kwargs):
     s.axes_fontsize += 2
     s.colorbar_axes_fontsize += 2
     s.legend_fontsize = s.lab_fontsize + 1
-    return getPlotter(plot_data, chain_dir)
+    return getPlotter(plot_data, chain_dir, **kwargs)
 
 def getPlotterWidth(size=1, **kwargs):  # size in mm
     inch_mm = 0.0393700787
@@ -192,7 +192,7 @@ def getSinglePlotter(ratio=3 / 4., plot_data=None, chain_dir=None, width_inch=3.
     s.setWithSubplotSize(width_inch)
     s.fig_width_inch = width_inch
     s.rcSizes()
-    plotter = getPlotter(plot_data, chain_dir)
+    plotter = getPlotter(plot_data, chain_dir, **kwargs)
     plotter.make_figure(1, xstretch=1 / ratio)
     return plotter
 

@@ -26,7 +26,7 @@ default_params['Alensf'] = '1 0 10 0.03 0.03'
 default_params['nt'] = '0 -3 3 0.2 0.02'
 
 default_param_extra_opts = {
-    'mnu': {'num_massive_neutrinos': 3},
+    'mnu': {'num_massive_neutrinos': 3, 'neutrino_hierarchy': 'degenerate'},
     'meffsterile': {'param[mnu]': '0.06', 'param[nnu]': '3.1 3.046 10 0.05 0.05', 'num_massive_neutrinos': 1,
                     'accuracy_level': 1.2},
     'yhe': {'bbn_consistency': False},
@@ -66,7 +66,7 @@ def updateIniParams(ini, params, path):
 
 def pathIsGrid(batchPath):
     return os.path.exists(os.path.join(batchPath, 'batch.pyobj')) or os.path.exists(
-                                    os.path.join(batchPath, 'config', 'config.ini'))
+        os.path.join(batchPath, 'config', 'config.ini'))
 
 
 def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interactive=False):
@@ -111,13 +111,18 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
         jobItem.makeChainPath()
         ini = IniFile()
 
+        job_param_extra = getattr(jobItem, 'param_extra_opts', None)
         for param in jobItem.param_set:
             ini.params['param[' + param + ']'] = params[param]
             if param_extra is not None and param in param_extra:
                 ini.params.update(param_extra[param])
+            if job_param_extra is not None and param in job_param_extra:
+                ini.params.update(job_param_extra[param])
 
         if hasattr(settings, 'extra_opts'):
             ini.params.update(settings.extra_opts)
+        if hasattr(jobItem, 'extra_opts'):
+            ini.params.update(jobItem.extra_opts)
 
         ini.params['file_root'] = jobItem.chainRoot
 
@@ -129,9 +134,17 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
             mapped_name_norm = jobItem.makeNormedName(covNameMappings)[0]
             covmat_normed = os.path.join(covdir, mapped_name_norm + '.covmat')
             covmat = covmat_normed
-            if not os.path.exists(covmat) and hasattr(jobItem.data_set,
-                                                      'covmat'): covmat = batch.basePath + jobItem.data_set.covmat
-            if not os.path.exists(covmat) and hasattr(settings, 'covmat'): covmat = batch.basePath + settings.covmat
+            if not os.path.exists(covmat) and covNameMappings is not None:
+                covmat = os.path.join(covdir, "_".join(
+                    [covNameMappings.get(x, x) for x in jobItem.name.split('_')]) + '.covmat')
+            if not os.path.exists(covmat) and hasattr(jobItem.data_set, 'covmat'):
+                covmat = batch.basePath + jobItem.data_set.covmat
+                if not os.path.exists(covmat):
+                    covmat = os.path.join(covdir, jobItem.data_set.covmat)
+            if not os.path.exists(covmat) and hasattr(settings, 'covmat'):
+                covmat = batch.basePath + settings.covmat
+                if not os.path.exists(covmat):
+                    covmat = os.path.join(covdir, settings.covmat)
         else:
             covNameMappings = None
         if os.path.exists(covmat):
@@ -184,11 +197,11 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
             variant = '_minimize'
             ini.saveFile(jobItem.iniFile(variant))
 
-
             # add ini files for importance sampling runs
         for imp in jobItem.importanceJobs():
-            if batch.hasName(imp.name.replace('_post', '')): raise Exception(
-                'importance sampling something you already have?')
+            if getattr(imp, 'importanceFilter', None): continue
+            if batch.hasName(imp.name.replace('_post', '')):
+                raise Exception('importance sampling something you already have?')
             for minimize in (False, True):
                 if minimize and not getattr(imp, 'want_minimize', True): continue
                 ini = IniFile()
@@ -216,5 +229,3 @@ def makeGrid(batchPath, settingName=None, settings=None, readOnly=False, interac
     print('')
     print('for importance sampled: python python/runbatch.py ' + batchPath + ' --importance')
     print('for best-fit for importance sampled: python python/runbatch.py ' + batchPath + ' --importance_minimize')
-
-

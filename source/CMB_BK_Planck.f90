@@ -145,6 +145,9 @@
     real(mcp) :: EEtoBB_dust,EEtoBB_sync
     integer i,j,l
     real(mcp) :: lpivot = 80.0_mcp
+    real(mcp) dustpow(this%pcl_lmin:this%pcl_lmax)
+    real(mcp) syncpow(this%pcl_lmin:this%pcl_lmax)
+    real(mcp) dustsyncpow(this%pcl_lmin:this%pcl_lmax)
 
     Adust = DataParams(1)
     Async = DataParams(2)
@@ -160,6 +163,11 @@
     do i=1, this%nmaps_required
         call DustScaling(betadust,Tdust,this%Bandpasses(i),this%fpivot_dust,fdust(i))
         call SyncScaling(betasync, this%Bandpasses(i),this%fpivot_sync,fsync(i))
+    end do
+    do l=this%pcl_lmin,this%pcl_lmax
+        dustpow(l) = Adust * (l / lpivot) ** alphadust
+        syncpow(l) = Async * (l / lpivot) ** alphasync
+        dustsyncpow(l) = dustsync_corr * sqrt(Adust * Async) * (l / lpivot) ** ((alphadust + alphasync) / 2)
     end do
 
     do i=1, this%nmaps_required
@@ -178,10 +186,7 @@
             if ((CL%theory_i==2 .and. CL%theory_j==2) .or. (CL%theory_i==3 .and. CL%theory_j==3)) then
                 ! Only add foregrounds to EE or BB.
                 do l=this%pcl_lmin,this%pcl_lmax
-                    CL%CL(l) = CL%CL(l) + &
-                        dust*Adust*(l/lpivot)**(alphadust) + &
-                        sync*Async*(l/lpivot)**(alphasync) + &
-                        dustsync_corr*dustsync*sqrt(Adust*Async)*(l/lpivot)**((alphadust+alphasync)/2)
+                    CL%CL(l) = CL%CL(l) + dust * dustpow(l) + sync * syncpow(l) + dustsync * dustsyncpow(l)
                 end do
             end if
         end do

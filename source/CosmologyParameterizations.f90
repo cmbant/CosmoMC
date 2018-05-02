@@ -258,7 +258,7 @@
         end if
 
         if (CosmoSettings%Compute_tensors) then
-            derived(ix:ix+5) = [Theory%tensor_ratio_02, Theory%tensor_ratio_BB, log(Theory%tensor_AT*1e10), &
+            derived(ix:ix+5) = [Theory%tensor_ratio_02, Theory%tensor_ratio_BB, log(max(1e-15,Theory%tensor_AT)*1e10), &
                 Theory%tensor_ratio_C10, Theory%tensor_AT*1e9, Theory%tensor_AT*1e9*exp(-2*CMB%tau) ]
             ix=ix+6
         end if

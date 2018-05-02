@@ -18,9 +18,7 @@
         Type (MatterTransferData) :: MTrans
         Type (CAMBparams) :: Params
     end Type CAMBdata
-
-    !   public CAMB_GetTransfers, CAMB_GetResults, CAMB_GetCls, CAMB_SetDefParams, &
-    !          CAMB_ValidateParams, CAMB_GetAge,CAMB_InitCAMBdata,
+ 
     contains
 
     subroutine CAMB_GetTransfers(Params, OutData, error)
@@ -119,13 +117,12 @@
 
     if (Params%WantCls .and. Params%WantScalars) then
         P = Params
-        if (HighAccuracyDefault) then
-            P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl,P%Max_eta_k)
-        end if
+        P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl,P%Max_eta_k)
 
         if (separate) then
             P%WantTransfer = .false.
             P%Transfer%high_precision = .false.
+            P%Transfer%accurate_massive_neutrinos = .false.            
         end if
         P%WantTensors = .false.
         P%WantVectors = .false.
@@ -138,6 +135,7 @@
         call_again = .true.
         !Need to store CP%flat etc, but must keep original P_k settings
         CP%Transfer%high_precision = Params%Transfer%high_precision
+        CP%Transfer%accurate_massive_neutrinos = Params%Transfer%accurate_massive_neutrinos        
         CP%WantTransfer = Params%WantTransfer
         CP%WantTensors = Params%WantTensors
         CP%WantVectors = Params%WantVectors
@@ -287,8 +285,11 @@
     P%Reion%use_optical_depth = .true.
     P%Reion%optical_depth = tau
     call CAMBParams_Set(P,error)
-
-    CAMB_GetZreFromTau = CP%Reion%redshift
+    if (error/=0)  then
+        CAMB_GetZreFromTau = -1
+    else
+        CAMB_GetZreFromTau = CP%Reion%redshift
+    end if
 
     end function CAMB_GetZreFromTau
 
@@ -296,6 +297,7 @@
     subroutine CAMB_SetDefParams(P)
     use Bispectrum
     use constants
+    use NonLinear
     type(CAMBparams), intent(out) :: P
 
     P%WantTransfer= .false.
@@ -314,12 +316,16 @@
     P%share_delta_neff = .false.
     P%Nu_mass_eigenstates = 0
     P%Nu_mass_numbers=0
+    P%Alens = 1
 
     P%Scalar_initial_condition =initial_adiabatic
     P%NonLinear = NonLinear_none
     P%Want_CMB = .true.
     P%Want_CMB_lensing = .true.
 
+    if (allocated(P%NonLinearModel)) deallocate(P%NonLinearModel)
+    allocate(THalofit::P%NonLinearModel)
+    
     if (allocated(P%DarkEnergy)) deallocate(P%DarkEnergy)
     allocate(TDarkEnergyFluid::P%DarkEnergy)
 
@@ -330,6 +336,7 @@
     call Reionization_SetDefParams(P%Reion)
 
     P%Transfer%high_precision=.false.
+    P%Transfer%accurate_massive_neutrinos = .false.
 
     P%OutputNormalization = outNone
 
@@ -354,10 +361,6 @@
     P%Transfer%NLL_num_redshifts=0 !AL 11/13, def to zero
     P%Transfer%NLL_redshifts=0
     !End JD
-
-    P%AccuratePolarization = .true.
-    P%AccurateReionization = .false.
-    P%AccurateBB = .false.
 
     P%DoLensing = .true.
 

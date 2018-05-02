@@ -1,0 +1,15 @@
+#https://arxiv.org/abs/1710.00845
+
+name = PANTHEON
+data_file = data/Pantheon/lcparam_full_long.txt
+pecz = 0
+intrinsicdisp = 0
+twoscriptmfit = F
+scriptmcut = 10.0
+has_mag_covmat = T
+mag_covmat_file =  data/Pantheon/sys_full_long.txt
+has_stretch_covmat = F
+has_colour_covmat = F
+has_mag_stretch_covmat = F
+has_mag_colour_covmat = F
+has_stretch_colour_covmat = F

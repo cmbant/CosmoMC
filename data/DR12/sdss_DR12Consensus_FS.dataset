@@ -1,0 +1,17 @@
+#DR12 full shape (FS) consensus results, Alam et al. 2016
+#https://arxiv.org/abs/1607.03155
+
+name = DR12FS
+
+num_bao=9
+
+bao_measurements_file = sdss_DR12Consensus_FS.dat
+bao_measurements_file_has_error = F
+
+#stored values are actually scaled by r_fid, so include that here
+#rs_rescale = 1/147.78 
+rs_rescale = .6766815537e-2
+
+bao_cov_file = FS_consensus_covtot_dM_Hz_fsig.txt 
+
+

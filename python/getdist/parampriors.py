@@ -1,9 +1,13 @@
+from importlib import import_module
 import os
+import numpy as np
+
+from getdist.yaml_format_tools import load_info_params, is_sampled_param, is_derived_param
 
 
 class ParamBounds(object):
     """
-    Class for holding list of parameter bounds (e.g. for plotting, or hard priors). 
+    Class for holding list of parameter bounds (e.g. for plotting, or hard priors).
     A limit is None if not specified, denoted by 'N' if read from a string or file
 
     :ivar names: list of parameter names
@@ -16,17 +20,40 @@ class ParamBounds(object):
         :param fileName: optional file name to read from
         """
         self.names = []
-        self.lower = {}
-        self.upper = {}
+        from collections import OrderedDict
+        self.lower = OrderedDict()
+        self.upper = OrderedDict()
         if fileName is not None: self.loadFromFile(fileName)
 
     def loadFromFile(self, fileName):
         self.filenameLoadedFrom = os.path.split(fileName)[1]
-        with open(fileName) as f:
-            for line in f:
-                strings = [text.strip() for text in line.split()]
-                if len(strings) == 3:
-                    self.setRange(strings[0], strings[1:])
+        extension = os.path.splitext(fileName)[-1]
+        if extension in ('.ranges', '.bounds'):
+            with open(fileName) as f:
+                for line in f:
+                    strings = [text.strip() for text in line.split()]
+                    if len(strings) == 3:
+                        self.setRange(strings[0], strings[1:])
+        elif extension in ('.yaml', '.yml'):
+            info_params = load_info_params(fileName)
+            for p, info in info_params.items():
+                # Sampled
+                if is_sampled_param(info):
+                    info_lims = dict([[l, info["prior"].get(l)]
+                                      for l in ["min", "max", "loc", "scale"]])
+                    if info_lims["min"] != None or info_lims["max"] != None:
+                        lims = [info["prior"].get("min"), info["prior"].get("max")]
+                    elif info_lims["loc"] != None or info_lims["scale"] != None:
+                        dist = info["prior"].pop("dist", "uniform")
+                        pdf_dist = getattr(import_module("scipy.stats", dist), dist)
+                        lims = pdf_dist.interval(1, **info["prior"])
+                # Derived
+                elif is_derived_param(info):
+                    lims = (lambda i: [i.get("min", -np.inf), i.get("max", np.inf)])(info or {})
+                # Fixed
+                else:
+                    continue
+                self.setRange(p, lims)
 
     def __str__(self):
         s = ''
@@ -71,3 +98,28 @@ class ParamBounds(object):
         :return: lower limit, or None if not specified
         """
         return self.lower.get(name, None)
+
+    def fixedValue(self, name):
+        """
+        :param name: parameter name
+        :return: if range has zero width return fixed value else return None
+        """
+        lower = self.lower.get(name, None)
+        if lower is not None:
+            higher = self.upper.get(name, None)
+            if higher is not None:
+                if higher == lower:
+                    return lower
+        return None
+
+    def fixedValueDict(self):
+        """
+        :return: dictionary of fixed parameter values
+        """
+        from collections import OrderedDict
+        res = OrderedDict()
+        for name in self.names:
+            value = self.fixedValue(name)
+            if value is not None:
+                res[name] = value
+        return res

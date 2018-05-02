@@ -1,13 +1,23 @@
-# AL 2011-2015
+# AL 2011-2017
 import os
 import fnmatch
 import six
+import matplotlib
+
+from getdist.yaml_format_tools import load_info_params, is_sampled_param, is_derived_param
+
+
+def escapeLatex(text):
+    if text and matplotlib.rcParams['text.usetex']:
+        return text.replace('_', '{\\textunderscore}')
+    else:
+        return text
 
 
 class ParamInfo(object):
     """
     Parameter information object.
-    
+
     :ivar name: the parameter name tag (no spacing or punctuation)
     :ivar label: latex label (without enclosing $)
     :ivar comment: any descriptive comment describing the parameter
@@ -76,11 +86,11 @@ class ParamInfo(object):
 class ParamList(object):
     """
     Holds an orders list of :class:`ParamInfo` objects describing a set of parameters.
-        
+
     :ivar names: list of :class:`ParamInfo` objects
     """
 
-    def __init__(self, fileName=None, setParamNameFile=None, default=0, names=None):
+    def __init__(self, fileName=None, setParamNameFile=None, default=0, names=None, labels=None):
         """
         :param fileName: name of .paramnames file to load from
         :param setParamNameFile: override specific parameter names' labels using another file
@@ -91,7 +101,8 @@ class ParamList(object):
         if default: self.setDefault(default)
         if names is not None: self.setWithNames(names)
         if fileName is not None: self.loadFromFile(fileName)
-        if setParamNameFile is not None: self.setLabelsAndDerivedFromParamNames(setParamNameFile)
+        if setParamNameFile is not None: self.setLabelsFromParamNames(setParamNameFile)
+        if labels is not None: self.setLabels(labels)
 
     def setDefault(self, n):
         self.names = [ParamInfo(name='param' + str(i + 1), label='p_{' + str(i + 1) + '}') for i in range(n)]
@@ -132,7 +143,7 @@ class ParamList(object):
     def parWithName(self, name, error=False, renames={}):
         """
         Gets the :class:`ParamInfo` object for the parameter with the given name
-        
+
         :param name: name of the parameter
         :param error: if True raise an error if parameter not found, otherwise return None
         :param renames: a dictionary that is used to provide optional name mappings to the stored names
@@ -146,7 +157,7 @@ class ParamList(object):
     def numberOfName(self, name):
         """
         Gets the parameter number of the given parameter name
-        
+
         :param name: parameter name tag
         :return: index of the parameter, or -1 if not found
         """
@@ -186,13 +197,19 @@ class ParamList(object):
                     pars.append(par)
         return pars
 
-    def setLabelsAndDerivedFromParamNames(self, fname):
-        p = ParamNames(fname)
+    def setLabelsFromParamNames(self, fname):
+        self.setLabelsAndDerivedFromParamNames(fname, False)
+
+    def setLabelsAndDerivedFromParamNames(self, fname, set_derived=True):
+        if isinstance(fname, ParamNames):
+            p = fname
+        else:
+            p = ParamNames(fname)
         for par in p.names:
             param = self.parWithName(par.name)
             if not param is None:
                 param.label = par.label
-                param.isDerived = par.isDerived
+                if set_derived: param.isDerived = par.isDerived
 
     def fileList(self, fname):
         with open(fname) as f:
@@ -216,7 +233,7 @@ class ParamList(object):
     def addDerived(self, name, **kwargs):
         """
         adds a new parameter
-        
+
         :param name: name tag for the new parameter
         :param kwargs: other arguments for constructing the new :class:`ParamInfo`
         """
@@ -248,7 +265,7 @@ class ParamList(object):
     def saveAsText(self, filename):
         """
         Saves to a plain text .paramnames file
-        
+
         :param filename: filename to save to
         """
         with open(filename, 'w') as f:
@@ -258,22 +275,31 @@ class ParamList(object):
 class ParamNames(ParamList):
     """
     Holds an orders list of :class:`ParamInfo` objects describing a set of parameters, inheriting from :class:`ParamList`.
-    
+
     Can be constructed programmatically, and also loaded and saved to a .paramnames files, which is a plain text file
     giving the names and optional label and comment for each parameter, in order.
-    
+
     :ivar names: list of :class:`ParamInfo` objects describing each parameter
     :ivar filenameLoadedFrom: if loaded from file, the file name
     """
 
     def loadFromFile(self, fileName):
         """
-        loads from fileName, a plain text .paramnames file
+        loads from fileName, a plain text .paramnames file or a "full" yaml file
         """
 
         self.filenameLoadedFrom = os.path.split(fileName)[1]
-        with open(fileName) as f:
-            self.names = [ParamInfo(line) for line in [s.strip() for s in f] if line != '']
+        extension = os.path.splitext(fileName)[-1]
+        if extension == '.paramnames':
+            with open(fileName) as f:
+                self.names = [ParamInfo(line) for line in [s.strip() for s in f] if line != '']
+        elif extension.lower() in ('.yaml', '.yml'):
+            info_params = load_info_params(fileName)
+            # first sampled, then derived
+            self.names = [ParamInfo(param + " " + ((info or {}).get("latex", param)))
+                          for param, info in info_params.items() if is_sampled_param(info)]
+            self.names += [ParamInfo(param + " " + ((info or {}).get("latex", param)))
+                           for param, info in info_params.items() if is_derived_param(info)]
 
     def loadFromKeyWords(self, keywordProvider):
         num_params_used = keywordProvider.keyWord_int('num_params_used')

@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import io
 import re
 import os
+
 try:
     from setuptools import setup
 except ImportError:
@@ -18,9 +19,18 @@ def find_version():
     raise RuntimeError("Unable to find version string.")
 
 
+def get_long_description():
+    with open('README.rst') as f:
+        lines = f.readlines()
+        i = -1
+        while not '=====' in lines[i]: i -= 1
+        return "".join(lines[:i])
+
+
 setup(name='GetDist',
       version=find_version(),
       description='GetDist Monte Carlo sample analysis, plotting and GUI',
+      long_description=get_long_description(),
       author='Antony Lewis',
       url="https://github.com/cmbant/getdist",
       packages=['getdist', 'getdist.gui', 'paramgrid', 'getdist_tests'],
@@ -31,16 +41,17 @@ setup(name='GetDist',
           'numpy',
           'matplotlib',
           'six',
-          "scipy (>=0.11.0)",
-          'PySide'],
+          "scipy (>=0.11.0)"],
+      # PySide is needed for the GUI
       #  optional (for faster file read)
       # 'pandas (>=0.14.0)'
       classifiers=[
-        "Programming Language :: Python :: 2",
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
+          "Programming Language :: Python :: 2",
+          'Programming Language :: Python :: 2.7',
+          'Programming Language :: Python :: 3',
+          'Programming Language :: Python :: 3.4',
+          'Programming Language :: Python :: 3.5',
+          'Programming Language :: Python :: 3.6',
       ],
       keywords=['MCMC', 'KDE', 'sample', 'density estimation', 'plot']
       )

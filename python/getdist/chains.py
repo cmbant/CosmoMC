@@ -2,7 +2,7 @@ from __future__ import print_function
 import os
 import random
 import numpy as np
-from getdist.paramnames import ParamNames, ParamInfo
+from getdist.paramnames import ParamNames, ParamInfo, escapeLatex
 from getdist.convolve import autoConvolve
 import pickle
 import six
@@ -14,7 +14,7 @@ try:
     import pandas
     from distutils.version import LooseVersion
 
-    use_pandas = LooseVersion(pandas.version.version) > LooseVersion("0.14.0")
+    use_pandas = LooseVersion(pandas.__version__) > LooseVersion("0.14.0")
 except:
     use_pandas = False
 
@@ -52,9 +52,14 @@ def chainFiles(root, chain_indices=None, ext='.txt', first_chain=0, last_chain=-
     files = []
     while True:
         index += 1
-        fname = root + ('', '_' + str(index))[index > 0]
-        if not ext in fname: fname += ext
-        if index > 0 and not os.path.exists(fname) or 0 < last_chain < index: break
+        fname = root
+        if index > 0:
+            # deal with just-folder prefix
+            if not root.endswith("/"):
+                fname += '_'
+            fname += str(index)
+        if not fname.endswith(ext): fname += ext
+        if index > first_chain and not os.path.exists(fname) or 0 < last_chain < index: break
         if (chain_indices is None or index in chain_indices) \
                 and (chain_exclude is None or not index in chain_exclude) \
                 and index >= first_chain and os.path.exists(fname):
@@ -66,15 +71,20 @@ def loadNumpyTxt(fname, skiprows=None):
     """
     Utility routine to loads numpy array from file.
     Uses faster pandas read routine if pandas is installed, or falls back to numpy's loadtxt otherwise
-  
+
     :param fname: The file to load
     :param skiprows: The number of rows to skip at the begging of the file
     :return: numpy array of the data values
     """
-    if use_pandas:
-        return pandas.read_csv(fname, delim_whitespace=True, header=None, dtype=np.float64, skiprows=skiprows).values
-    else:
-        return np.loadtxt(fname, skiprows=skiprows)
+    try:
+        if use_pandas:
+            return pandas.read_csv(fname, delim_whitespace=True, header=None, dtype=np.float64,
+                                   skiprows=skiprows).values
+        else:
+            return np.loadtxt(fname, skiprows=skiprows)
+    except ValueError:
+        print('Error reading %s' % fname)
+        raise
 
 
 def getSignalToNoise(C, noise=None, R=None, eigs_only=False):
@@ -133,7 +143,7 @@ class ParSamples(object):
 class WeightedSamples(object):
     """
     WeightedSamples is the base class for a set of weighted parameter samples
-    
+
     :ivar weights:  array of weights for each sample (default: array of 1)
     :ivar loglikes: array of -log(Likelihoods) for each sample (default: array of 0)
     :ivar samples: n_samples x n_parameters numpy array of parameter values
@@ -143,19 +153,23 @@ class WeightedSamples(object):
     """
 
     def __init__(self, filename=None, ignore_rows=0, samples=None, weights=None, loglikes=None, name_tag=None,
-                 files_are_chains=True):
+                 label=None, files_are_chains=True, min_weight_ratio=1e-30):
         """
         :param filename: A filename of a plain text file to load from
-        :param ignore_rows: 
+        :param ignore_rows:
             - if int >=1: The number of rows to skip at the file in the beginning of the file
             - if float <1: The fraction of rows to skip at the beginning of the file
         :param samples: array of parameter values for each sample, passed to :func:`setSamples`
         :param weights: array of weights
         :param loglikes: array of -log(Likelihood)
         :param name_tag: The name of this instance.
+        :param label: latex label for these samples
         :param files_are_chains: use False if the samples file (filename) does not start with two columns giving weights and -log(Likelihoods)
+        :param min_weight_ratio: remove samples with weight less than min_weight_ratio times the maximum weight
         """
 
+        self.precision = '%.8e'
+        self.min_weight_ratio = min_weight_ratio
         if filename:
             cols = loadNumpyTxt(filename, skiprows=ignore_rows)
             self.setColData(cols, are_chains=files_are_chains)
@@ -163,6 +177,7 @@ class WeightedSamples(object):
         else:
             self.setSamples(samples, weights, loglikes)
             self.name_tag = name_tag
+        self.label = label
         self.needs_update = True
 
     def setColData(self, coldata, are_chains=True):
@@ -177,6 +192,14 @@ class WeightedSamples(object):
         else:
             self.setSamples(coldata)
 
+    def getLabel(self):
+        """
+        Return the latex label for the samples
+
+        :return: the label
+        """
+        return self.label or escapeLatex(self.getName())
+
     def getName(self):
         """
         Returns the name tag of these samples.
@@ -185,13 +208,14 @@ class WeightedSamples(object):
         """
         return self.name_tag
 
-    def setSamples(self, samples, weights=None, loglikes=None):
+    def setSamples(self, samples, weights=None, loglikes=None, min_weight_ratio=None):
         """
         Sets the samples from numpy arrays
 
         :param samples: The samples values, n_samples x n_parameters numpy array, or can be a list of parameter vectors
         :param weights: Array of weights for each sample. Defaults to 1 for all samples if unspecified.
         :param loglikes: Array of -log(Likelihood) values for each sample
+        :param min_weight_ratio: remove samples with weight less than min_weight_ratio of the maximum
         """
         self.weights = weights
         self.loglikes = loglikes
@@ -204,6 +228,9 @@ class WeightedSamples(object):
             self.samples = samples
             self.n = self.samples.shape[1]
             self.numrows = self.samples.shape[0]
+            if min_weight_ratio is None: min_weight_ratio = self.min_weight_ratio
+            if min_weight_ratio is not None and min_weight_ratio >= 0:
+                self.setMinWeightRatio(min_weight_ratio)
         self._weightsChanged()
 
     def changeSamples(self, samples):
@@ -248,7 +275,7 @@ class WeightedSamples(object):
         Get covariance matrix of the parameters. By default uses all parameters, or can limit to max number or list.
 
         :param nparam: if specified, only use the first nparam parameters
-        :param pars: if specified, a list of parameter indices (0,1,2..) to include 
+        :param pars: if specified, a list of parameter indices (0,1,2..) to include
         :return: covariance matrix.
         """
         if self.fullcov is None:
@@ -280,7 +307,7 @@ class WeightedSamples(object):
     def setMeans(self):
         """
         Calculates and saves the means for the samples
-     
+
         :return: numpy array of parameter means
         """
         self.means = self.weights.dot(self.samples) / self.norm
@@ -325,7 +352,7 @@ class WeightedSamples(object):
     def getAutocorrelation(self, paramVec, maxOff=None, weight_units=True, normalized=True):
         """
         Gets auto-correlation of an array of parameter values (e.g. for correlated samples from MCMC)
-        
+
         By default uses weight units (i.e. standard units for separate samples from original chain).
         If samples are made from multiple chains, neglects edge effects.
 
@@ -372,17 +399,17 @@ class WeightedSamples(object):
     def getEffectiveSamplesGaussianKDE(self, paramVec, h=0.2, scale=None, maxoff=None, min_corr=0.05):
         """
         Roughly estimate an effective sample number for use in the leading term for the MISE (mean integrated squared error)
-        of a Gaussian-kernel KDE (Kernel Density Estimate). This is used for optimizing the kernel bandwidth, and though 
+        of a Gaussian-kernel KDE (Kernel Density Estimate). This is used for optimizing the kernel bandwidth, and though
         approximate should be better than entirely ignoring samples correlations, or only counting distinct samples.
-        
+
         Uses fiducial assumed kernel scale h; result does depend on this (typically by factors O(2))
-        
+
         For bias-corrected KDE only need very rough estimate to use in rule of thumb for bandwidth.
-        
-        In the limit h-> 0 (but still >0) answer should be correct (then just includes MCMC rejection duplicates).        
+
+        In the limit h-> 0 (but still >0) answer should be correct (then just includes MCMC rejection duplicates).
         In reality correct result for practical h should depends on shape of the correlation function
 
-        :param paramVec: parameter array, or int index of parameter to use 
+        :param paramVec: parameter array, or int index of parameter to use
         :param h: fiducial assumed kernel scale.
         :param scale: a scale parameter to determine fiducial kernel width, by default the parameter standard deviation
         :param maxoff: maximum value of auto-correlation length to use
@@ -394,6 +421,7 @@ class WeightedSamples(object):
         kernel_std = (scale or self.std(d)) * h
         # Dependence is from very correlated points due to MCMC rejections; shouldn't need more than about correlation length
         if maxoff is None: maxoff = int(self.getCorrelationLength(d, weight_units=False) * 1.5) + 4
+        maxoff = min(maxoff, self.numrows // 10)  # can get problems otherwise if weights are all very large
         uncorr_len = self.numrows // 2
         UncorrTerm = 0
         nav = 0
@@ -449,7 +477,10 @@ class WeightedSamples(object):
         :param where: if specified, a filter for the samples to use (where x>=5 would mean only process samples with x>=5).
         :return: parameter mean
         """
-        return self.weighted_sum(paramVec, where) / self.get_norm(where)
+        if isinstance(paramVec, (list, tuple)):
+            return np.array([self.weighted_sum(p, where) for p in paramVec]) / self.get_norm(where)
+        else:
+            return self.weighted_sum(paramVec, where) / self.get_norm(where)
 
     def var(self, paramVec, where=None):
         """
@@ -459,6 +490,8 @@ class WeightedSamples(object):
         :param where: if specified, a filter for the samples to use (where x>=5 would mean only process samples with x>=5).
         :return: parameter variance
         """
+        if isinstance(paramVec, (list, tuple)):
+            return np.array([self.var(p) for p in paramVec])
         if where is not None:
             return np.dot(self.mean_diff(paramVec, where) ** 2, self.weights[where]) / self.get_norm(where)
         else:
@@ -476,7 +509,7 @@ class WeightedSamples(object):
 
     def cov(self, pars=None, where=None):
         """
-        Get parameter covariance 
+        Get parameter covariance
 
         :param pars: if specified, a list of parameter vectors or int indices to use
         :param where: if specified, a filter for the samples to use (where x>=5 would mean only process samples with x>=5).
@@ -556,7 +589,7 @@ class WeightedSamples(object):
         Initialize cache of data for calculating confidence intervals
 
         :param paramVec: array of parameter values or int index of parameter to use
-        :param start: The sample start index to use 
+        :param start: The sample start index to use
         :param end: The sample end index to use, use None to go all the way to the end of the vector
         :param weights: A numpy array of weights for each sample, defaults to self.weights
         :return: :class:`~.chains.ParamConfidenceData` instance
@@ -675,7 +708,8 @@ class WeightedSamples(object):
         :param factor: The factor to thin by
         """
         thin_ix = self.thin_indices(factor)
-        self.setSamples(self.samples[thin_ix, :], loglikes=self.loglikes[thin_ix])
+        self.setSamples(self.samples[thin_ix, :], loglikes=None if self.loglikes is None else self.loglikes[thin_ix],
+                        min_weight_ratio=-1)
 
     def filter(self, where):
         """
@@ -683,7 +717,8 @@ class WeightedSamples(object):
 
         :param where: list of sample indices to keep, or boolean array filter (e.g. x>5 to keep only samples where x>5)
         """
-        self.setSamples(self.samples[where, :], self.weights[where], self.loglikes[where])
+        self.setSamples(self.samples[where, :], self.weights[where],
+                        None if self.loglikes is None else self.loglikes[where], min_weight_ratio=-1)
 
     def reweightAddingLogLikes(self, logLikes):
         """
@@ -715,7 +750,19 @@ class WeightedSamples(object):
         Removes samples with zero weight
 
         """
-        self.filter(self.weights == 0)
+        self.filter(self.weights > 0)
+
+    def setMinWeightRatio(self, min_weight_ratio=1e-30):
+        """
+        Removes samples with weight less than min_weight_ratio times the maximum weight
+
+        :param min_weight_ratio: minimum ratio to max to exclude
+        """
+        if self.weights is not None and min_weight_ratio >= 0:
+            max_weight = np.max(self.weights)
+            min_weight = np.min(self.weights)
+            if min_weight < max_weight * min_weight_ratio:
+                self.filter(self.weights > max_weight * min_weight_ratio)
 
     def deleteFixedParams(self):
         """
@@ -767,9 +814,9 @@ class WeightedSamples(object):
 
 class Chains(WeightedSamples):
     """
-    Holds one or more sets of weighted samples, for example a set of MCMC chains. 
+    Holds one or more sets of weighted samples, for example a set of MCMC chains.
     Inherits from :class:`~.chains.WeightedSamples`, also adding parameter names and labels
-    
+
     :ivar paramNames: a :class:`~.paramnames.ParamNames` instance holding the parameter names and labels
     """
 
@@ -784,15 +831,17 @@ class Chains(WeightedSamples):
         :param kwargs: extra options for :class:`~.chains.WeightedSamples`'s constructor
 
         """
+        self.chains = None
         WeightedSamples.__init__(self, **kwargs)
         self.jobItem = jobItem
-        self.precision = '%.8e'
         self.ignore_lines = float(kwargs.get('ignore_rows', 0))
         self.root = root
-        if not paramNamesFile and root and os.path.exists(root + '.paramnames'):
-            paramNamesFile = root + '.paramnames'
-        self.needs_update = True
-        self.chains = None
+        if not paramNamesFile and root:
+            mid = ('' if root.endswith("/") else "__")
+            if os.path.exists(root + '.paramnames'):
+                paramNamesFile = root + '.paramnames'
+            elif os.path.exists(root + mid + 'full.yaml'):
+                paramNamesFile = root + mid + 'full.yaml'
         self.setParamNames(paramNamesFile or names)
         if labels is not None:
             self.paramNames.setLabels(labels)
@@ -815,6 +864,25 @@ class Chains(WeightedSamples):
             self.paramNames = ParamNames(default=self.n)
         if self.paramNames:
             self._getParamIndices()
+        self.needs_update = True
+
+    def filter(self, where):
+        """
+        Filter the stored samples to keep only samples matching filter
+
+        :param where: list of sample indices to keep, or boolean array filter (e.g. x>5 to keep only samples where x>5)
+        """
+
+        if self.chains is None:
+            if hasattr(self, 'chain_offsets'):
+                # must update chain_offsets to be able to correctly split back into separate filtered chains if needed
+                lens = [0]
+                for off1, off2 in zip(self.chain_offsets[:-1], self.chain_offsets[1:]):
+                    lens.append(np.count_nonzero(where[off1:off2]))
+                self.chain_offsets = np.cumsum(np.array(lens))
+            super(Chains, self).filter(where)
+        else:
+            raise ValueError('chains are separated, makeSingle first or call filter on individual chains')
 
     def getParamNames(self):
         """
@@ -842,7 +910,7 @@ class Chains(WeightedSamples):
         """
         Adds array variables obj.name1, obj.name2 etc, where
         obj.name1 is the vector of samples with name 'name1'
-        
+
         if a parameter name is of the form aa.bb.cc, it makes subobjects so you can reference obj.aa.bb.cc
 
         :param obj: The object instance to add the parameter vectors variables
@@ -868,6 +936,18 @@ class Chains(WeightedSamples):
         pars = ParSamples()
         self.setParams(pars)
         return pars
+
+    def getParamSampleDict(self, ix):
+        """
+        Returns a dictionary of parameter values for sample number ix
+        """
+        from collections import OrderedDict
+        res = OrderedDict()
+        for i, name in enumerate(self.paramNames.names):
+            res[name.name] = self.samples[ix, i]
+        res['weight'] = self.weights[i]
+        res['loglike'] = self.loglikes[i]
+        return res
 
     def _makeParamvec(self, par):
         if self.needs_update: self.updateBaseStatistics()
@@ -923,7 +1003,8 @@ class Chains(WeightedSamples):
         self.name_tag = self.name_tag or os.path.basename(root)
         for fname in files:
             if print_load_details: print(fname)
-            self.chains.append(WeightedSamples(fname, ignore_lines or self.ignore_lines))
+            self.chains.append(
+                WeightedSamples(fname, ignore_lines or self.ignore_lines, min_weight_ratio=self.min_weight_ratio))
         if len(self.chains) == 0:
             raise WeightedSampleError('loadChains - no chains found for ' + root)
         if self.paramNames is None:
@@ -975,23 +1056,23 @@ class Chains(WeightedSamples):
         """
         Combines separate chains into one samples array, so self.samples has all the samples
         and this instance can then be used as a general :class:`~.chains.WeightedSamples` instance.
-        
+
         :return: self
         """
         self.chain_offsets = np.cumsum(np.array([0] + [chain.samples.shape[0] for chain in self.chains]))
         weights = np.hstack((chain.weights for chain in self.chains))
         loglikes = np.hstack((chain.loglikes for chain in self.chains))
-        self.setSamples(np.vstack((chain.samples for chain in self.chains)), weights, loglikes)
+        self.setSamples(np.vstack((chain.samples for chain in self.chains)), weights, loglikes, min_weight_ratio=-1)
         self.chains = None
         self.needs_update = True
         return self
 
     def getSeparateChains(self):
         """
-        Gets a list of samples for separate chains. 
+        Gets a list of samples for separate chains.
         If the chains have already been combined, uses the stored sample offsets to reconstruct the array (generally no array copying)
 
-        :return: The list of :class:`~.chains.WeightedSamples` for each chain. 
+        :return: The list of :class:`~.chains.WeightedSamples` for each chain.
         """
         if self.chains is not None:
             return self.chains
@@ -1034,7 +1115,7 @@ class Chains(WeightedSamples):
 
     def saveAsText(self, root, chain_index=None, make_dirs=False):
         """
-        Saves the samples as text files, including parameter names as .paramnames file. 
+        Saves the samples as text files, including parameter names as .paramnames file.
 
         :param root: The root name to use
         :param chain_index: Optional index to be used for the filename, zero based, e.g. for saving one of multiple chains

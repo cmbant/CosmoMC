@@ -3,13 +3,14 @@
     use CosmologyTypes
     use CosmoTheory
     use CAMB, only : CAMB_GetResults, CAMB_GetAge, CAMBParams, CAMB_SetDefParams, &
-        AccuracyBoost,  Cl_scalar, Cl_tensor, Cl_lensed, outNone, &
+        Cl_scalar, Cl_tensor, Cl_lensed, outNone, &
         CAMBParams_Set, MT, CAMBdata, NonLinear_Pk, Nonlinear_lens, Reionization_GetOptDepth, CAMB_GetZreFromTau, &
         CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, Transfer_SetForNonlinearLensing, &
         initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
-        HighAccuracyDefault, highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, BackgroundOutputs, &
-        Transfer_SortAndIndexRedshifts,  &
+        highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, BackgroundOutputs, &
+        Transfer_SortAndIndexRedshifts, &
         Recombination_Name, reionization_name, power_name, threadnum, version, tensor_param_rpivot
+    use NonLinear, only : halofit_default, THalofit
     use Errors !CAMB
     use settings
     use likelihood
@@ -31,6 +32,7 @@
         logical :: CAMB_timing = .false.
         real(mcp) :: k_eta_max_scalar = -1._mcp
         logical :: accurate_BB =.false.
+        integer :: halofit_version = halofit_default
         character(LEN=:), allocatable :: dark_energy_model
         type(CAMBParams)  CAMBP
         character(LEN=:), allocatable :: highL_theory_cl_template_file
@@ -77,7 +79,6 @@
     subroutine CAMBCalc_CMBToCAMB(this,CMB,P)
     use DarkEnergyInterface
     use camb, only: CAMB_SetNeutrinoHierarchy
-    use CAMBmain, only : ALens
     use constants, only : dl, default_nnu,delta_mnu21,delta_mnu31,mnu_min_normal
     use lensing, only : ALens_Fiducial
     use MassiveNu, only : sum_mnu_for_m1
@@ -96,8 +97,8 @@
     P%Reion%redshift= CMB%zre
     P%Reion%delta_redshift = CMB%zre_delta
     P%DarkEnergy%w_lam = CMB%w
-    P%DarkEnergy%wa_ppf = CMB%wa
-    ALens = CMB%ALens
+    P%DarkEnergy%wa = CMB%wa
+    P%ALens = CMB%ALens
     ALens_Fiducial = CMB%ALensf
     P%InitialConditionVector(initial_iso_CDM) = &
         sign(sqrt(abs(CMB%iso_cdm_correlated) /(1-abs(CMB%iso_cdm_correlated))),CMB%iso_cdm_correlated)
@@ -105,6 +106,7 @@
     P%Nu_mass_numbers = 0
     P%Num_Nu_Massless = CMB%nnu
     P%share_delta_neff = .false.
+
     if (CMB%omnuh2>0) then
         call CAMB_SetNeutrinoHierarchy(P, CMB%omnuh2, CMB%omnuh2_sterile, CMB%nnu, &
             CosmoSettings%neutrino_hierarchy, CosmoSettings%num_massive_neutrinos)
@@ -557,7 +559,7 @@
 
     !need splines to get nonlinear ratios
     call MatterPowerdata_getsplines(CPK)
-    call NonLinear_GetRatios(CPK)
+    call this%CAMBP%NonLinearModel%GetNonLinRatios(CPK)
     Ratios = CPK%nonlin_ratio
     call MatterPowerdata_Free(CPK)
 
@@ -713,8 +715,7 @@
     else if (this%dark_energy_model /= 'fluid') then
         error stop 'Calculator_CAMB: unknown dark_energy_model'
     end if
-    
-    HighAccuracyDefault = .true.
+
     P%OutputNormalization = outNone
 
     !JD Modified to save computation time when only using MPK
@@ -739,18 +740,16 @@
         P%Transfer%kmax = max(0.8_mcp,CosmoSettings%power_kmax)
     end if
 
-    if (AccuracyLevel > 1 .or. HighAccuracyDefault) then
-        if (CosmoSettings%Use_LSS .or. CosmoSettings%get_sigma8) then
-            P%Transfer%high_precision=.true.
-            P%Transfer%kmax=P%Transfer%kmax + 0.2
-        end if
-        AccuracyBoost = AccuracyLevel
-        lAccuracyBoost = AccuracyLevel
-        lSampleBoost = AccuracyLevel
-        P%AccurateReionization = .true.
+    if (CosmoSettings%Use_LSS .or. CosmoSettings%get_sigma8) then
+        P%Transfer%high_precision=.true.
+        P%Transfer%kmax=P%Transfer%kmax + 0.2
     end if
+    P%Accuracy%AccuracyBoost = AccuracyLevel
+    P%Accuracy%lAccuracyBoost = AccuracyLevel
+    P%Accuracy%lSampleBoost = AccuracyLevel
+    P%Accuracy%AccurateReionization = .true.
 
-    P%AccurateBB = this%accurate_BB
+    P%Accuracy%AccurateBB = this%accurate_BB
 
     if (max_transfer_redshifts < CosmoSettings%num_power_redshifts) then
         stop 'Need to manually set max_transfer_redshifts larger in CAMB''s modules.f90'
@@ -770,7 +769,7 @@
     P%Num_Nu_Massive = 3
     P%Num_Nu_Massless = 0.046
     P%InitPower%nn = 1
-    P%AccuratePolarization = CosmoSettings%num_cls/=1
+    P%Accuracy%AccuratePolarization = CosmoSettings%num_cls/=1
     P%Reion%use_optical_depth = .false.
     P%OnlyTransfers = .true.
 
@@ -780,13 +779,11 @@
         P%Max_eta_k = P%Max_l*2
     end if
 
-    if (HighAccuracyDefault) then
-        P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl*AccuracyLevel,P%Max_eta_k)
-        if (CosmoSettings%CMB_Lensing .and. (CosmoSettings%use_lensing_potential .or. CosmoSettings%use_nonlinear_lensing)) &
-            P%Max_eta_k = max(P%Max_eta_k, 14000*AccuracyLevel)
-        !k_etamax=18000 give c_phi_phi accurate to sub-percent at L=1000, <4% at L=2000
-        !k_etamax=10000 is just < 1% at L<=500
-    end if
+    P%Max_eta_k=max(min(P%max_l,3000)*2.5_dl*AccuracyLevel,P%Max_eta_k)
+    if (CosmoSettings%CMB_Lensing .and. (CosmoSettings%use_lensing_potential .or. CosmoSettings%use_nonlinear_lensing)) &
+        P%Max_eta_k = max(P%Max_eta_k, 14000*AccuracyLevel)
+    !k_etamax=18000 give c_phi_phi accurate to sub-percent at L=1000, <4% at L=2000
+    !k_etamax=10000 is just < 1% at L<=500
     if (this%k_eta_max_scalar>0) then
         P%Max_eta_k = this%k_eta_max_scalar
     end if
@@ -855,7 +852,7 @@
     class(CAMB_Calculator) :: this
     class(TSettingIni) :: Ini
 
-    
+
     call this%TCosmologyCalculator%ReadParams(Ini)
     this%calcName ='CAMB'
 
@@ -872,10 +869,10 @@
     this%k_eta_max_scalar = Ini%Read_Double('k_eta_max_scalar',-1._mcp)
     this%accurate_BB = Ini%Read_Logical('accurate_BB',.false.)
 
-    halofit_version = Ini%Read_Int('halofit_version',halofit_default)
+    this%halofit_version = Ini%Read_Int('halofit_version',halofit_default)
 
     this%dark_energy_model = Ini%Read_String_Default('dark_energy_model','ppf')
-    
+
     end subroutine CAMBCalc_ReadParams
 
 
@@ -890,6 +887,10 @@
     end if
 
     call this%InitCAMBParams(this%CAMBP)
+    select type(NL=>this%CAMBP%NonLinearModel)
+    class is (THalofit)
+        NL%halofit_version = this%halofit_version
+    end select
 
     if (Feedback > 0 .and. MPIRank==0) then
         if(CosmoSettings%use_CMB) write(*,*) 'max_eta_k         = ', real(this%CAMBP%Max_eta_k)

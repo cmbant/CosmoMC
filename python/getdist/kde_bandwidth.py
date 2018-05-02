@@ -58,10 +58,12 @@ _kde_consts_1d = np.array([(1 + 0.5 ** (j + 0.5)) / 3 * np.prod(np.arange(1, 2 *
 
 
 def _bandwidth_fixed_point(h, N, I, logI, a2):
+    if h <= 0: return h - 1
     f = 2 * np.pi ** (2 * _kde_lmax_bandwidth) * np.dot(a2,
                                                         np.exp(_kde_lmax_bandwidth * logI - I * (pisquared * h ** 2)))
     for j, const in zip(range(_kde_lmax_bandwidth - 1, 1, -1), _kde_consts_1d):
         try:
+            if not f: raise Exception()
             t_j = (const / N / f) ** (2 / (3. + 2 * j))
         except:
             print(f, h, N, j)
@@ -87,17 +89,22 @@ def gaussian_kde_bandwidth(samples, Neff=None, range_min=None, range_max=None, n
         Neff = np.count_nonzero(np.diff(samples)) + 1
     bins, R = bin_samples(samples, range_min, range_max, nbins)
     data = np.bincount(bins, minlength=nbins)
-    return gaussian_kde_bandwidth_binned(data, Neff) * R
+    h = gaussian_kde_bandwidth_binned(data, Neff)
+    if h is None:
+        return None
+    else:
+        return h * R
 
 
 def gaussian_kde_bandwidth_binned(data, Neff, a=None):
     """
      Return optimal standard kernel bandwidth assuming data is binned from Neff independent samples
-     Return value is the bandwidth in units of the range of data (i.e. multiply by max(data)-min(data))
+     Return value is the bandwidth in units of the range of data (i.e. multiply by max(data)-min(data)),
+     or None if failed
 
      Uses Improved Sheather-Jones algorithm from
      Kernel density estimation via diffusion: Z. I. Botev, J. F. Grotowski, and D. P. Kroese (2010)
-     Annals of Statistics, Volume 38, Number 5, pages 2916-2957. 
+     Annals of Statistics, Volume 38, Number 5, pages 2916-2957.
      http://arxiv.org/abs/1011.2602
     """
     I = np.arange(1, data.size) ** 2
@@ -106,11 +113,13 @@ def gaussian_kde_bandwidth_binned(data, Neff, a=None):
     a2 = (a[1:] / 2) ** 2
     hfrac = 0.53 * Neff ** (-1. / 5)  # default value in case of failure
     try:
-        #        hfrac = brentq(_bandwidth_fixed_point, 0, 0.2, (Neff, I, logI, a2), xtol=0.001)
+        # hfrac = brentq(_bandwidth_fixed_point, 0, 0.2, (Neff, I, logI, a2), xtol=hfrac / 20)
         hfrac = fsolve(_bandwidth_fixed_point, hfrac, (Neff, I, logI, a2), xtol=hfrac / 20)[0]
     except:
-        print('kde_bandwidth failed')
+        logging.warning('1D auto bandwidth failed. Using fallback.')
+        return None
     return hfrac
+
 
 # ##2D functions
 
@@ -183,8 +192,9 @@ class KernelOptimizer2D(object):
             c = cov[2]
         var = 1. / (4 * np.pi * hx * hy * np.sqrt(1 - c ** 2) * self.N)
         bias = 0.25 * (
-            hx ** 4 * self.p[4, 0] + hy ** 4 * self.p[0, 4] + 2 * hx ** 2 * hy ** 2 * self.p[2, 2] * (2 * c ** 2 + 1)
-            + 4 * c * hx * hy * (hx ** 2 * self.p[3, 1] + hy ** 2 * self.p[1, 3]))
+                hx ** 4 * self.p[4, 0] + hy ** 4 * self.p[0, 4] + 2 * hx ** 2 * hy ** 2 * self.p[2, 2] * (
+                2 * c ** 2 + 1)
+                + 4 * c * hx * hy * (hx ** 2 * self.p[3, 1] + hy ** 2 * self.p[1, 3]))
         if bias < 0:
             raise Exception("bias not positive definite")
         return var + bias

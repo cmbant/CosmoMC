@@ -45,6 +45,8 @@
 
     integer :: lensing_method = lensing_method_curv_corr
 
+    real(dl) :: lensing_sanity_check_amplitude = 1e-7
+    
     real(dl) :: ALens_Fiducial = 0._dl
     !Change from zero to set lensing smoothing by scaling amplitude of fiducial template
 
@@ -67,7 +69,8 @@
     real(dl), dimension(:), allocatable  :: lnfa
 
     public lens_Cls, lensing_includes_tensors, lensing_method, lensing_method_flat_corr,&
-        lensing_method_curv_corr,lensing_method_harmonic, BessI, bessj0, ALens_Fiducial
+        lensing_method_curv_corr,lensing_method_harmonic, BessI, bessj0, ALens_Fiducial, &
+        lensing_sanity_check_amplitude
     contains
 
 
@@ -92,8 +95,7 @@
 
     integer :: lmax_extrap
 
-    lmax_extrap = CP%Max_l - lensed_convolution_margin + 450
-    if (HighAccuracyDefault) lmax_extrap=lmax_extrap+300
+    lmax_extrap = CP%Max_l - lensed_convolution_margin + 750
     lmax_extrap = min(lmax_extrap_highl,lmax_extrap)
     call CorrFuncFullSkyImpl(max(lmax_extrap,CP%max_l))
 
@@ -157,14 +159,14 @@
 
     Cl_Lensed = 0
 
-    npoints = CP%Max_l  * 2 *AccuracyBoost
-    short_integral_range = .not. CP%AccurateBB
+    npoints = CP%Max_l  * 2 *CP%Accuracy%AccuracyBoost
+    short_integral_range = .not. CP%Accuracy%AccurateBB
     dtheta = const_pi / npoints
     if (CP%Max_l > 3500) dtheta=dtheta/1.3
     apodize_point_width = nint(0.003 / dtheta)
     npoints = int(const_pi/dtheta)
     if (short_integral_range) then
-        range_fac= max(1._dl,32/AccuracyBoost) !fraction of range to integrate
+        range_fac= max(1._dl,32/CP%Accuracy%AccuracyBoost) !fraction of range to integrate
         npoints = int(npoints /range_fac)
         !OK for TT, EE, TE but inaccurate for low l BB
         !this induces high frequency ringing on very small scales
@@ -175,7 +177,7 @@
 
     if (DebugMsgs) timeprev=GetTestTime()
 
-    interp_fac = max(1,min(nint(10/AccuracyBoost),int(range_fac*2)-1))
+    interp_fac = max(1,min(nint(10/CP%Accuracy%AccuracyBoost),int(range_fac*2)-1))
 
     jmax = 0
     do l=lmin,lmax
@@ -213,7 +215,7 @@
             CEE(l) =  Cl_scalar(l,in,C_E)*fac
             CTE(l) =  Cl_scalar(l,in,C_Cross)*fac
         end do
-        if (Cphil3(10) > 1e-7) then
+        if (Cphil3(10) > lensing_sanity_check_amplitude) then
             write (*,*) 'You need to normalize realistically to use lensing.'
             write (*,*) 'see http://cosmocoffee.info/viewtopic.php?t=94'
             stop
@@ -550,11 +552,11 @@
     Cl_Lensed = 0
 
     npoints = CP%Max_l  * 2
-    if (CP%AccurateBB) npoints = npoints * 2
+    if (CP%Accuracy%AccurateBB) npoints = npoints * 2
 
     dtheta = const_pi / npoints
-    if (.not. CP%AccurateBB) then
-        npoints = int(npoints /32 *min(32._dl,AccuracyBoost))
+    if (.not. CP%Accuracy%AccurateBB) then
+        npoints = int(npoints /32 *min(32._dl,CP%Accuracy%AccuracyBoost))
         !OK for TT, EE, TE but inaccurate for low l BB
         !this induces high frequency ringing on very small scales
     end if
@@ -720,7 +722,7 @@
 
     if (DebugMsgs) timeprev=GetTestTime()
 
-    DoPol = CP%AccuratePolarization
+    DoPol = CP%Accuracy%AccuratePolarization
 
     maxl = CP%Max_l
 
@@ -775,7 +777,7 @@
 
     max_j_contribs = lSamp%l0-1
     if (.not. DoPol) then
-        maxl_phi = min(maxl,nint(max(600,(maxl*2)/5)*scale*AccuracyBoost))
+        maxl_phi = min(maxl,nint(max(600,(maxl*2)/5)*scale*CP%Accuracy%AccuracyBoost))
         do while (lSamp%l(max_j_contribs) > maxl_phi)
             max_j_contribs=max_j_contribs-1
         end do

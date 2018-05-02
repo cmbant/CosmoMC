@@ -1,18 +1,17 @@
 
     module DarkEnergyFluid
     use DarkEnergyInterface
+    use constants
     implicit none
 
     type, extends(TDarkEnergyBase) :: TDarkEnergyFluid
-        !comoving sound speed. Always exactly 1 for quintessence
+        !comoving sound speed is always exactly 1 for quintessence
         !(otherwise assumed constant, though this is almost certainly unrealistic)
     contains
     procedure :: ReadParams => TDarkEnergyFluid_ReadParams
     procedure :: Init =>TDarkEnergyFluid_Init
-    procedure :: BackgroundDensityAndPressure => TDarkEnergyFluid_BackgroundDensityAndPressure
-    procedure :: AddStressEnergy => TDarkEnergyFluid_AddStressEnergy
+    procedure :: PerturbedStressEnergy => TDarkEnergyFluid_PerturbedStressEnergy
     procedure :: PerturbationEvolve => TDarkEnergyFluid_PerturbationEvolve
-    final :: TDarkEnergyFluid_Finalize
     end type TDarkEnergyFluid
 
     contains
@@ -23,10 +22,9 @@
     class(TDarkEnergyFluid), intent(inout) :: this
     type(TIniFile), intent(in) :: Ini
 
-    this%w_lam = Ini%Read_Double('w', -1.d0)
+    call this%TDarkEnergyBase%ReadParams(Ini)
     this%cs2_lam = Ini%Read_Double('cs2_lam', 1.d0)
 
-    call this%Init()
     end subroutine TDarkEnergyFluid_ReadParams
 
 
@@ -34,76 +32,70 @@
     use ModelParams
     class(TDarkEnergyFluid), intent(inout) :: this
 
-    ! is_cosmological_constant = this%w_lam == -1.dl
-    ! to prevent issues with fp comparision:
-    this%is_cosmological_constant = abs(this%w_lam + 1._dl) < 1.e-6_dl
+    call this%TDarkEnergyBase%Init()
 
-    ! Set in both cases to be on the safe side.
     if (this%is_cosmological_constant) then
         this%num_perturb_equations = 0
     else
+        if (this%use_tabulated_w) then
+            if (any(this%equation_of_state%F<-1)) &
+                error stop 'Fluid dark energy model does not allow w crossing -1'
+        elseif (this%wa/=0 .and. &
+            ((1+this%w_lam < -1.e-6_dl) .or. 1+this%w_lam + this%wa < -1.e-6_dl)) then
+        error stop 'Fluid dark energy model does not allow w crossing -1'
+        end if
         this%num_perturb_equations = 2
     end if
 
     end subroutine TDarkEnergyFluid_Init
 
 
-    subroutine TDarkEnergyFluid_BackgroundDensityAndPressure(this, a, grhov_t, w)
-    use ModelParams
+    subroutine TDarkEnergyFluid_PerturbedStressEnergy(this, dgrhoe, dgqe, &
+        dgq, dgrho, grho, grhov_t, w, gpres_noDE, etak, adotoa, k, kf1, ay, ayprime, w_ix)
     class(TDarkEnergyFluid), intent(inout) :: this
-    real(dl), intent(in) :: a
-    real(dl), intent(out) :: grhov_t
-    real(dl), intent(out), optional :: w
-
-
-    if (this%is_cosmological_constant) then
-        grhov_t = grhov * a * a
-    else
-        grhov_t = grhov * a ** (-1 - 3 * this%w_lam)
-    end if
-    if (present(w)) w = this%w_lam
-
-    end subroutine TDarkEnergyFluid_BackgroundDensityAndPressure
-
-    subroutine TDarkEnergyFluid_AddStressEnergy(this, dgrho, dgq, &
-        grhov_t, y, w_ix, output)
-    use ModelParams
-    class(TDarkEnergyFluid), intent(inout) :: this
-    real(dl), intent(inout) :: dgrho, dgq
-    real(dl), intent(in) :: grhov_t, y(:)
+    real(dl), intent(out) :: dgrhoe, dgqe
+    real(dl), intent(in) ::  dgq, dgrho, grho, grhov_t, w, gpres_noDE, etak, adotoa, k, kf1
+    real(dl), intent(in) :: ay(*)
+    real(dl), intent(inout) :: ayprime(*)
     integer, intent(in) :: w_ix
-    logical, intent(in) :: output
 
-    dgrho = dgrho + y(w_ix) * grhov_t
-    dgq = dgq + y(w_ix + 1) * grhov_t * (1 + this%w_lam)
+    dgrhoe = ay(w_ix) * grhov_t
+    dgqe = ay(w_ix + 1) * grhov_t * (1 + w)
 
-    end subroutine TDarkEnergyFluid_AddStressEnergy
+    end subroutine TDarkEnergyFluid_PerturbedStressEnergy
 
 
-    subroutine TDarkEnergyFluid_PerturbationEvolve(this, ayprime, w_ix, &
-        adotoa, k, z, y)
+    subroutine TDarkEnergyFluid_PerturbationEvolve(this, ayprime, w, w_ix, &
+        a, adotoa, k, z, y)
     use ModelParams
     class(TDarkEnergyFluid), intent(in) :: this
     real(dl), intent(inout) :: ayprime(:)
-    real(dl), intent(in) :: adotoa, k, z, y(:)
+    real(dl), intent(in) :: a, adotoa, w, k, z, y(:)
     integer, intent(in) :: w_ix
+    real(dl) Hv3_over_k, loga
 
-    if (.not. this%is_cosmological_constant) then
-        ayprime(w_ix) = -3 * adotoa * (this%cs2_lam - this%w_lam) * &
-            (y(w_ix) + 3 * adotoa * (1 + this%w_lam) * y(w_ix + 1) / k) - &
-            (1 + this%w_lam) * k * y(w_ix + 1) - (1 + this%w_lam) * k * z
-
+    Hv3_over_k =  3*adotoa* y(w_ix + 1) / k
+    !density perturbation
+    ayprime(w_ix) = -3 * adotoa * (this%cs2_lam - w) *  (y(w_ix) + (1 + w) * Hv3_over_k) &
+        -  (1 + w) * k * y(w_ix + 1) - (1 + w) * k * z
+    if (this%use_tabulated_w) then
+        !account for derivatives of w
+        loga = log(a)
+        if (loga > this%equation_of_state%Xmin_interp .and. loga < this%equation_of_state%Xmax_interp) then
+            ayprime(w_ix) = ayprime(w_ix) - adotoa*this%equation_of_state%Derivative(loga)* Hv3_over_k
+        end if
+    elseif (this%wa/=0) then
+        ayprime(w_ix) = ayprime(w_ix) + Hv3_over_k*this%wa*adotoa*a
+    end if
+    !velocity
+    if (abs(w+1) > 1e-6) then
         ayprime(w_ix + 1) = -adotoa * (1 - 3 * this%cs2_lam) * y(w_ix + 1) + &
-            k * this%cs2_lam * y(w_ix) / (1 + this%w_lam)
+            k * this%cs2_lam * y(w_ix) / (1 + w)
+    else
+        ayprime(w_ix + 1) = 0
     end if
 
     end subroutine TDarkEnergyFluid_PerturbationEvolve
 
-
-
-    subroutine TDarkEnergyFluid_Finalize(this)
-    type(TDarkEnergyFluid), intent(inout) :: this
-
-    end subroutine TDarkEnergyFluid_Finalize
 
     end module DarkEnergyFluid
