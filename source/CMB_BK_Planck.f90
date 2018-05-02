@@ -139,7 +139,6 @@
 
     ! Calculate dust scaling.
     fdust = (gb_int / gb0) * gb_err / bandpass%th_dust
-    !print *, bandpass%nu_bar, fdust
 
     end subroutine DustScaling
 
@@ -174,7 +173,6 @@
 
     ! Calculate sync scaling.
     fsync = (pl_int / pl0) * pl_err / bandpass%th_sync
-    !print *, bandpass%nu_bar, fsync
 
     end subroutine SyncScaling
 
@@ -274,39 +272,41 @@
         dustsyncpow(l) = dustsync_corr * sqrt(Adust * Async) * (l / lpivot) ** ((alphadust + alphasync) / 2)
     end do
     
+    ! Loop over all auto and cross spectra
     do i=1, this%nmaps_required
         do j=1, i
             CL=> Cls(i,j)
 
-            ! Calculate correlation factors for dust and sync.
-            ! If map_i and map_j have the same observing frequency, these factors will be one.
-            call this%Decorrelation(R_dust,this%Bandpasses(i)%nu_bar*bandcenter_err(i),&
-                this%Bandpasses(j)%nu_bar*bandcenter_err(j),this%fpivot_dust_decorr, l, &
-                this%lform_dust_decorr, corr_dust)
-            call this%Decorrelation(R_sync,this%Bandpasses(i)%nu_bar*bandcenter_err(i),&
-                this%Bandpasses(j)%nu_bar*bandcenter_err(j), &
-                this%fpivot_sync_decorr, l, &
-                this%lform_sync_decorr, corr_sync)
-          
-            ! Calculate dust/sync/corr scaling for this spectrum.
-            ! NOTE: Decorrelation is not implemented for the dust/sync correlated component.
-            !       In BK15, we never turned on correlation and decorrelation parameters
-            !       simultaneously.
-            dust = fdust(i)*fdust(j)*corr_dust
-            sync = fsync(i)*fsync(j)*corr_sync
-            dustsync = fdust(i)*fsync(j) + fsync(i)*fdust(j)
-            if (CL%theory_i==2 .and. CL%theory_j==2) then
-                ! EE spectrum: multiply foregrounds by EE/BB ratio
-                dust = dust * EEtoBB_dust
-                sync = sync * EEtoBB_sync
-                dustsync = dustsync * sqrt(EEtoBB_dust*EEtoBB_sync)
-            end if
-
+            ! Only add foregrounds to EE or BB.
             if ((CL%theory_i==2 .and. CL%theory_j==2) .or. (CL%theory_i==3 .and. CL%theory_j==3)) then
-                ! Only add foregrounds to EE or BB.
+
+                ! Calculate dust/sync/corr scaling for this spectrum.
+                dust = fdust(i)*fdust(j)
+                sync = fsync(i)*fsync(j)
+                dustsync = fdust(i)*fsync(j) + fsync(i)*fdust(j)
+                if (CL%theory_i==2 .and. CL%theory_j==2) then
+                    ! EE spectrum: multiply foregrounds by EE/BB ratio
+                    dust = dust * EEtoBB_dust
+                    sync = sync * EEtoBB_sync
+                    dustsync = dustsync * sqrt(EEtoBB_dust*EEtoBB_sync)
+                end if
+
                 do l=this%pcl_lmin,this%pcl_lmax
+                    ! Calculate correlation factors for dust and sync.
+                    ! If map_i and map_j have the same observing frequency, these factors will be one.
+                    call this%Decorrelation(R_dust,this%Bandpasses(i)%nu_bar*bandcenter_err(i),&
+                        this%Bandpasses(j)%nu_bar*bandcenter_err(j),this%fpivot_dust_decorr, l, &
+                        this%lform_dust_decorr, corr_dust)
+                    call this%Decorrelation(R_sync,this%Bandpasses(i)%nu_bar*bandcenter_err(i),&
+                        this%Bandpasses(j)%nu_bar*bandcenter_err(j),this%fpivot_sync_decorr, l, &
+                        this%lform_sync_decorr, corr_sync)
+          
                     ! Add foreground model to theory spectrum.
-                    CL%CL(l) = CL%CL(l) + dust * dustpow(l) + sync * syncpow(l) + dustsync * dustsyncpow(l)
+                    ! NOTE: Decorrelation is not implemented for the dust/sync correlated component.
+                    !       In BK15, we never turned on correlation and decorrelation parameters
+                    !       simultaneously.
+                    CL%CL(l) = CL%CL(l) + dust * dustpow(l) * corr_dust + &
+                        sync * syncpow(l) * corr_sync + dustsync * dustsyncpow(l)
                 end do
             end if
         end do
