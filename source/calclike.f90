@@ -126,8 +126,6 @@
         associate(Comb => BaseParams%LinearCombinations(i))
             if (Comb%std/=0) then
                 logLike = logLike + ((dot_product(Comb%Combination,P) -Comb%mean)/Comb%std)**2
-                print *, 'like ', ((dot_product(Comb%Combination,P)-Comb%mean)/Comb%std)**2
-                print *, 'P ', P 
             end if
         end associate
     end do
