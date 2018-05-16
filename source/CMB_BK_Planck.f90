@@ -234,6 +234,7 @@
     real(mcp) dustpow(this%pcl_lmin:this%pcl_lmax)
     real(mcp) syncpow(this%pcl_lmin:this%pcl_lmax)
     real(mcp) dustsyncpow(this%pcl_lmin:this%pcl_lmax)
+    logical :: need_sync_decorr, need_dust_decorr
 
     Adust = DataParams(1)
     Async = DataParams(2)
@@ -271,6 +272,10 @@
         syncpow(l) = Async * (l / lpivot) ** alphasync
         dustsyncpow(l) = dustsync_corr * sqrt(Adust * Async) * (l / lpivot) ** ((alphadust + alphasync) / 2)
     end do
+
+    ! Only calculate foreground decorrelation if necessary.
+    need_sync_decorr = abs(R_sync-1) > 1d-5
+    need_dust_decorr = abs(R_dust-1) > 1d-5
     
     ! Loop over all auto and cross spectra
     do i=1, this%nmaps_required
@@ -293,13 +298,22 @@
 
                 do l=this%pcl_lmin,this%pcl_lmax
                     ! Calculate correlation factors for dust and sync.
-                    ! If map_i and map_j have the same observing frequency, these factors will be one.
-                    call this%Decorrelation(R_dust,this%Bandpasses(i)%nu_bar*bandcenter_err(i),&
-                        this%Bandpasses(j)%nu_bar*bandcenter_err(j),this%fpivot_dust_decorr, l, &
-                        this%lform_dust_decorr, corr_dust)
-                    call this%Decorrelation(R_sync,this%Bandpasses(i)%nu_bar*bandcenter_err(i),&
-                        this%Bandpasses(j)%nu_bar*bandcenter_err(j),this%fpivot_sync_decorr, l, &
-                        this%lform_sync_decorr, corr_sync)
+                    if ((need_dust_decorr) .and. (i /= j)) then
+                        call this%Decorrelation(R_dust,this%Bandpasses(i)%nu_bar*bandcenter_err(i),&
+                            this%Bandpasses(j)%nu_bar*bandcenter_err(j),this%fpivot_dust_decorr, l, &
+                            this%lform_dust_decorr, corr_dust)
+                    else 
+                        ! No dust decorrelation for auto-spectra.
+                        corr_dust = 1.0_mcp
+                    end if
+                    if ((need_sync_decorr) .and. (i /= j)) then
+                        call this%Decorrelation(R_sync,this%Bandpasses(i)%nu_bar*bandcenter_err(i),&
+                            this%Bandpasses(j)%nu_bar*bandcenter_err(j),this%fpivot_sync_decorr, l, &
+                            this%lform_sync_decorr, corr_sync)
+                    else
+                        ! No sync decorrelation for auto-spectra.
+                        corr_sync = 1.0_mcp
+                    end if
           
                     ! Add foreground model to theory spectrum.
                     ! NOTE: Decorrelation is not implemented for the dust/sync correlated component.
