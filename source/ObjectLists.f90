@@ -774,6 +774,8 @@
     select type (Arr=> C)
     Type is (real(list_prec))
         P = Arr
+        class default
+        call this%Error('TRealArrayList_Value: object of wrong type (eg. ifort 2017.0.4 bug)')
     end select
 
     end function TRealArrayList_Value

@@ -147,17 +147,21 @@
     character(LEN=*), parameter :: fmt = '(1I6,*(E15.5))'
     integer i, j, n, ix
     character(LEN=:), allocatable :: fields
+    character F1, F2
 
     n = count(CosmoSettings%cl_lmax>0)
     allocate(cl(CosmoSettings%lmax,n), source=0._mcp)
     ix=0
     fields = '#    L    '
     do i = 1, size(this%Cls,2)
+        F2 = CMB_CL_Fields(i:i)
         do j=1,i
             if (CosmoSettings%cl_lmax(i,j)>0) then
                 ix=ix+1
                 call this%ClArray(cl(:,ix),i,j)
-                fields = fields // CMB_CL_Fields(j:j)//CMB_CL_Fields(i:i)//'             '
+                !workaround for gcc 7.3+ bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=85641
+                F1=CMB_CL_Fields(j:j)
+                fields = fields // F1 // F2 //'             '
             end if
         end do
     end do
