@@ -26,7 +26,7 @@ if batch:
         jobqueue.deleteJobs(args.batchPath, args.delete_ids, confirm=args.confirm)
     else:
         items = [jobItem for jobItem in Opts.filteredBatchItems()]
-        batchNames = set([jobItem.name for jobItem in items])
+        batchNames = set([jobItem.name for jobItem in items] + [jobItem.name + '_minimize' for jobItem in items])
         jobqueue.deleteJobs(args.batchPath, rootNames=batchNames, confirm=args.confirm)
 
     if not args.confirm: print('jobs not actually deleted: add --confirm to really cancel them')
