@@ -43,7 +43,7 @@
         integer :: lmin_store_all_cmb = 0 !>0 if you want output everything even if not used
 
         !redshifts for output of BAO background parameters
-        real(mcp) :: z_outputs(1) = [0.57_mcp]
+        real(mcp) :: z_outputs(5) = [0.15_mcp, 0.38_mcp, 0.51_mcp, 0.61_mcp, 2.33_mcp]
 
         logical :: CMB_lensing = .true.
         logical :: use_lensing_potential = .false.
@@ -77,6 +77,7 @@
         integer, allocatable :: ArraySizes(:)
         !e.g. lmax_cl(1,1) is lmax for TT; zero if CL is not used; order is T, E, B, Phi
         real(mcp), dimension(:), allocatable :: power_redshifts
+        real(mcp) :: extrap_kmax = 700._mcp !Allow extrapolation to this kmax/h in P(k)
     contains
     procedure, private :: Initialize_PKSettings
     procedure, private :: Initialize_CMBSettings
@@ -107,7 +108,7 @@
 
     Type, extends(TTheoryParams) :: CMBParams
         real(mcp) InitPower(max_inipower_params)
-        !These are fast paramters for the initial power spectrum
+        !These are fast parameters for the initial power spectrum
         !Now remaining (non-independent) parameters
         real(mcp) omb, omc, omv, omnu, omk, omdm
         real(mcp) ombh2, omch2, omnuh2, omdmh2
@@ -188,6 +189,7 @@
     this%neutrino_hierarchy = Ini%Read_Enumeration('neutrino_hierarchy',neutrino_types, neutrino_hierarchy_normal)
     if (this%neutrino_hierarchy == neutrino_hierarchy_degenerate) then
         call Ini%Read('num_massive_neutrinos',this%num_massive_neutrinos)
+        if (this%num_massive_neutrinos <1) call MpiStop('num_massive_neutrinos must be set set')
     else if (Ini%Read_Int('num_massive_neutrinos',0)>0) then
         write(*,*) 'NOTE: num_massive_neutrinos ignored, using specified hierarchy'
     end if

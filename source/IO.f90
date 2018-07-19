@@ -40,7 +40,7 @@
     if (F%ReadLineSkipEmptyAndComments(InLine, comment=comment) .and. comment/='') then
         !Have paramnames to identify
         num=-1
-        call NameMapping%ReadIndices(comment, cov_params, num, unknown_value=0)
+        call NameMapping%ReadIndices(comment, cov_params, num, unknown_value=0, no_derived=.true.)
         allocate(tmpMat(num,num))
         pmat=0
         y=0
@@ -92,7 +92,7 @@
 
     end subroutine IO_OutputChainRow
 
-    function IO_ReadChainRow(F, mult, like, values, params_used, chainOK, samples_chains) result(OK)
+    function IO_ReadChainRow(F, mult, like, values, params_used, chainOK, samples_chains, input_indices) result(OK)
     !Returns OK=false if end of file or if not enough values on each line, otherwise OK = true
     !Returns chainOK = false if bad line or NaN, chainOK=false and OK=true for NaN (continue reading)
     logical OK
@@ -101,9 +101,10 @@
     integer, intent(in) :: params_used(:)
     logical, optional, intent(out) :: ChainOK
     logical, optional, intent(in) :: samples_chains
+    integer, optional, intent(in) :: input_indices(:)
     logical samples_are_chains
     character(LEN=:), allocatable :: InLine
-    real(mcp) invals(size(params_used))
+    real(mcp), allocatable :: invals(:)
     integer status
 
     if (present(samples_chains)) then
@@ -111,6 +112,12 @@
     else
         samples_are_chains = .true.
     endif
+
+    if (present(input_indices)) then
+        allocate(invals(maxval(input_indices)))
+    else
+        allocate(invals(size(params_used)))
+    end if
 
     if (present(ChainOK)) chainOK = .true.
 
@@ -130,8 +137,13 @@
     end if
     OK = status==0
     if (present(ChainOK)) chainOK = OK
-    if (OK) values(params_used) =invals
-
+    if (OK) then
+        if (present(input_indices)) then
+            values(params_used) = invals(input_indices)
+        else
+            values(params_used) = invals
+        end if
+    end if
     end function IO_ReadChainRow
 
     subroutine IO_ReadLastChainParams(name, mult, like, values, params_used)

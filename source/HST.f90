@@ -12,6 +12,7 @@
         !for the fiducial cosmology (omega_k = 0, omega_lambda = 0.7, w = -1)
         !likelihood is in terms of inverse of the angular diameter distance, so includes the tiny cosmological
         !dependence of the measurement (primarily on w) correctly.
+        !Note used if zeff=0
         real(mcp) :: zeff = 0.04d0
         real(mcp) :: H0, H0_err
     contains
@@ -34,8 +35,10 @@
         this%H0 = Ini%Read_Double('Hubble_H0')
         this%H0_err = Ini%Read_Double('Hubble_H0_err')
         call Ini%Read('Hubble_zeff',this%zeff)
-        call Ini%Read('Hubble_angconversion',this%angconversion)
-        this%needs_background_functions = .true.
+        if (this%zeff>0) then
+            call Ini%Read('Hubble_angconversion',this%angconversion)
+            this%needs_background_functions = .true.
+        end if
         call LikeList%Add(this)
     end if
 
@@ -46,7 +49,11 @@
     Class(CMBParams) CMB
     real(mcp) :: theoryval
 
-    theoryval = this%angconversion/this%Calculator%AngularDiameterDistance(this%zeff)
+    if (this%zeff>0) then
+        theoryval = this%angconversion/this%Calculator%AngularDiameterDistance(this%zeff)
+    else
+        theoryval = CMB%H0
+    end if
     HST_LnLike = (theoryval - this%H0)**2/(2*this%H0_err**2)
 
     end function  HST_LnLike

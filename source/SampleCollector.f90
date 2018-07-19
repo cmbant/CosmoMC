@@ -240,7 +240,7 @@
     do i = this%Samples%Count/2, this%Samples%Count
         delta = this%Samples%Item(i)-MPIMean(1:num_params_used)
         do j = 1, num_params_used
-            MPICovmat(:,j) =  MPICovmat(:,j) + delta*(this%Samples%Item(i,j)- MPIMean(j))
+            MPICovmat(:,j) =  MPICovmat(:,j) + delta*delta(j)
         end do
     end do
     MPICovMat = MPICovMat / MPImean(0)
@@ -358,9 +358,14 @@
                 allocate(this%param_changes(num_params_used))
                 this%param_changes= 0
             end if
-            do i=1, num_params_used
-                if (this%Samples%Value(this%Samples%Count, i) /= this%Samples%Value(this%Samples%Count-1, i)) this%param_changes(i) =  this%param_changes(i) + 1
-            end do
+!            do i=1, num_params_used
+!                if (this%Samples%Value(this%Samples%Count, i) /= this%Samples%Value(this%Samples%Count-1, i)) this%param_changes(i) =  this%param_changes(i) + 1
+!            end do
+! above code stopped working on new Cam system, seems like value(i,j) no longer works because of compiler bug in select type??
+            where (this%Samples%Item(this%Samples%Count) /= this%Samples%Item(this%Samples%Count-1))
+                  this%param_changes = this%param_changes + 1
+            end where
+
             this%Burn_done = all(this%param_changes > 50 +1)
             if (this%Burn_done) then
                 if (Feedback > 0) then

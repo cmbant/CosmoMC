@@ -135,10 +135,12 @@
     procedure, nopass :: WriteTextVector
     procedure, nopass :: LoadTxt_1D
     procedure, nopass :: LoadTxt_2D
+    procedure, nopass :: LoadTxt_int_1D
+    procedure, nopass :: LoadTxt_int_2D
     procedure, nopass :: OpenTextFile
     procedure, nopass :: CreateTextFile
     procedure, nopass :: CharIsSlash
-    generic  :: LoadTxt => LoadTxt_2D, LoadTxt_1D
+    generic  :: LoadTxt => LoadTxt_2D, LoadTxt_1D, LoadTxt_int_1D, LoadTxt_int_2D
     generic  :: SaveTxt => WriteTextMatrix, WriteTextVector
     end type
 
@@ -1482,6 +1484,57 @@
     if (present(n)) n = nn
 
     end subroutine LoadTxt_1D
+    
+    
+    subroutine LoadTxt_int_2D(aname, mat, m, n, comment)
+    character(LEN=*), intent(IN) :: aname
+    integer, allocatable :: mat(:,:)
+    integer mm, nn, j
+    Type(TTextFile) :: F
+    character(LEN=:), allocatable :: InLine
+    integer, optional, intent(out) :: m, n
+    character(LEN=:), allocatable, optional, intent(out) :: comment
+    integer status
+
+    call F%Open(aname)
+    nn = F%Columns()
+    mm = F%Lines()
+    allocate(mat(mm,nn))
+    j=1
+    do while (F%ReadLineSkipEmptyAndComments(InLine, comment = comment))
+        read (InLine,*, iostat=status) mat(j,1:nn)
+        if (status/=0) call F%Error( 'LoadTxt: error reading line:' //trim(InLine))
+        j = j+1
+    end do
+    call F%Close()
+    if (present(m)) m = mm
+    if (present(n)) n = nn
+
+    end subroutine LoadTxt_int_2D
+
+    subroutine LoadTxt_int_1D(aname, vec, n, comment)
+    character(LEN=*), intent(IN) :: aname
+    integer, allocatable :: vec(:)
+    integer nn, j
+    Type(TTextFile) :: F
+    character(LEN=:), allocatable :: InLine
+    integer, optional, intent(out) :: n
+    character(LEN=:), allocatable, optional, intent(out) :: comment
+    integer status
+
+    call F%Open(aname)
+    nn = F%Lines()
+    allocate(vec(nn))
+    j=1
+    do while (F%ReadLineSkipEmptyAndComments(InLine, comment = comment))
+        read (InLine,*, iostat=status) vec(j)
+        if (status/=0) call F%Error( 'LoadTxt: error reading line:' //trim(InLine))
+        j = j+1
+    end do
+    call F%Close()
+    if (present(n)) n = nn
+
+    end subroutine LoadTxt_int_1D
 
     function CreateTextFile(fname)
     character(LEN=*), intent(in) :: fname
