@@ -8,7 +8,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>November 2016</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>July 2017</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -375,10 +375,10 @@ If only one end is fixed you can use N the floating end, e.g. "limitsxx = 0 N" f
 <BLOCKQUOTE>
 <Font color=#FF0000>Example:</font> Since often people get this wrong with new parameters, here is an illustration of what happens when generating plots from a tensor run set of chains (with prior r>0):<P>
 <table border=0 Cellpadding=20><TR><TD>
-<IMG SRC="https://cosmologist.info/cosmomc/pics/r_wrong.png"><BR>
-Incorrect result when no chain.ranges file and  <B>limits[r02]</B> is not set.</TD><TD> <IMG SRC="https://cosmologist.info/cosmomc/pics/r_correct.png"><BR>Correct result when setting <B>limits[r02]=0 N</B> (or using default .ranges file, which includes the equivalent prior information from paramnames/derived_tensors.derived_ranges).</TD></TR></table>
+<IMG SRC="http://cosmologist.info/cosmomc/pics/r_wrong.png"><BR>
+Incorrect result when no chain.ranges file and  <B>limits[r02]</B> is not set.</TD><TD> <IMG SRC="http://cosmologist.info/cosmomc/pics/r_correct.png"><BR>Correct result when setting <B>limits[r02]=0 N</B> (or using default .ranges file, which includes the equivalent prior information from paramnames/derived_tensors.derived_ranges).</TD></TR></table>
 <P>
-<LI>Various parameters determine how sample densities are computed (see the <A HREF="https://cosmologist.info/notes/GetDist.pdf">Kernel Density Estimation notes</A>).  The <B>smooth_scale_1D</b> and <B>smooth_scale_2D</B> parameters can be set to change the smoothing scale.
+<LI>Various parameters determine how sample densities are computed (see the <A HREF="http://cosmologist.info/notes/GetDist.pdf">Kernel Density Estimation notes</A>).  The <B>smooth_scale_1D</b> and <B>smooth_scale_2D</B> parameters can be set to change the smoothing scale.
 For smooth_scale_1D:
 <UL>
 <LI>if smooth_scale_1D &gt;= 1 smooth by smooth_scale_1D bin widths
@@ -447,7 +447,7 @@ If the numbers are much less than one then the second half of each chain probabl
 For MPI runs, in addition to specifying a stopping criterion as above, you can also give a convergence criterion for a confidence limit. In general it is much harder to get an accurate value for a small confidence value than for the mean, so imposing a tight limit may make your chains run for a very long time (though you can then be pretty confident in your confidence). The value computed is the variance of the chain percentiles from the last half of the different chains, in units of the standard deviation of each parameter. You can either specify a particular parameter to check, or do all of them. Any parameter with a slowly explored tail will only converge very slowly, in which case you may be able to improve things by generating chains at a higher temperature (so the tails are explored more readily; GetDist can adjust for the temperature automatically), or re-parameterizing.
 <BR><BR>
 <LI>The auto-correlation length gives a measure of how independent the samples are, with the total number of samples divided by the length giving an estimate of an effective number of independent samples.
-Two auto-correlation lengths are computed, in 'weight' units and 'sample' units. The latter is in units of the number of rows in the chain file, the former is the "weight mass' that determines the correlation length; for definitions see the <A HREF="https://cosmologist.info/notes/GetDist.pdf">GetDist notes</A>.
+Two auto-correlation lengths are computed, in 'weight' units and 'sample' units. The latter is in units of the number of rows in the chain file, the former is the "weight mass' that determines the correlation length; for definitions see the <A HREF="http://cosmologist.info/notes/GetDist.pdf">GetDist notes</A>.
 <BR><BR>
 <LI>
 For individual chains (before importance sampling) getdist computes the Raftery and Lewis convergence diagnostics. This uses a binary chain derived from each parameter depending on whether the parameter is above or below a given percentile of its distribution (specified by the <b>converge_test_limit</b> input parameter). The code works out how much the binary chain needs to be thinned to approximate a Markov process better than a second order process, and then uses analytical results for the convergence of binary Markov chains to assess the burn in period. It also assesses the thin factor needed for the binary chain to approximate an independence chain, which gives an idea of how much you need to thin the chain to obtain independent samples (i.e. how much you can get away with thinning it for importance sampling, though thinning isn't entirely lossless). The .converge file contains the numbers for each chain used, getdist writes out the worst case.  See this <A HREF="http://www.ee.duke.edu/~lcarin/raftery92how.pdf">reference</A> for details.<BR><BR>
@@ -542,9 +542,7 @@ of MCMC is quite dependent on the proposal. Fast+slow and fast parameter subspac
 Various extended data sets require some code modifications. After testing these may be included as part of the public program, but meanwhile can be
 installed manually or obtained from the cosmomc git repository (access available on request).
 <UL>
-<li><A HREF="https://github.com/sunnyvagnozzi/CosmoMC-patches/tree/master/Cosmic_clocks">Cosmic clocks</A></li>
 <LI><A HREF="http://ccpforge.cse.rl.ac.uk/gf/project/polychord">CosmoChord</a> (and PolyChord, Next Generation Nested Sampler)
-<LI><A HREF="https://github.com/sjoudaki/CosmoLSS">KiDS/2dFLenS</A>
 <LI><A HREF="http://isit.gr">Integrated Software in Testing General Relativity</a> (ISiTGR)
 <LI><A HREF="https://sites.google.com/site/adambmantz/work/fgas14/">fgas</A> (Relaxed Galaxy Clusters, available as <b>clusters_fgas</b> branch in git repository)
 </UL>
@@ -567,10 +565,41 @@ installed manually or obtained from the cosmomc git repository (access available
 -->
 <A NAME="Version"><h2  style ="color:darkred">Version History</h2></A>
 <UL>
-<LI><B>xxx 2018 (GitHub master)</B><BR>
+<LI><B>July 2017</B><BR>
 <UL>
-<li>Added <A href="https://arxiv.org/abs/1710.00845">Pantheon supernovae</a> (batch3/Pantheon.ini)
+<li>Added Planck 2018 lensing likelihoods (batch3/lensing.ini and batch3/lensonly.ini)</li>
+<li>Added Riess et al. SH0ES H_0 constraints in (in batch3/)</li>
+<li>New wl.f90 for galaxy lensing and cross-correlations (actual DES likelihood files not provided until published)</li>
+<li>batch3/ .ini files settings for Planck 2018 runs (excluding 2018 CMB likelihoods which are not released yet)</li>
+<li>Added element abundance likelihoods and new BBN interpolation grids for Parthenope and PRIMAT codes</li>
+<li>Added SPT-SZ 2500d TT (thanks Christian Reichardt)</li>
+<li>CMBlikes now supports aberration correction parameter (thanks Christian Reichardt)</li>
 <li>Added BAO consensus: batch3/DR12_BAO_consensus.ini and  batch3/DR12_FS_consensus.ini. BAO module updated to support DM measurements, measurement files without error columns, reading either covariance or inverse covariance, support for multiple specified zeff.
+<LI>Python grids now have <i>getdist_options</i> dictionary to specify grid-level getdist parameters (so now no batch3 equivalent of batch2/getdist_common.ini)
+<li>Parameter grids support python filters functions that act over all chains (e.g. to import z<sub>re</sub><6.5 prior)  and partial support for recursive importance sampling (only filtering)
+<li>Built-in support for power-law extrapolation of matter power P(k) beyond kmax to extrap_kmax (700h/Mpc by default)
+<li>added "astro" parameterization using flat prior in H0, omegam, omegab, logA
+<li>Fixed output of first sample when importance sampling with redo_skip
+<li>Importance sampled chains with redo_skip now produce .properties.ini to flag chain as burn-removed
+<li>CMBlikes optimizations and fixes. BKP nuisance parameters now used as fast parameters.
+<li>GetDist changes:
+  <ul>
+  <li>Improvements to triangle_plot for the upper triangle</li>
+  <li>get_axes_for_params() function for easier post-manipulation of axes</li>
+  <li>plots now support MixtureND instances for plotting Gaussian mixture models directly (or just GaussianND, Gaussian2D)
+<li>plots add_2D_covariance function to directly plot contours from given mean and covariance
+<li>add_2D_mixture_projection function to plot specific 2D marginalized contours for MixtureND Gaussian mixture
+<li>settings parameters: auto_ticks whether to use matplotlib 2 'auto' tick numbering (does not work well for grids of plots, default: False); <li> thin_long_subplot_ticks, whether to try to prevent x-axis label overlap when long numbers in tick labels (default: True)
+<li>samples getParamSampleDict() function to get dictionary of parameter values for given sample number
+<li>samples saveChainsAsText() function to re-save set of chain files (with ranges and names)
+<li>gaussian_mixtures classes now have paramNames, and getUpper/getLower functions for easier integration with plotting scripts; GaussianND convenience special-case class.
+<li>paramNames can now be instantiated with list of labels (rather than having to call separate function)
+<li>ParamBounds fixedValue and fixedValueDict functions to get fixed parameter values
+<li>alpha_scatter option to _3d plots, to plot all samples alphaed by their weights
+<li>Better support for reading nested-sampling chains: now ignores all samples with weight less than min_weight_ratio=1e-30 of the maximum weight
+<li>MCSamples.addDerived() function now supports specification of parameter range
+<li>Various misc fixes
+</ul>
 </UL>
 <LI><B>November 2016</B><BR>
 <UL>
@@ -732,7 +761,7 @@ Updated development environments available with <A HREF="http://cosmologist.info
 
 <LI><B>December 2013</B><BR>
 <UL>
-<LI>Updated BBN module, using interpolation table (from <A HREF="https://alterbbn.hepforge.org/">AlterBBN</A>) with updated neutron decay constant and converting from BBN to total mass conventions for Y<sub>P</sub>. Uses new Interpolation module with reusable 2D bicubic interpolation class. Changes in Y<sub>P</sub> are O(1%) and hence have only tiny effect on other parameters.
+<LI>Updated BBN module, using interpolation table (from <A HREF="http://superiso.in2p3.fr/relic/alterbbn/">AlterBBN</A>) with updated neutron decay constant and converting from BBN to total mass conventions for Y<sub>P</sub>. Uses new Interpolation module with reusable 2D bicubic interpolation class. Changes in Y<sub>P</sub> are O(1%) and hence have only tiny effect on other parameters.
 <LI>Fixed bugs when using LSS, including one giving wrong sigma8 (thanks Matteo Costanzi)
 <LI>CAMB updated to December 2013 version (minor changes)
 </UL>
@@ -929,7 +958,7 @@ as name lists (e.g. H0 omegam tau).
 <LI>Added <A HREF="http://arxiv.org/abs/0907.1659">SDSS LRG</A> dataset (thanks to Beth Reid; many changes to mpk.f90; to use must have EXTDATA = LRG in the Makefile)
 <LI>supernovae.f90 now replaced by default with <A HREF="http://arxiv.org/abs/0908.4274">SDSS</A> Supernovae compilation  (previous code now supernovae_Union.f90; thanks to Wessel Valkenburg); config in data/supernovae.dataset.
 <LI>Added simple <A HREF="http://arxiv.org/abs/0907.1660">baryon oscillation</a> option (thanks to Beth Reid)
-<LI>Added Quad pipeline 1 dataset (QUAD_pipeline1_2009.newdat). Support for QUAD-format .newdat files.
+<LI>Added <A HREF="http://find.uchicago.edu/quad/">Quad</A> pipeline 1 dataset (QUAD_pipeline1_2009.newdat). Support for QUAD-format .newdat files.
  <LI>Changed HST data to use the <A HREF="http://arxiv.org/abs/0905.0695">latest result</A> (HST.f90; thanks to Beth Reid).
  <LI>Added optional <b>data_dir</b> input parameter to use different directory than ./data; .newdat data files read window functions from relative path location.
  <LI>Updated CAMB to Feb 2009 version (fixed issue with lensed non-flat models) + change to halofit to include w/=-1 in the background (Beth Reid)
