@@ -1,0 +1,10 @@
+# arXiv:1710.11129
+measurement=D/H
+mean=2.527e-5
+error=0.030e-5
+
+theory_table = PArthENoPE_880.2_standard.dat
+#offset is added to the table value
+theory_bias_offset = 0
+#theory error added in quadrature to error
+theory_effective_error = 0.06e-5

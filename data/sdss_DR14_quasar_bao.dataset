@@ -1,0 +1,12 @@
+#DR14 quasar, https://arxiv.org/abs/1705.06373
+
+# Note alternative in http://arxiv.org/abs/1801.02656
+
+
+measurement_type = DV_over_rs
+
+zeff = 1.52
+
+bao_measurement = 26.086 1.150
+
+
