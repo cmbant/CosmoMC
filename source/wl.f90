@@ -1,7 +1,7 @@
     ! Module for galaxy weak lensing, galaxy-galaxy and galaxy auto
     ! e.g. for DES 1 YR
     !AL 2018, following exactly the same approximations as in the DES papers
-    !(only uses delta power spectrum, so cannot be used for modified gravity) 
+    !(can only use Weyl potential for lensing)
 
     module wl
     use settings
@@ -43,6 +43,7 @@
         real(mcp) :: ah_factor ! factor to rescale covariance
         integer :: intrinsic_alignment_model
         logical :: use_non_linear ! Whether to use non-linear corrections
+        logical :: use_weyl !Wether to get lensing directly from the Weyl potential
 
         real(mcp), private, allocatable :: data_vector(:) !derived based on cuts
         real(mcp), private, allocatable :: ls_bessel(:)
@@ -74,22 +75,25 @@
     Type(WLLikelihood), pointer :: this
     Type(TSettingIni) :: DataSets, OverrideSettings
     integer i
-    logical :: nonlinear
+    logical :: nonlinear, useweyl
 
     !Written generally, but currently only supports DES parameters
     if (Ini%Read_Logical('use_WL',.false.)) then
         nonlinear = Ini%Read_Logical('wl_use_non_linear',.true.)
+        useweyl = Ini%Read_Logical('wl_use_weyl',.false.)
         call Ini%TagValuesForName('wl_dataset', DataSets)
         do i= 1, DataSets%Count
             call Ini%SettingValuesForTagName('wl_dataset',DataSets%Name(i),OverrideSettings)
             allocate(this)
             this%needs_nonlinear_pk = nonlinear
             this%use_non_linear = nonlinear
+            this%use_weyl = useweyl
             call this%ReadDatasetFile(DataSets%Value(i),OverrideSettings)
             call Ini%Read(Ini%NamedKey('wl_dataset_speed',DataSets%Name(i)),this%speed)
             this%LikelihoodType = 'WL'
             this%tag = DataSets%Name(i)
             this%needs_powerspectra = .true.
+            this%needs_weylpower = useweyl
             call LikeList%Add(this)
         end do
         if (Feedback>1) write(*,*) 'read WL data sets'
@@ -132,7 +136,7 @@
 
     this%acc = Ini%Read_Double('acc',this%acc)
     this%lmax = Ini%Read_int('lmax',this%lmax)
-    
+
     call File%LoadTxt(Ini%ReadRelativeFilename('nz_file'), nz_source)
     this%num_z_p = size(nz_source(:,2)) + 2
     allocate(this%z_p(this%num_z_p))
@@ -190,6 +194,10 @@
     end if
     this%want_type = .false.
     this%want_type(this%used_measurement_types) = .true.
+
+    if (this%use_weyl .and. any(this%want_type(measurement_gammat:measurement_wtheta))) then
+        call MPIstop('currently wl_use_weyl option can only be used with weak lensing data')
+    end if
 
     call this%loadParamNames(Ini%ReadRelativeFileName('nuisance_params',NotFoundFail=.true.))
 
@@ -438,11 +446,18 @@
     lens_photoz_errors = DataParams(i+1:i+this%num_gal_bins)
     i = i + this%num_gal_bins
     source_photoz_errors = DataParams(i+1: this%num_z_bins)
-
     if (this%use_non_linear) then
-        PK => Theory%NL_MPK
+        if (this%use_weyl) then
+            PK => Theory%NL_MPK_WEYL
+        else
+            PK => Theory%NL_MPK
+        end if
     else
-        PK => Theory%MPK
+        if (this%use_weyl) then
+            PK => Theory%MPK_WEYL
+        else
+            PK => Theory%MPK
+        end if
     end if
 
     h = CMB%H0/100
@@ -504,7 +519,11 @@
         if (this%intrinsic_alignment_model == intrinsic_alignment_DES1YR) then
             qs(:,b) = qs(:,b) - Alignment_z * n_chi(:,b) / (chis * (1 + this%z_p) * 3 * h**2 * (1e5 / const_c) ** 2 / 2)
         end if
-        qs(:,b) = qs(:,b) *3 * omm * h**2 * (1e5 / const_c) ** 2 * chis * (1 + this%z_p) / 2
+        if (this%use_weyl) then
+            qs(:,b) = qs(:,b) * chis
+        else
+            qs(:,b) = qs(:,b) * (3/2._mcp * omm * h**2 * (1e5 / const_c) ** 2) * chis * (1 + this%z_p)
+        end if
     end do
     !$OMP END PARALLEL DO
 
@@ -521,7 +540,8 @@
     cl_w=0
     cl_cross=0
 
-    fac = dchis/chis** 2/h**3
+    fac = dchis/chis**2
+    if (.not. this%use_weyl) fac = fac / h**3
     !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(j,kh, type_ix, tp, f1, f2, cltmp, ix, kharr, zarr, powers, tmp)
     do i=1, size(this%ls_cl)
         ix =0
