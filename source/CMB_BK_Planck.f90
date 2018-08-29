@@ -115,7 +115,8 @@
     real(mcp), intent(out) :: fdust
     real(mcp) :: gb_int  ! Integrate greybody scaling.
     real(mcp) :: gb0     ! Greybody scaling at pivot.
-    real(mcp) :: gb_err  ! Greybody error due to bandcenter error.
+    real(mcp) :: th_err  ! Conversion factor error due to bandcenter error.
+    real(mcp) :: gb_err  ! Greybody scaling error due to bandcenter error.
 
     ! Integrate greybody scaling and thermodynamic temperature conversion
     ! across experimental bandpass.
@@ -127,18 +128,20 @@
 
     ! Add correction for band center error
     if (bandcenter_err /= 1.) then
-        gb_err= (bandcenter_err)**(beta-1) &
-                *(exp(Ghz_Kelvin*bandpass%nu_bar*bandcenter_err/T_CMB)-1)**2 &
-                *(exp(Ghz_Kelvin*bandpass%nu_bar /Tdust)-1) &
-                /(exp(Ghz_Kelvin*bandpass%nu_bar *(bandcenter_err-1)/T_CMB) &
-                *(exp(Ghz_Kelvin*bandpass%nu_bar*bandcenter_err/Tdust)-1) &
-                *(exp(Ghz_Kelvin*bandpass%nu_bar/T_CMB)- 1)**2)
+        th_err = (bandcenter_err)**4 * &
+                 exp(Ghz_Kelvin * bandpass%nu_bar * (bandcenter_err - 1) / T_CMB) * &
+                 (exp(Ghz_Kelvin * bandpass%nu_bar / T_CMB) - 1)**2 / &
+                 (exp(Ghz_Kelvin * bandpass%nu_bar * bandcenter_err / T_CMB) - 1)**2
+        gb_err = (bandcenter_err)**(3+beta) * &
+                 (exp(Ghz_Kelvin * bandpass%nu_bar / Tdust) - 1) / &
+                 (exp(Ghz_Kelvin * bandpass%nu_bar * bandcenter_err / Tdust) - 1)
     else
-        gb_err=1.
+        th_err = 1.0_mcp
+        gb_err = 1.0_mcp
     end if
 
     ! Calculate dust scaling.
-    fdust = (gb_int / gb0) * gb_err / bandpass%th_dust
+    fdust = (gb_int / gb0) / bandpass%th_dust * (gb_err / th_err)
 
     end subroutine DustScaling
 
@@ -152,7 +155,8 @@
     real(mcp), intent(out) :: fsync
     real(mcp) :: pl_int  ! Integrate power-law scaling.
     real(mcp) :: pl0     ! Power-law scaling at pivot.
-    real(mcp) :: pl_err     ! Power-law error due to bandcenter error.
+    real(mcp) :: th_err  ! Conversion factor error due to bandcenter error.
+    real(mcp) :: pl_err  ! Power-law scaling error due to bandcenter error.
 
     ! Integrate power-law scaling and thermodynamic temperature conversion
     ! across experimental bandpass.
@@ -163,28 +167,30 @@
 
     ! Add correction for band center error
     if (bandcenter_err /= 1.) then
-        pl_err= (bandcenter_err)**(beta-2) &
-               *(exp(Ghz_Kelvin*bandpass%nu_bar*bandcenter_err/T_CMB) - 1)**2 &
-               / (exp(Ghz_Kelvin*bandpass%nu_bar*(bandcenter_err-1)/T_CMB) &
-               *(exp(Ghz_Kelvin*bandpass%nu_bar/T_CMB) - 1)**2)
+        th_err = (bandcenter_err)**4 * &
+                 exp(Ghz_Kelvin * bandpass%nu_bar * (bandcenter_err - 1) / T_CMB) * &
+                 (exp(Ghz_Kelvin * bandpass%nu_bar / T_CMB) - 1)**2 / &
+                 (exp(Ghz_Kelvin * bandpass%nu_bar * bandcenter_err / T_CMB) - 1)**2
+        pl_err = (bandcenter_err)**(2+beta)
     else
-        pl_err=1.
+        th_err = 1.0_mcp
+        pl_err = 1.0_mcp
     end if
 
     ! Calculate sync scaling.
-    fsync = (pl_int / pl0) * pl_err / bandpass%th_sync
+    fsync = (pl_int / pl0) / bandpass%th_sync * (pl_err / th_err)
 
     end subroutine SyncScaling
 
     ! Calculate factor by which foreground (dust or sync) power is decreased
     ! for a cross-spectrum between two different frequencies.
-    subroutine Decorrelation(this, cval, nu0, nu1, nupivot, l, lform, fcorr)
+    subroutine Decorrelation(this, Delta, nu0, nu1, nupivot, l, lform, Deltap)
     class(TBK_planck) :: this
-    real(mcp), intent(in) :: cval, nu0, nu1
+    real(mcp), intent(in) :: Delta, nu0, nu1
     real(mcp), intent(in) :: nupivot(:)
     integer l
     character(len=*), intent(in) :: lform
-    real(mcp), intent(out) :: fcorr
+    real(mcp), intent(out) :: Deltap
     real(mcp) :: lpivot = 80.0_mcp
     real(mcp) :: scl_nu, scl_ell
    
@@ -208,10 +214,14 @@
     ! remap the correlation coefficient on to the range [0,1]. 
     ! We symmetrically extend this function to (non-physical) correlation coefficients
     ! greater than 1 -- this is only used for validation tests of the likelihood model.
-    if (cval > 1) then
-       fcorr = 2.0_mcp - exp(log(2.0_mcp - cval) * scl_nu * scl_ell)
+    ! Value returned corresponds to the "re-mapped" decorrelation parameter, denoted as
+    ! $\Delta'_d$ in Appendix F of the BK15 paper (equations F4 and F5)
+    if (Delta > 1) then
+       ! If using a physical prior for Delta, then this scenario should never happen.
+       Deltap = 2.0_mcp - exp(log(2.0_mcp - Delta) * scl_nu * scl_ell)
     else
-       fcorr = exp(log(cval) * scl_nu * scl_ell)
+       ! This is for physically-relevant values of Delta.
+       Deltap = exp(log(Delta) * scl_nu * scl_ell)
     end if
 
     end subroutine Decorrelation
@@ -225,9 +235,10 @@
     real(mcp) :: alphasync, betasync, dustsync_corr
     real(mcp) :: fdust(this%nmaps_required)
     real(mcp) :: fsync(this%nmaps_required)
-    real(mcp) :: dust, corr_dust, sync, corr_sync, dustsync
-    real(mcp) :: EEtoBB_dust,EEtoBB_sync
-    real(mcp) :: R_dust, R_sync
+    real(mcp) :: dust, sync, dustsync
+    real(mcp) :: EEtoBB_dust, EEtoBB_sync
+    real(mcp) :: Delta_dust, Delta_sync    ! Dust/sync decorrelation model parameters
+    real(mcp) :: Deltap_dust, Deltap_sync  ! Remapped dust/sync decorrelation
     integer i,j,l
     real(mcp) :: lpivot = 80.0_mcp
     real(mcp) :: bandcenter_err(this%nmaps_required)
@@ -246,8 +257,8 @@
     dustsync_corr = DataParams(8)
     EEtoBB_dust = DataParams(9)
     EEtoBB_sync = DataParams(10)
-    R_dust = DataParams(11)
-    R_sync = DataParams(12)
+    Delta_dust = DataParams(11)
+    Delta_sync = DataParams(12)
    
     ! Calculate dust and sync scaling for each map.
     do i=1, this%nmaps_required
@@ -274,8 +285,8 @@
     end do
 
     ! Only calculate foreground decorrelation if necessary.
-    need_sync_decorr = abs(R_sync-1) > 1d-5
-    need_dust_decorr = abs(R_dust-1) > 1d-5
+    need_dust_decorr = abs(Delta_dust-1) > 1d-5
+    need_sync_decorr = abs(Delta_sync-1) > 1d-5
     
     ! Loop over all auto and cross spectra
     do i=1, this%nmaps_required
@@ -299,28 +310,28 @@
                 do l=this%pcl_lmin,this%pcl_lmax
                     ! Calculate correlation factors for dust and sync.
                     if ((need_dust_decorr) .and. (i /= j)) then
-                        call this%Decorrelation(R_dust,this%Bandpasses(i)%nu_bar*bandcenter_err(i),&
+                        call this%Decorrelation(Delta_dust,this%Bandpasses(i)%nu_bar*bandcenter_err(i),&
                             this%Bandpasses(j)%nu_bar*bandcenter_err(j),this%fpivot_dust_decorr, l, &
-                            this%lform_dust_decorr, corr_dust)
+                            this%lform_dust_decorr, Deltap_dust)
                     else 
                         ! No dust decorrelation for auto-spectra.
-                        corr_dust = 1.0_mcp
+                        Deltap_dust = 1.0_mcp
                     end if
                     if ((need_sync_decorr) .and. (i /= j)) then
-                        call this%Decorrelation(R_sync,this%Bandpasses(i)%nu_bar*bandcenter_err(i),&
+                        call this%Decorrelation(Delta_sync,this%Bandpasses(i)%nu_bar*bandcenter_err(i),&
                             this%Bandpasses(j)%nu_bar*bandcenter_err(j),this%fpivot_sync_decorr, l, &
-                            this%lform_sync_decorr, corr_sync)
+                            this%lform_sync_decorr, Deltap_sync)
                     else
                         ! No sync decorrelation for auto-spectra.
-                        corr_sync = 1.0_mcp
+                        Deltap_sync = 1.0_mcp
                     end if
           
                     ! Add foreground model to theory spectrum.
                     ! NOTE: Decorrelation is not implemented for the dust/sync correlated component.
                     !       In BK15, we never turned on correlation and decorrelation parameters
                     !       simultaneously.
-                    CL%CL(l) = CL%CL(l) + dust * dustpow(l) * corr_dust + &
-                        sync * syncpow(l) * corr_sync + dustsync * dustsyncpow(l)
+                    CL%CL(l) = CL%CL(l) + dust * dustpow(l) * Deltap_dust + &
+                        sync * syncpow(l) * Deltap_sync + dustsync * dustsyncpow(l)
                 end do
             end if
         end do
