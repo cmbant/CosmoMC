@@ -1,16 +1,21 @@
-# BICEP2/Keck Array April 2018 Data Products
-# BICEP2/Keck Array X: Improved Constraints On Cosmology and Foregrounds using BICEP/Keck and WMAP/Planck data
+# BICEP2/Keck Array September 2018 Data Products
+# BICEP2/Keck Array X: Constraints On Primordial Gravitational Waves using Planck, WMAP, and New BICEP2/Keck Observations through the 2015 Season
 # http://bicepkeck.org/
 #
 # File: bandpass_P143.txt
-# Date: 2018-03-30
+# Date: 2018-08-30
 #
 # Experiment bandpasses for the multi-component likelihood described in BICEP2/Keck Array X.
 # See the comments in the .dataset file for further information.
 # This file provides the frequency spectrum for: P143.
 #   Column 1 = frequency in GHz
-#   Column 2 = response to a source with uniform spectral radiance
-# See Planck 2013 results IX and BK-II for further details.
+#   Column 2 = response to a beam-filling source with uniform spectral radiance
+# This convention matches the one used in the Planck Reduced Instrument
+# Model (http://pla.esac.esa.int/pla, see Planck 2013 results IX).
+#
+# Bandpass has been peak-normalized. 
+# Negative values are at the noise level of the Fourier-transform spectroscopy
+# measurement.
 
 10.110 7.3153e-11
 10.616 7.37948e-11

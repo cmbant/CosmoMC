@@ -1,9 +1,9 @@
-# BICEP2/Keck Array April 2018 Data Products
-# BICEP2/Keck Array X: Improved Constraints On Cosmology and Foregrounds using BICEP/Keck and WMAP/Planck data
+# BICEP2/Keck Array September 2018 Data Products
+# BICEP2/Keck Array X: Constraints On Primordial Gravitational Waves using Planck, WMAP, and New BICEP2/Keck Observations through the 2015 Season
 # http://bicepkeck.org/
 #
 # File: windows/BK15_bpwf_bin9.txt
-# Date: 2018-03-30
+# Date: 2018-08-30
 #
 # Bandpower window functions for the multi-component likelihood described in BICEP2/Keck Array VI.
 # See the comments in the .dataset file for further information.
