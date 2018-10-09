@@ -38,6 +38,7 @@
         Type(Object_pointer), allocatable :: Items(:)
     contains
     procedure :: AddArray
+    procedure :: AddArrayPointer
     procedure :: AddItem
     procedure :: AddItemPointer
     procedure :: AddCopy
@@ -323,14 +324,33 @@
     allocate(object_array_pointer::Pt)
     call this%AddItemPointer(Pt)
     select type (Pt)
-    class is (object_array_pointer)
+    type is (object_array_pointer)
+        if (this%ownsObjects) then
+            allocate(Pt%P, source= P)
+        else
+            !This would work on ifort, but may not be standard and does not with gfortran
+            !Pt%P => P
+            call this%Error('Use AddArrayPointer to add array when ownsObjects if false')
+        end if
+    end select
+    end subroutine AddArray
+
+    subroutine AddArrayPointer(this, P)
+    Class (TObjectList) :: this
+    class(*), pointer, intent(in) :: P(:)
+    class(*), pointer :: Pt
+
+    allocate(object_array_pointer::Pt)
+    call this%AddItemPointer(Pt)
+    select type (Pt)
+    type is (object_array_pointer)
         if (this%ownsObjects) then
             allocate(Pt%P, source= P)
         else
             Pt%P => P
         end if
     end select
-    end subroutine AddArray
+    end subroutine AddArrayPointer
 
     subroutine CheckIndex(this,i)
     Class(TObjectList) :: this
@@ -441,10 +461,10 @@
     double precision, pointer :: ArrD(:)
     integer, pointer :: ArrI(:)
     logical, pointer :: ArrL(:)
-    class(*), pointer :: St
+    class(*), pointer :: St, P(:)
 
     call this%Clear()
-    this%OwnsObjects = .false.
+    this%OwnsObjects = .true.
     read (fid) num
     call this%SetCapacity(num)
     do i=1,num
@@ -452,19 +472,23 @@
         if (k==1) then
             allocate(ArrR(sz))
             read(fid) ArrR
-            call this%AddArray(ArrR)
+            P => arrR
+            call this%AddArrayPointer(P)
         else if (k==2) then
             allocate(ArrD(sz))
             read(fid) ArrD
-            call this%AddArray(ArrD)
+            P => arrR
+            call this%AddArrayPointer(P)
         else if (k==3) then
             allocate(ArrI(sz))
             read(fid) ArrI
-            call this%AddArray(ArrI)
+            P => arrR
+            call this%AddArrayPointer(P)
         else if (k==4) then
             allocate(ArrL(sz))
             read(fid) ArrL
-            call this%AddArray(ArrL)
+            P => arrR
+            call this%AddArrayPointer(P)
         else if (k==5) then
             allocate(character(sz)::St) !Ifort required class(*) pointer
             select type (St)
@@ -477,7 +501,6 @@
         end if
     end do
     this%Count = num
-    this%OwnsObjects = .true.
 
     end subroutine ReadBinary
 
