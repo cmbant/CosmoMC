@@ -464,7 +464,7 @@
     class(*), pointer :: St, P(:)
 
     call this%Clear()
-    this%OwnsObjects = .true.
+    this%OwnsObjects = .false.
     read (fid) num
     call this%SetCapacity(num)
     do i=1,num
@@ -490,7 +490,7 @@
             P => arrR
             call this%AddArrayPointer(P)
         else if (k==5) then
-            allocate(character(sz)::St) !Ifort required class(*) pointer
+            allocate(character(sz)::St)
             select type (St)
             type is (character(LEN=*))
                 read(fid) St
@@ -501,6 +501,7 @@
         end if
     end do
     this%Count = num
+    this%OwnsObjects = .true.
 
     end subroutine ReadBinary
 
