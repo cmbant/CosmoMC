@@ -173,7 +173,10 @@
     this%num_theta_bins = Ini%Read_Int('num_theta_bins',size(this%theta_bins))
     if (size(this%theta_bins) /= this%num_theta_bins ) error stop 'size mismatch in theta_bins_file'
 
-    allocate(this%theta_bin_radians, source=this%theta_bins / 60 * pi/ 180)
+    allocate(this%theta_bin_radians(this%num_theta_bins))
+    this%theta_bin_radians = this%theta_bins / 60 * pi/ 180
+    !Above is workaround for gfortran bug
+    !allocate(this%theta_bin_radians, source=this%theta_bins / 60 * pi/ 180)
 
     this%kmax = Ini%Read_Double('kmax')
     this%ah_factor = Ini%Read_Double('ah_factor',1.0d0)
