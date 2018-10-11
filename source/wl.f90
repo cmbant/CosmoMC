@@ -448,7 +448,7 @@
     i=i+3
     lens_photoz_errors = DataParams(i+1:i+this%num_gal_bins)
     i = i + this%num_gal_bins
-    source_photoz_errors = DataParams(i+1: this%num_z_bins)
+    source_photoz_errors = DataParams(i+1:i+this%num_z_bins)
     if (this%use_non_linear) then
         if (this%use_weyl) then
             PK => Theory%NL_MPK_WEYL
