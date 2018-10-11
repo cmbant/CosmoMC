@@ -300,7 +300,7 @@
         CMB%nnu = Params(10) !3.046
         !Params(6) is now mnu, where mnu is physical standard neutrino mass and we assume standard heating
         CMB%sum_mnu_standard = Params(6)
-        if (CMB%nnu > standard_neutrino_neff .or. neutrino_hierarchy /= neutrino_hierarchy_degenerate) then
+        if (CMB%nnu > standard_neutrino_neff .or. CosmoSettings%neutrino_hierarchy /= neutrino_hierarchy_degenerate) then
             CMB%omnuh2=Params(6)/neutrino_mass_fac*(standard_neutrino_neff/3)**0.75_mcp
         else
             CMB%omnuh2=Params(6)/neutrino_mass_fac*(CMB%nnu/3)**0.75_mcp
