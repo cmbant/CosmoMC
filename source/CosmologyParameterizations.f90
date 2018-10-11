@@ -186,7 +186,7 @@
 
     end subroutine TP_ParamArrayToTheoryParams
 
-     subroutine TP_CalcDerivedParams(this, P, Theory, derived)
+    subroutine TP_CalcDerivedParams(this, P, Theory, derived)
     class(ThetaParameterization) :: this
     real(mcp), allocatable :: derived(:)
     class(TTheoryPredictions), allocatable :: Theory
@@ -282,6 +282,7 @@
 
     subroutine SetForH(Params,CMB,H0, firsttime,error)
     use bbn
+    use settings
     real(mcp) Params(num_Params)
     logical, intent(in) :: firsttime
     Type(CMBParams) CMB
@@ -299,7 +300,11 @@
         CMB%nnu = Params(10) !3.046
         !Params(6) is now mnu, where mnu is physical standard neutrino mass and we assume standard heating
         CMB%sum_mnu_standard = Params(6)
-        CMB%omnuh2=Params(6)/neutrino_mass_fac*(standard_neutrino_neff/3)**0.75_mcp
+        if (CMB%nnu > standard_neutrino_neff .or. neutrino_hierarchy /= neutrino_hierarchy_degenerate) then
+            CMB%omnuh2=Params(6)/neutrino_mass_fac*(standard_neutrino_neff/3)**0.75_mcp
+        else
+            CMB%omnuh2=Params(6)/neutrino_mass_fac*(CMB%nnu/3)**0.75_mcp
+        end if
         !Params(7) is mass_sterile*Neff_sterile
         CMB%omnuh2_sterile = Params(7)/neutrino_mass_fac
         !we are using interpretation where there are degeneracy_factor neutrinos, each exactly thermal
