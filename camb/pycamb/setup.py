@@ -58,9 +58,16 @@ def check_gfortran(version=gfortran_min, msg=True, exit=False, import_fail_ok=Tr
         version_str = str(subprocess.check_output("gfortran -dumpmachine", shell=True))
         ok = is32Bit and 'i686' in version_str or not is32Bit and 'x86_64' in version_str
     if not ok and msg:
-        raise Exception(
-            'You need gfortran %s or higher to compile (found: %s).' % (
-                version, gfortran_version))
+        try:
+            with open(os.devnull, 'w') as devnull:
+                ifort = subprocess.check_output("ifort -v", shell=True, stderr=devnull)
+        except:
+            ifort = False
+        if not ifort:
+            raise Exception(
+                'You need gfortran %s or higher to compile (found: %s).' % (
+                    version, gfortran_version))
+
     if exit:
         sys.exit(1 if ok else 0)
     return ok, gfortran_version
@@ -110,7 +117,14 @@ class SharedLibrary(build, object):
         else:
             pycamb_path = 'pycamb'
         os.chdir(CAMBDIR)
-        ok, gfortran_version = check_gfortran(msg=not is_windows)
+        ifort = None
+        if not is_windows:
+            try:
+                ifort = str(subprocess.check_output("ifort -v", shell=True))
+            except Exception:
+                pass
+        if not ifort:
+            ok, gfortran_version = check_gfortran(msg=not is_windows)
         if is_windows:
             COMPILER = "gfortran"
             # note that TDM-GCC MingW 5.1 does not work due go general fortran bug.
@@ -152,8 +166,8 @@ class SharedLibrary(build, object):
         else:
             get_forutils()
             print("Compiling source...")
-            subprocess.call("make camblib.so COMPILER=gfortran PYCAMB_OUTPUT_DIR=%s/camb/ CLUSTER_SAFE=%d" %
-                            (pycamb_path, int(self.cluster)) , shell=True)
+            subprocess.call("make camblib.so PYCAMB_OUTPUT_DIR=%s/camb/ CLUSTER_SAFE=%d" %
+                            (pycamb_path, int(self.cluster)), shell=True)
             so_file = os.path.join(pycamb_path, 'camb', 'camblib.so')
             if not os.path.isfile(so_file): sys.exit('Compilation failed')
             subprocess.call("chmod 755 %s" % so_file, shell=True)
@@ -165,9 +179,9 @@ class SharedLibrary(build, object):
 
 class SharedLibraryCluster(SharedLibrary):
     cluster = True
+
     def run(self):
         super(SharedLibraryCluster, self).run()
-
 
 
 class CustomInstall(install):
@@ -205,7 +219,7 @@ if __name__ == "__main__":
           description='Code for Anisotropies in the Microwave Background',
           long_description=get_long_description(),
           author='Antony Lewis',
-          url="http://camb.info/",
+          url="https://camb.info/",
           cmdclass={'build': SharedLibrary, 'build_cluster': SharedLibraryCluster,
                     'install': CustomInstall, 'sdist': CustomSdist},
           packages=['camb', 'camb_tests'],

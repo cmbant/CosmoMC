@@ -15,6 +15,10 @@ The Planck likelihood code (PLC/clik) and parameter chains are available from th
 The Planck lensing and Bicep-Keck-Planck likelihoods are included with the cosmomc installation and do not need to be installed separately.
 <P>
 <H3>Using the Planck likelihood with CosmoMC</H3>
+<p>
+The Planck 2018 likelihoods (except for lensing) are not published yet. These instructions refer to the 2015 likelihoods.
+</p>
+
 Note you need to use ifort 14 or higher to build CosmoMC, or gfortran (gcc) 6 latest (easily available for testing in <A HREF="http://cosmologist.info/CosmoBox/">virtual environments</A>) so make sure you have that configured before you start.
 <UL>
 <LI>Download and install the Planck likelihood code and baseline data files to somewhere convenient from
@@ -54,7 +58,8 @@ to see if things are being loaded and calculate a test likelihood OK.
 <P>
 <A NAME="PlanckChains"></A>
 <H3>Using Planck Chains</H3>
-Planck provide a set of parameter chains produced by CosmoMC, available for download <A HREF="http://pla.esac.esa.int/pla/#cosmology">here</a> or the <A HREF="http://irsa.ipac.caltech.edu/data/Planck/release_2/ancillary-data/">US site</A> (which is easier to use).
+Planck provide a set of parameter chains produced by CosmoMC, available for download <A HREF="http://pla.esac.esa.int/pla/#cosmology">here</a>,
+by default the 2018 results. (The <A HREF="http://irsa.ipac.caltech.edu/data/Planck/release_2/ancillary-data/">US site</A> has 2015 results).
 <P>
 You can use CosmoMC's python scripts and getdist to analyse and make plots from them. Check you have set the PYTHONPATH as described at the top of the <A hREF="readme_python.html">Python readme</A>.
 <P>
@@ -71,10 +76,10 @@ python python/makeGrid.py PLA
 You can now use python, grid and plotting scripts on the PLA directory, and they will know about the available data.
 Grid configuration settings for the Planck parameter grid are in PLA/config/.
 <P>
-If you download multiple Planck 2015 chain bundles, extract them to the same location so new folders are just merged over the existing ones and run makeGrid.py again, then plotting scripts etc will find
+If you download multiple Planck chain bundles, extract them to the same location so new folders are just merged over the existing ones and run makeGrid.py again, then plotting scripts etc will find
 all the results. If you want to use the +BKP tensor chains, download and add them last, so the config folder matches that in the BKP download.
 <P>
-You can also configure the plotting scripts to use the PLA location as the <b>default_grid_root</b>  (esp. if you want to run or adapt sample plot scripts under batch2/outputs/).
+You can also configure the plotting scripts to use the PLA location as the <b>default_grid_root</b>  (esp. if you want to run or adapt sample plot scripts under batch3/outputs/).
 Make a text file called <b>python/getdist/config.ini</b> (or set the environment variable GETDIST_CONFIG to point to a config.ini file somewhere else) and add setting lines to the config.ini file as required,e.g.
 <pre>
 default_grid_root =  PLA..PATH
@@ -87,7 +92,7 @@ By default, plots go into ./outputs directory under cosmomc. You can se the <b>o
 <H4>Plotting</H4>
 
 You can use the <A HREF="readme_gui.html">GetDist GUI</A> to load the PLA folder location and then open and plot chains as you wish.
-Or you can write your own python scripts to plot things of interest; many examples are in <b>batch2/outputs/</b>.
+Or you can write your own python scripts to plot things of interest; many examples are in <b>batch3/outputs/</b> (for 2018 chains) and <b>batch2/outputs/</b> (for 2015 chains).
 Make sure you have set up your python/getdist/config.ini as described above with default file location.
 <P>
 For example, to run the sample scripts, you can do

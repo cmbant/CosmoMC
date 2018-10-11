@@ -23,6 +23,30 @@
     end type TWMAPLikelihood
 #endif
 
+    type index_array
+        integer, allocatable :: bins(:)
+    end type index_array
+
+    type, extends(TCMBLikelihood) :: TPlikLiteLikelihood
+        !Plik-lite Planck likelihood (unofficial native cosmomc version)
+        !Adapted from code by Erminia Calabrese
+        integer :: plmin = 30
+        integer :: lmax = 2508
+        integer :: nbins = 613
+        integer, dimension(3) :: nbincl = (/ 215, 199, 199/)
+        integer :: maxbin, nused
+        integer, allocatable :: blmin(:), blmax(:), ls(:)
+        logical :: used(3)
+        character(LEN=2), dimension(3) :: cl_names = ['TT','TE','EE']
+        real(mcp), allocatable :: weights(:), invcov(:,:), X_data(:)
+        Type(index_array) :: used_bins(3)
+        integer pairs(3,2)
+    contains
+    procedure :: ReadIni => TPlikLiteLikelihood_ReadIni
+    procedure :: LogLike => TPlikLiteLikelihood_LogLike
+    end type TPlikLiteLikelihood
+
+
     public CMBLikelihood_Add
     contains
 
@@ -35,6 +59,7 @@
     use noncliklike
 #endif
     use BK_planck
+    use smica_planck
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
     class(TCMBLikelihood), pointer  :: like
@@ -58,6 +83,10 @@
         else
             if (DataSets%Name(i) == 'BKPLANCK') then
                 allocate(TBK_planck::like)
+            else if (DataSets%Name(i) == 'SMICA') then
+                allocate(TSmica_planck::like)
+            else if (DataSets%Name(i) == 'PLIK_LITE') then
+                allocate(TPlikLiteLikelihood::like)
             else
                 allocate(TCMBLikes::like)
             end if
@@ -163,11 +192,133 @@
     if (wmap_likelihood_ok) then
         LogLike = sum(likes)
     else
-        LogLike = LogZero
     endif
     end function TWMAPLikelihood_LogLike
 #endif
 
+
+    subroutine TPlikLiteLikelihood_ReadIni(this, Ini)
+    use MatrixUtils
+    class(TPlikLiteLikelihood) :: this
+    class(TSettingIni) :: Ini
+    real(mcp), allocatable :: cov(:,:), dat(:,:), ls(:), weights(:)
+    integer i,j, lun, maxbin, rangemin, rangemax
+    character(LEN=:), allocatable :: bins_for_L_range, use_cl
+    real(mcp) bin_centre
+    integer, allocatable :: usebins(:), used_indices(:)
+    integer nused, offset, offused
+    Type(TStringList) :: used_cls
+
+    call this%loadParamNames(Ini%ReadRelativeFileName('calibration_param'))
+
+    use_cl = Ini%Read_String('use_cl')
+    call File%LoadTxt(Ini%ReadRelativeFilename('data'), dat)
+    call File%LoadTxt(Ini%ReadRelativeFilename('blmin'),this%blmin)
+    this%blmin=this%blmin+this%plmin
+    call File%LoadTxt(Ini%ReadRelativeFilename('blmax'),this%blmax)
+    this%blmax=this%blmax+this%plmin
+    call File%LoadTxt(Ini%ReadRelativeFilename('weights'), weights)
+    allocate(ls(size(weights)))
+    do i=1, size(weights)
+        ls(i) = this%plmin + i -1
+        weights(i) = weights(i)*twopi/ls(i)/(ls(i)+1)
+    end do
+    allocate(this%weights(this%plmin:this%plmin+size(weights)-1), source=weights)
+
+    if (Ini%Read_String('cov_file_binary')/= '') then
+        allocate(cov(this%nbins,this%nbins))
+        open(newunit=lun,file=Ini%ReadRelativeFilename('cov_file_binary'),form='unformatted',status='old')
+        read(lun) cov
+        close(lun)
+        do i=1,this%nbins
+            do j=i+1,this%nbins
+                cov(j,i)=cov(i,j)
+            enddo
+        enddo
+    else
+        call File%LoadTxt(Ini%ReadRelativeFilename('cov_file'), cov)
+    end if
+    maxbin = maxval(this%nbincl)
+    bins_for_L_range = Ini%Read_string('bins_for_L_range')
+    if (bins_for_L_range/='') then
+        allocate(usebins(maxbin))
+        nused=0
+        read(bins_for_L_range, *) rangemin, rangemax
+        do i =1, maxbin
+            bin_centre = (this%blmin(i)+this%blmax(i))/2.0_mcp
+            if (rangemin <= bin_centre .and. bin_centre<= rangemax) then
+                nused = nused+1
+                usebins(nused) = i
+            end if
+        end do
+        print *, 'bins_for_L_range: actual L range used: ', this%blmin(usebins(1)),this%blmax(usebins(nused))
+    end if
+
+    call used_cls%SetFromString(use_cl)
+    offset = 0
+    this%nused =0
+    do i=1,3
+        this%used(i) = used_cls%IndexOf(this%cl_names(i))/=-1
+        if (this%used(i)) then
+            if (allocated(usebins)) then
+                allocate(this%used_bins(i)%bins, source =  pack(usebins(1:nused), usebins(1:nused) <= this%nbincl(i)))
+            else
+                allocate(this%used_bins(i)%bins, source = (/ (j,j=1, this%nbincl(i))/))
+            end if
+            this%nused = this%nused + size(this%used_bins(i)%bins)
+        end if
+        offset = offset + this%nbincl(i)
+    end do
+
+    this%pairs(1,:) = (/ 1,1/)
+    this%pairs(2,:) = (/ 2,1/)
+    this%pairs(3,:) = (/ 2,2/)
+
+    allocate(used_indices(this%nused))
+    offset =0
+    offused = 1
+
+    allocate(this%cl_lmax(CL_B,CL_B), source=0)
+    do i=1,3
+        if (this%used(i)) then
+            used_indices(offused:offused + size(this%used_bins(i)%bins)-1)=this%used_bins(i)%bins+offset
+            offused=offused + size(this%used_bins(i)%bins)
+            this%cl_lmax(this%pairs(i,1),this%pairs(i,2)) = maxval(this%blmax(this%used_bins(i)%bins))
+        end if
+        offset = offset + this%nbincl(i)
+    end do
+    allocate(this%X_data, source = dat(used_indices,2))
+    allocate(this%invcov, source = cov(used_indices,used_indices))
+    call Matrix_Inverse(this%invcov)
+
+    call this%TCMBLikelihood%ReadIni(Ini)
+    end subroutine TPlikLiteLikelihood_ReadIni
+
+    function TPlikLiteLikelihood_LogLike(this, CMB, Theory, DataParams) result(logLike)
+    use MatrixUtils
+    Class(TPlikLiteLikelihood) :: this
+    Class(CMBParams) CMB
+    Class(TCosmoTheoryPredictions), target :: Theory
+    real(mcp) DataParams(:)
+    real(mcp) logLike
+    real(mcp) cl(this%nused)
+    integer ix, i, j, bini
+
+    ix=0
+    do i=1,3
+        if (this%used(i)) then
+            do j=1, size(this%used_bins(i)%bins)
+                bini = this%used_bins(i)%bins(j)
+                ix=ix+1
+                cl(ix) = dot_product(Theory%Cls(this%pairs(i,1),this%pairs(i,2))%CL(this%blmin(bini):this%blmax(bini)), &
+                    this%weights(this%blmin(bini):this%blmax(bini)))
+            end do
+        end if
+    end do
+    cl = cl/DataParams(1)**2
+    logLike = Matrix_quadform(this%invcov,this%X_data - cl)/2
+
+    end function TPlikLiteLikelihood_LogLike
 
 
     end module CMBLikelihoods

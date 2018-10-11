@@ -21,7 +21,8 @@
     procedure :: Hofz
     procedure :: Hofz_Hunit
     procedure :: AngularDiameterDistance
-    procedure :: ComovingRadialDistance
+    procedure :: ComovingRadialDistance    
+    procedure :: ComovingRadialDistanceArr
     procedure :: AngularDiameterDistance2
     procedure :: LuminosityDistance
     procedure :: CMBToTheta
@@ -196,6 +197,18 @@
     ComovingRadialDistance = 0
 
     end function ComovingRadialDistance
+    
+    subroutine ComovingRadialDistanceArr(this, z, arr, n)
+    class(TCosmologyCalculator) :: this
+    integer, intent(in) :: n
+    real(mcp), intent(IN) :: z(n)
+    real(mcp), intent(out) :: arr(n)
+    
+    call this%ErrorNotImplemented('ComovingRadialDistanceArr')
+    arr= 0
+
+    end subroutine ComovingRadialDistanceArr
+    
 
     real(mcp) function AngularDiameterDistance2(this, z1, z2)
     class(TCosmologyCalculator) :: this

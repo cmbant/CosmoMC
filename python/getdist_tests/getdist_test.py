@@ -93,7 +93,7 @@ class GetDistFileTest(unittest.TestCase):
 
         ini.params['plot_data_dir'] = 'plot_data/'
         ini.saveFile(fname)
-        res = callGetDist([fname, self.root])
+        callGetDist([fname, self.root])
         self.assertTrue(os.path.isfile(os.path.join(self.tempdir, 'plot_data', 'testchain_2D_x_y')))
         checkRun()
         shutil.rmtree(os.path.join(self.tempdir, 'plot_data'))

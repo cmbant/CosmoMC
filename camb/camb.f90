@@ -18,14 +18,14 @@
         Type (MatterTransferData) :: MTrans
         Type (CAMBparams) :: Params
     end Type CAMBdata
- 
+
     contains
 
     subroutine CAMB_GetTransfers(Params, OutData, error)
     use CAMBmain
     use lensing
     type(CAMBparams) :: Params
-    type (CAMBdata)  :: OutData
+    type(CAMBdata)  :: OutData
     integer :: error !Zero if OK
     Type(MatterTransferData) :: emptyMT
     Type(ClTransferData) :: emptyCl
@@ -84,14 +84,14 @@
     type (CAMBdata) :: CData
 
     CP = CData%Params
-    call InitializePowers(CP%InitPower,CP%curv)
+    call CP%InitPower%Init(CP%curv)
     if (global_error_flag/=0) return
     if (CData%Params%WantCls) then
         call ClTransferToCl(CData%ClTransScal,CData%ClTransTens, CData%ClTransvec)
         if (CP%DoLensing .and. global_error_flag==0) call lens_Cls
         if (global_error_flag/=0) return
     end if
-    if (CData%Params%WantTransfer) call Transfer_Get_sigmas(Cdata%MTrans)
+    if (CData%Params%WantTransfer) call Transfer_Get_sigmas(Cdata%MTrans, CP)
 
     end subroutine CAMB_TransfersToPowers
 
@@ -122,7 +122,7 @@
         if (separate) then
             P%WantTransfer = .false.
             P%Transfer%high_precision = .false.
-            P%Transfer%accurate_massive_neutrinos = .false.            
+            P%Transfer%accurate_massive_neutrinos = .false.
         end if
         P%WantTensors = .false.
         P%WantVectors = .false.
@@ -135,7 +135,7 @@
         call_again = .true.
         !Need to store CP%flat etc, but must keep original P_k settings
         CP%Transfer%high_precision = Params%Transfer%high_precision
-        CP%Transfer%accurate_massive_neutrinos = Params%Transfer%accurate_massive_neutrinos        
+        CP%Transfer%accurate_massive_neutrinos = Params%Transfer%accurate_massive_neutrinos
         CP%WantTransfer = Params%WantTransfer
         CP%WantTensors = Params%WantTensors
         CP%WantVectors = Params%WantVectors
@@ -196,24 +196,24 @@
 
     if (Params%WantTransfer .and. &
         .not. (Params%WantCls .and. Params%WantScalars .and. .not. separate)) then
-    P=Params
-    P%WantCls = .false.
-    P%WantScalars = .false.
-    P%WantTensors = .false.
-    P%WantVectors = .false.
-    call CAMBParams_Set(P)
-    if (global_error_flag==0) call cmbmain
-    if (global_error_flag/=0) then
-        if (present(error)) error =global_error_flag
-        return
-    end if
-    !Need to store num redshifts etc
-    CP%WantScalars = Params%WantScalars
-    CP%WantCls =  Params%WantCls
-    CP%WantTensors = Params%WantTensors
-    CP%WantVectors = Params%WantVectors
-    CP%Reion%Reionization = InReionization
-    Params = CP
+        P=Params
+        P%WantCls = .false.
+        P%WantScalars = .false.
+        P%WantTensors = .false.
+        P%WantVectors = .false.
+        call CAMBParams_Set(P)
+        if (global_error_flag==0) call cmbmain
+        if (global_error_flag/=0) then
+            if (present(error)) error =global_error_flag
+            return
+        end if
+        !Need to store num redshifts etc
+        CP%WantScalars = Params%WantScalars
+        CP%WantCls =  Params%WantCls
+        CP%WantTensors = Params%WantTensors
+        CP%WantVectors = Params%WantVectors
+        CP%Reion%Reionization = InReionization
+        Params = CP
     end if
 
     call_again = .false.
@@ -232,8 +232,8 @@
     !Return real (NOT double precision) arrays of the computed CMB  Cls
     !Output is l(l+1)C_l/2pi
     !If GC_Conventions = .false. use E-B conventions (as the rest of CAMB does)
-    subroutine CAMB_GetCls(Cls, lmax, in, GC_conventions)
-    integer, intent(IN) :: lmax, in
+    subroutine CAMB_GetCls(Cls, lmax,GC_conventions)
+    integer, intent(IN) :: lmax
     logical, intent(IN) :: GC_conventions
     real, intent(OUT) :: Cls(2:lmax,1:4)
     integer l
@@ -242,14 +242,14 @@
     do l=2, lmax
         if (CP%WantScalars .and. l<= CP%Max_l) then
             if (CP%DoLensing) then
-                if (l<=lmax_lensed) Cls(l,1:4) = Cl_lensed(l, in, CT_Temp:CT_Cross)
+                if (l<=lmax_lensed) Cls(l,1:4) = Cl_lensed(l, CT_Temp:CT_Cross)
             else
-                Cls(l,1:2) = Cl_scalar(l, in,  C_Temp:C_E)
-                Cls(l,4) = Cl_scalar(l, in,  C_Cross)
+                Cls(l,1:2) = Cl_scalar(l, C_Temp:C_E)
+                Cls(l,4) = Cl_scalar(l, C_Cross)
             endif
         end if
         if (CP%WantTensors .and. l <= CP%Max_l_tensor) then
-            Cls(l,1:4) = Cls(l,1:4) + Cl_tensor(l, in,  CT_Temp:CT_Cross)
+            Cls(l,1:4) = Cls(l,1:4) + Cl_tensor(l, CT_Temp:CT_Cross)
         end if
     end do
     if (GC_conventions) then
@@ -325,11 +325,12 @@
 
     if (allocated(P%NonLinearModel)) deallocate(P%NonLinearModel)
     allocate(THalofit::P%NonLinearModel)
-    
+
     if (allocated(P%DarkEnergy)) deallocate(P%DarkEnergy)
     allocate(TDarkEnergyFluid::P%DarkEnergy)
 
-    call SetDefPowerParams(P%InitPower)
+    if (allocated(P%InitPower)) deallocate(P%InitPower)
+    allocate(TInitialPowerLaw::P%InitPower)
 
     call Recombination_SetDefParams(P%Recomb)
 
@@ -510,8 +511,8 @@
 
     if (P%WantScalars .and. P%Max_eta_k < P%Max_l .or.  &
         P%WantTensors .and. P%Max_eta_k_tensor < P%Max_l_tensor) then
-    OK = .false.
-    write(*,*) 'You need Max_eta_k larger than Max_l to get good results'
+        OK = .false.
+        write(*,*) 'You need Max_eta_k larger than Max_l to get good results'
     end if
 
     call Reionization_Validate(P%Reion, OK)
@@ -525,8 +526,8 @@
         end if
         if (P%transfer%kmax < 0.01 .or. P%transfer%kmax > 50000 .or. &
             P%transfer%k_per_logint>0 .and.  P%transfer%k_per_logint <1) then
-        !            OK = .false.
-        write(*,*) 'Strange transfer function settings.'
+            !            OK = .false.
+            write(*,*) 'Strange transfer function settings.'
         end if
         if (P%transfer%num_redshifts > max_transfer_redshifts .or. P%transfer%num_redshifts<1) then
             OK = .false.

@@ -63,14 +63,14 @@
         integer like_approx
         real(mcp) :: fullsky_exact_fksy = 1 ! only used for testing with exactly fullsky
         integer :: calibration_index = 0 !if non-zero, index into nuisance parameter array of global calibration of TEB
-        real(mcp) :: log_calibration_prior = -1 ! if > 0 & calibration_index is set, add a prior to the LnL 
+        real(mcp) :: log_calibration_prior = -1 ! if > 0 & calibration_index is set, add a prior to the LnL
         real(mcp), dimension(:,:), allocatable :: ClFiducial, ClNoise, ClHat
         !These are all L(L+1)C_L/2pi
 
         real(mcp), dimension(:,:), allocatable :: inv_covariance
 
         logical has_lensing
-        
+
         !aberration will be corrected if aberration_coeff is non-zero
         real(mcp) :: aberration_coeff = 0.0
         real(mcp), allocatable, dimension(:) :: ells
@@ -381,7 +381,7 @@
     integer L, status, norder
     Type(TTextFile) :: F
     logical Err
-    integer, allocatable :: MapPairsFile(:,:), MapPairsUse(:,:), fixed_index(:)
+    integer, allocatable :: MapPairsFile(:,:), MapPairsUse(:,:), fixed_index(:), MapPairs(:,:)
     integer nfixed
 
     filename = Ini%ReadRelativeFileName(bin_type // '_files', NotFoundFail=.true.)
@@ -430,14 +430,21 @@
         allocate(tmp_ar(norder))
         Order2 = Ini%Read_String(bin_type // '_fix_cl', .true.)
         call this%UseString_to_Cl_i_j(Order2,this%map_required_index,  MapPairsUse)
-        nfixed = size(MapPairsUse,2)
+        nfixed = 0
+        allocate(MapPairs(2,size(MapPairsUse,2)))
+        do i=1,size(MapPairsUse,2)
+            if (MapPairsUse(1,i)/=0 .and. MapPairsUse(2,i)/=0) then
+                nfixed = nfixed+1
+                MapPairs(:,nfixed) = MapPairsUse(:,i)
+            end if
+        end do
         allocate(fixed_index(nfixed))
         allocate(binWindows%fixCls(this%nmaps_required,this%nmaps_required))
         do i=1,nfixed
-            allocate(binWindows%fixCls(MapPairsUse(1,i),MapPairsUse(2,i))%CL(this%pcl_lmin:this%pcl_lmax), source=0._mcp)
+            allocate(binWindows%fixCls(MapPairs(1,i),MapPairs(2,i))%CL(this%pcl_lmin:this%pcl_lmax), source=0._mcp)
             do j=1, norder+1
                 if (j>norder) call MpiStop('ReadBinWindows: fix_cl uses CL not in the fix_cl_file')
-                if (all(MapPairsFile(:,j)==MapPairsUse(:,i))) then
+                if (all(MapPairsFile(:,j)==MapPairs(:,i))) then
                     fixed_index(i) = j
                     exit
                 end if
@@ -448,7 +455,7 @@
             if (status/=0) call MpiStop(' error fix_cl_file line '//trim(filename))
             if (l >=this%pcl_lmin .and. l<=this%pcl_lmax) then
                 do i=1, nfixed
-                    binWindows%fixCls(MapPairsUse(1,i),MapPairsUse(2,i))%CL(l) = tmp_ar(fixed_index(i))
+                    binWindows%fixCls(MapPairs(1,i),MapPairs(2,i))%CL(l) = tmp_ar(fixed_index(i))
                 end do
             end if
         end do
@@ -600,15 +607,15 @@
     call Ini%Read('aberration_coeff',this%aberration_coeff)
 
     if (this%aberration_coeff .ne. 0)  then
-       if (feedback > 2) &
+        if (feedback > 2) &
             print*,'Requested aberration correction'
-       
-       allocate(this%ells(this%pcl_lmin:this%pcl_lmax))
-       do i=this%pcl_lmin,this%pcl_lmax
-          this%ells(i)=i
-       enddo
+
+        allocate(this%ells(this%pcl_lmin:this%pcl_lmax))
+        do i=this%pcl_lmin,this%pcl_lmax
+            this%ells(i)=i
+        enddo
     endif
-    
+
     if (bin_test) then
         call MpiStop('bin_test not updated/tested yet')
         if (this%binned) call MpiStop('nbins/=0 with bin_test')
@@ -1053,44 +1060,44 @@
     end subroutine AddForegrounds
 
     subroutine AddAberration(this,Cls)
-      class(TCMBLikes) :: this
-      class(TMapCrossPowerSpectrum), target, intent(inout) :: Cls(:,:)
-      integer i,j
-      real(mcp) :: cl_deriv(this%pcl_lmin:this%pcl_lmax)
-      
-      if (this%aberration_coeff == 0) return    !nothing to do.
-      
-      do i=1, this%nmaps_required
-         do j=1, i
+    class(TCMBLikes) :: this
+    class(TMapCrossPowerSpectrum), target, intent(inout) :: Cls(:,:)
+    integer i,j
+    real(mcp) :: cl_deriv(this%pcl_lmin:this%pcl_lmax)
+
+    if (this%aberration_coeff == 0) return    !nothing to do.
+
+    do i=1, this%nmaps_required
+        do j=1, i
             if (allocated(Cls(i,j)%CL) ) then ! only apply to CMB spectra, not lensing or others
-               if (Cls(i,j)%theory_i<=CL_B .and. Cls(i,j)%theory_j<=CL_B) then
-                  ! first get Cl instead of Dl 
-                  cl_deriv = Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) /&
-                       (this%ells * (this%ells+1))
-                  
-                  !second take derivative dCl/dl
-                  cl_deriv(this%pcl_lmin+1:this%pcl_lmax-1) = 0.5* &
-                       (cl_deriv(this%pcl_lmin+2:this%pcl_lmax) - &
-                       cl_deriv(this%pcl_lmin:this%pcl_lmax-2) )
-                  
-                  !handle endpoints approximately
-                  cl_deriv(this%pcl_lmin) = cl_deriv(this%pcl_lmin+1)
-                  cl_deriv(this%pcl_lmax) = cl_deriv(this%pcl_lmax-1)
-                  
-                  ! reapply to Dl's.
-                  ! note never took 2pi out, so not putting it back either
-                  ! also multiply by ell since really wanted ldCl/dl 
-                  cl_deriv = this%ells**2 * (this%ells+1) * cl_deriv
-                  
-                  !add this to theory
-                  Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) = &
-                       Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) + &
-                       this%aberration_coeff * cl_deriv
-               endif
+                if (Cls(i,j)%theory_i<=CL_B .and. Cls(i,j)%theory_j<=CL_B) then
+                    ! first get Cl instead of Dl
+                    cl_deriv = Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) /&
+                        (this%ells * (this%ells+1))
+
+                    !second take derivative dCl/dl
+                    cl_deriv(this%pcl_lmin+1:this%pcl_lmax-1) = 0.5* &
+                        (cl_deriv(this%pcl_lmin+2:this%pcl_lmax) - &
+                        cl_deriv(this%pcl_lmin:this%pcl_lmax-2) )
+
+                    !handle endpoints approximately
+                    cl_deriv(this%pcl_lmin) = cl_deriv(this%pcl_lmin+1)
+                    cl_deriv(this%pcl_lmax) = cl_deriv(this%pcl_lmax-1)
+
+                    ! reapply to Dl's.
+                    ! note never took 2pi out, so not putting it back either
+                    ! also multiply by ell since really wanted ldCl/dl
+                    cl_deriv = this%ells**2 * (this%ells+1) * cl_deriv
+
+                    !add this to theory
+                    Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) = &
+                        Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) + &
+                        this%aberration_coeff * cl_deriv
+                endif
             endif
-         enddo
-      enddo
-      
+        enddo
+    enddo
+
     end subroutine AddAberration
 
 
@@ -1101,7 +1108,7 @@
     integer i,j
 
     call this%AddAberration(Cls)
-    
+
     call this%AddForegrounds(Cls, DataParams)
     if (this%calibration_index > 0) then
         !Scale T, E, B spectra by the calibration parameter
@@ -1213,7 +1220,7 @@
     if (this%like_approx /= like_approx_fullsky_exact) chisq = chisq + Matrix_QuadForm(this%inv_covariance,BigX)
 
     if (this%log_calibration_prior > 0 .and. this%calibration_index > 0) &
-         chisq = chisq +  (log(DataParams(this%calibration_index))/this%log_calibration_prior)**2
+        chisq = chisq +  (log(DataParams(this%calibration_index))/this%log_calibration_prior)**2
 
     LogLike = chisq/2
 
@@ -1250,3 +1257,84 @@
 
 
     end module CMBLikes
+
+
+    module smica_planck
+    use CMBlikes
+    use CosmologyTypes
+    use FileUtils
+    implicit none
+    private
+
+    Type, extends(TCMBLikes) :: TSmica_planck
+        real(mcp) :: pivot = 2000._mcp
+    contains
+    procedure :: AddForegrounds => TSmica_planck_AddForegrounds
+    procedure :: ReadIni => Tsmica_planck_ReadIni
+    procedure :: derivedParameters =>  Tsmica_planck_DerivedParameters
+    end Type TSmica_planck
+
+    public TSmica_planck
+    contains
+
+
+    subroutine Tsmica_planck_ReadIni(this, Ini)
+    class(Tsmica_planck) :: this
+    class(TSettingIni) :: Ini
+    character(LEN=:), allocatable :: fname
+    integer i
+
+    call this%TCMBLikes%ReadIni(Ini)
+    this%has_foregrounds = .true.
+    call this%loadParamNames(Ini%ReadFileName('nuisance_params',relative=.true.,NotFoundFail=.true.))
+    if (Ini%HasKey('calibration_paramname')) &
+        this%calibration_index=this%nuisance_params%Index(Ini%Read_String('calibration_paramname'))
+
+    end subroutine Tsmica_planck_ReadIni
+
+    subroutine TSmica_planck_AddForegrounds(this,Cls,DataParams)
+    class(TSmica_planck) :: this
+    class(TMapCrossPowerSpectrum), target, intent(inout) :: Cls(:,:)
+    class(TMapCrossPowerSpectrum), pointer :: CL
+    real(mcp), intent(in) :: DataParams(:)
+    real(mcp) :: A1, n1, A2, n2, lnrat, n1run
+    integer i,j,l
+
+    A1 = DataParams(1)
+    n1 = DataParams(2)
+    n1run = DataParams(3)
+    A2 = DataParams(4)
+    n2 = DataParams(5)
+
+    do i=1, this%nmaps_required
+        do j=1, i
+            CL=> Cls(i,j)
+            If (CL%theory_i==1 .and. CL%theory_j==1) then
+                ! TT
+                do l=this%pcl_lmin,this%pcl_lmax
+                    lnrat = log(real(l,mcp)/this%pivot)
+                    CL%CL(l) = CL%CL(l) + A1*exp(n1*lnrat + n1run/2*lnrat**2) + A2*(l/this%pivot)**n2
+                end do
+            end if
+        end do
+    end do
+
+    end subroutine TSmica_planck_AddForegrounds
+
+    function TSmica_planck_derivedParameters(this, Theory, DataParams) result(derived)
+    class(TSmica_planck) :: this
+    class(TTheoryPredictions) :: Theory
+    real(mcp) :: derived(this%nuisance_params%num_derived)
+    real(mcp) :: DataParams(:)
+    class(TMapCrossPowerSpectrum), allocatable :: Cls(:,:)
+    class(TMapCrossPowerSpectrum), pointer :: CL
+
+    if (.not. this%has_foregrounds) return
+    call this%InitMapCls(Cls, this%nmaps_required, this%required_order)
+    call this%AddForegrounds(Cls, DataParams)
+    derived(1) =Cls(1,1)%CL(2000) !total power D_L at L=2000
+
+    end function TSmica_planck_derivedParameters
+
+    end module smica_planck
+

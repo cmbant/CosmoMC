@@ -6,7 +6,7 @@
     !parameter 3 is 100*theta, parameter 4 is tau, others same as params_H except A->log(A)
     !Theta is much better constrained than H_0
     !
-    !Also a background-only parameterization, e.g. for use with just supernoave etc
+    !Also a background (late-time) parameterization, e.g. for use with just supernoave etc
 
     module CosmologyParameterizations
     use CosmologyTypes
@@ -30,6 +30,7 @@
     procedure :: InitWithSetNames => TP_Init
     end type ThetaParameterization
 
+    !Background parameters only, H0, omegam...
     Type, extends(TCosmologyParameterization) :: BackgroundParameterization
     contains
     procedure :: ParamArrayToTheoryParams => BK_ParamArrayToTheoryParams
@@ -37,7 +38,18 @@
     procedure :: InitWithSetNames => BK_Init
     end type BackgroundParameterization
 
-    public BackgroundParameterization,ThetaParameterization
+    !Late-time parameterization using more astro parameter, H0, omegab, omegam
+    Type, extends(TCosmologyParameterization) :: AstroParameterization
+        real(mcp) :: ombh2_prior_mean = 0._mcp, ombh2_prior_std = 0._mcp
+    contains
+    procedure :: ParamArrayToTheoryParams => AP_ParamArrayToTheoryParams
+    procedure :: NonBaseParameterPriors => AP_NonBaseParameterPriors
+    procedure :: CalcDerivedParams => AP_CalcDerivedParams
+    procedure :: InitWithSetNames => AP_Init
+    end type AstroParameterization
+
+    public BackgroundParameterization,ThetaParameterization,AstroParameterization
+
     contains
 
 
@@ -174,19 +186,6 @@
 
     end subroutine TP_ParamArrayToTheoryParams
 
-    function GetYPBBN(Yhe)
-    !Convert yhe defined as mass fraction (CMB codes), to nucleon ratio definition
-    real(mcp), intent(in) :: Yhe
-    real(mcp) GetYPBBN
-    real(mcp), parameter :: m_proton = 1.672621637e-27
-    real(mcp), parameter :: m_H = 1.673575e-27
-    real(mcp), parameter :: not4 = 3.9715
-    real(mcp), parameter :: m_He = m_H * not4
-
-    GetYPBBN =  4 * m_H * Yhe / (m_He - Yhe * (m_He - 4*m_H))
-
-    end function GetYPBBN
-
     subroutine TP_CalcDerivedParams(this, P, Theory, derived)
     class(ThetaParameterization) :: this
     real(mcp), allocatable :: derived(:)
@@ -213,13 +212,14 @@
         derived(6) = (CMB%omdmh2 + CMB%ombh2)*CMB%h
 
         derived(7) = Theory%Sigma_8
-        derived(8) = Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.5_mcp
-        derived(9) = Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.25_mcp
-        derived(10)= Theory%Sigma_8/CMB%h**0.5_mcp
-
-        derived(11) = Theory%Lensing_rms_deflect
-        derived(12) = CMB%zre
-        ix=13
+        derived(8) = Theory%Sigma_8*((CMB%omdm+CMB%omb)/0.3)**0.5_mcp
+        derived(9) = Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.5_mcp
+        derived(10)= Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.25_mcp
+        derived(11)= Theory%Sigma_8/CMB%h**0.5_mcp
+        derived(12) = Theory%derived_parameters( derived_rdrag )*CMB%H0/100
+        derived(13) = Theory%Lensing_rms_deflect
+        derived(14) = CMB%zre
+        ix=15
         derived(ix) = cl_norm*CMB%InitPower(As_index)*1e9
         derived(ix+1) = derived(ix)*exp(-2*CMB%tau)  !A e^{-2 tau}
         ix = ix+2
@@ -258,7 +258,7 @@
         end if
 
         if (CosmoSettings%Compute_tensors) then
-            derived(ix:ix+5) = [Theory%tensor_ratio_02, Theory%tensor_ratio_BB, log(max(1e-15,Theory%tensor_AT)*1e10), &
+            derived(ix:ix+5) = [Theory%tensor_ratio_02, Theory%tensor_ratio_BB, log(max(1e-15_mcp,Theory%tensor_AT)*1e10_mcp), &
                 Theory%tensor_ratio_C10, Theory%tensor_AT*1e9, Theory%tensor_AT*1e9*exp(-2*CMB%tau) ]
             ix=ix+6
         end if
@@ -282,6 +282,7 @@
 
     subroutine SetForH(Params,CMB,H0, firsttime,error)
     use bbn
+    use settings
     real(mcp) Params(num_Params)
     logical, intent(in) :: firsttime
     Type(CMBParams) CMB
@@ -299,7 +300,11 @@
         CMB%nnu = Params(10) !3.046
         !Params(6) is now mnu, where mnu is physical standard neutrino mass and we assume standard heating
         CMB%sum_mnu_standard = Params(6)
-        CMB%omnuh2=Params(6)/neutrino_mass_fac*(standard_neutrino_neff/3)**0.75_mcp
+        if (CMB%nnu > standard_neutrino_neff .or. CosmoSettings%neutrino_hierarchy /= neutrino_hierarchy_degenerate) then
+            CMB%omnuh2=Params(6)/neutrino_mass_fac*(standard_neutrino_neff/3)**0.75_mcp
+        else
+            CMB%omnuh2=Params(6)/neutrino_mass_fac*(CMB%nnu/3)**0.75_mcp
+        end if
         !Params(7) is mass_sterile*Neff_sterile
         CMB%omnuh2_sterile = Params(7)/neutrino_mass_fac
         !we are using interpretation where there are degeneracy_factor neutrinos, each exactly thermal
@@ -407,6 +412,119 @@
     derived(1) = CMB%omv
 
     end subroutine BK_CalcDerivedParams
+
+    !Astro parameterization using H0, omegam, omegab...
+    subroutine AP_Init(this, Ini, Names, Config)
+    class(AstroParameterization) :: this
+    class(TSettingIni) :: Ini
+    class(TParamNames) :: Names
+    class(TGeneralConfig), target :: Config
+    character(LEN=:), pointer :: prior
+
+    prior => Ini%Read_String('prior[omegabh2]',NotFoundFail=.false.)
+    if (prior/='') then
+        read(prior,*) this%ombh2_prior_mean, this%ombh2_prior_std
+    end if
+
+    call this%Initialize(Ini,Names, 'paramnames/params_astro.paramnames', Config)
+    call this%SetTheoryParameterNumbers(9,last_power_index)
+
+    end subroutine AP_Init
+
+    function AP_NonBaseParameterPriors(this,CMB)
+    class(AstroParameterization) :: this
+    class(TTheoryParams) :: CMB
+    real(mcp):: AP_NonBaseParameterPriors
+
+    select type (CMB)
+    class is (CMBParams)
+        AP_NonBaseParameterPriors = 0
+        if (this%ombh2_prior_mean/=0._mcp) then
+            AP_NonBaseParameterPriors = ((CMB%ombh2 - this%ombh2_prior_mean)/this%ombh2_prior_std)**2/2
+        end if
+    end select
+    end function AP_NonBaseParameterPriors
+
+    subroutine AP_ParamArrayToTheoryParams(this, Params, CMB)
+    class(AstroParameterization) :: this
+    real(mcp) Params(:)
+    class(TTheoryParams), target :: CMB
+    real(mcp) omegam, h2
+    integer error
+
+    select type (CMB)
+    class is (CMBParams)
+        omegam = Params(1)
+        CMB%omb= Params(2)
+        CMB%H0 = Params(3)
+        CMB%omk = Params(4)
+        CMB%sum_mnu_standard = Params(5)
+        CMB%omnuh2=Params(5)/neutrino_mass_fac*(standard_neutrino_neff/3)**0.75_mcp
+
+        CMB%h=CMB%H0/100
+        h2 = CMB%h**2
+
+        CMB%omnu = CMB%omnuh2/h2
+        CMB%ombh2 = CMB%omb*h2
+        CMB%omc= omegam - CMB%omb - CMB%omnu
+        CMB%omch2 = CMB%omc*h2
+
+        CMB%w =    Params(6)
+        CMB%wa =   Params(7)
+        CMB%nnu =  Params(8)
+        if (CosmoSettings%bbn_consistency) then
+            CMB%YHe = BBN_YHe%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff,error)
+        else
+            CMB%YHe = Params(9)
+        end if
+
+        CMB%InitPower(1:num_initpower) = Params(index_initpower:index_initpower+num_initpower-1)
+        !CMB%InitPower(As_index) = exp(CMB%InitPower(As_index))
+        CMB%InitPower(As_index) = CMB%InitPower(As_index) *10 !input is 10^9 As, cl_norm = 1e-10
+
+        CMB%zre=0
+        CMB%zre_delta = 1.5
+        CMB%tau=0
+        CMB%omdmh2 = CMB%omch2+ CMB%omnuh2
+        CMB%omdm = CMB%omdmh2/h2
+        CMB%omv = 1- CMB%omk - CMB%omb - CMB%omdm
+        CMB%nufrac=CMB%omnuh2/CMB%omdmh2
+        CMB%reserved=0
+        CMB%fdm=0
+        CMB%ALensf = 1
+        CMB%iso_cdm_correlated=0
+        CMB%Alens=1
+        CMB%omnuh2_sterile = 0
+    end select
+    end subroutine AP_ParamArrayToTheoryParams
+
+
+    subroutine AP_CalcDerivedParams(this, P, Theory, derived)
+    class(AstroParameterization) :: this
+    real(mcp), allocatable :: derived(:)
+    class(TTheoryPredictions), allocatable :: Theory
+    real(mcp) :: P(:)
+    Type(CMBParams) CMB
+
+    allocate(Derived(9))
+
+    call this%ParamArrayToTheoryParams(P,CMB)
+
+    if (.not. allocated(Theory)) call MpiStop('Not allocated theory!!!')
+    select type (Theory)
+    class is (TCosmoTheoryPredictions)
+        derived(1) = CMB%ombh2
+        derived(2) = CMB%omch2
+        derived(3) = CMB%omv
+        derived(4) = CMB%omnuh2
+        derived(5) = log(CMB%InitPower(As_index))
+        derived(6) = Theory%Sigma_8
+        derived(7) = Theory%Sigma_8*((CMB%omdm+CMB%omb)/0.3)**0.5_mcp
+        derived(8) = Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.5_mcp
+        derived(9) = Theory%Sigma_8*((CMB%omdm+CMB%omb))**0.25_mcp
+    end select
+
+    end subroutine AP_CalcDerivedParams
 
 
     end module CosmologyParameterizations

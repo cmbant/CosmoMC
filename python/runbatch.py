@@ -6,14 +6,15 @@ import hashlib
 import os
 from paramgrid import batchjob_args, jobqueue
 
-
 Opts = batchjob_args.batchArgs('Submit jobs to run chains or importance sample', notExist=True, notall=True,
-                              converge=True)
+                               converge=True)
 
 jobqueue.addArguments(Opts.parser, combinedJobs=True)
 
 Opts.parser.add_argument('--subitems', action='store_true', help='include sub-grid items')
 Opts.parser.add_argument('--not_queued', action='store_true')
+Opts.parser.add_argument('--filters', action='store_true',
+                         help='run any python importance filters on grid (no submission)')
 Opts.parser.add_argument('--minimize', action='store_true', help='Run minimization jobs')
 Opts.parser.add_argument('--importance_minimize', action='store_true',
                          help='Run minimization jobs for chains that are importance sampled')
@@ -26,20 +27,18 @@ Opts.parser.add_argument('--importance_changed', action='store_true',
 Opts.parser.add_argument('--parent_converge', type=float, default=0,
                          help='minimum R-1 convergence for importance job parent')
 Opts.parser.add_argument('--parent_stopped', action='store_true', help='only run if parent chain is not still running')
+Opts.parser.add_argument('--chain_exists', action='store_true', help='Only run if chains already exist')
 
 (batch, args) = Opts.parseForBatch()
 
 if args.not_queued:
     print('Getting queued names...')
-    queued = jobqueue.queue_job_names(args.batchPath)
+    queued = jobqueue.queue_job_names(args.batchPath, queued=True, running=True)
 
 
 def notQueued(name):
-    for job in queued:
-        if name in job:
-            # print 'Already running:', name
-            return False
-    return True
+    if args.minimize: name += '_minimize'
+    return not name in queued
 
 
 variant = ''
@@ -55,7 +54,10 @@ if args.importance is None:
     if args.importance_changed or args.importance_ready:
         args.importance = []
     else:
-        args.noimportance = True
+        if args.filters:
+            args.importance = []
+        else:
+            args.noimportance = True
 
 isMinimize = args.importance_minimize or args.minimize
 
@@ -64,7 +66,7 @@ if args.combineOneJobName:
 
 iniFiles = []
 
-jobqueue.checkArguments(**args.__dict__)
+if not args.filters: jobqueue.checkArguments(**args.__dict__)
 
 
 def jobName():
@@ -103,11 +105,20 @@ for jobItem in Opts.filteredBatchItems(wantSubItems=args.subitems):
                         args.checkpoint_run) and jobItem.notRunning():
                     if (not jobItem.isImportanceJob or isMinimize
                         or (args.importance_ready and jobItem.parent.chainFinished()
-                            or not args.importance_ready and jobItem.parent.chainExists())
+                            or not args.importance_ready and (args.filters or jobItem.parent.chainExists()))
                         and (not args.importance_changed or jobItem.parentChanged())
-                        and (not args.parent_stopped or jobItem.parent.notRunning())):
-                        if not args.not_queued or notQueued(jobItem.name):
-                            submitJob(jobItem.iniFile(variant))
+                        and (not args.parent_stopped or jobItem.parent.notRunning())) \
+                            and (not args.chain_exists or jobItem.chainExists()):
+                        if jobItem.isImportanceJob and hasattr(jobItem, 'importanceFilter'):
+                            if args.filters:
+                                if jobItem.parent.chainExists():
+                                    print('Filtering for... %s' % jobItem.name)
+                                    jobItem.importanceFilter.filter(batch, jobItem)
+                                else:
+                                    print("parent chains don't exist: %s" % (jobItem.name))
+                        elif not args.filters:
+                            if not args.not_queued or notQueued(jobItem.name):
+                                submitJob(jobItem.iniFile(variant))
 
 if len(iniFiles) > 0:
     if args.runsPerJob > 1: print('--> jobName: ', jobName())

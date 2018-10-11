@@ -1,0 +1,13 @@
+
+DEFAULT(smicadx12_Dec5_ftl_mv2_ndclpttptt_p_teb_consext8.dataset)
+
+fields_required = P
+
+calibration_param =
+
+covmat_fiducial = smicadx12_Dec5_ftl_mv2_ndclpttptt_p_teb_consext8_CMBmarged_cov.dat
+
+linear_correction_fiducial_file = smicadx12_Dec5_ftl_mv2_ndclpttptt_p_teb_consext8_CMBmarged_lensing_fiducial_correction.dat
+linear_correction_bin_window_files = smicadx12_Dec5_ftl_mv2_ndclpttptt_p_teb_consext8_CMBmarged_lens_delta_window/window%u.dat
+linear_correction_bin_window_in_order = PP
+linear_correction_bin_window_out_order = PP

@@ -5,10 +5,12 @@ import copy
 import planckStyle
 from paramgrid import batchjob, batchjob_args
 from getdist import types, paramnames
-
+from getdist.mcsamples import loadMCSamples, MCSamples
+from getdist.paramnames import ParamNames
+import numpy as np
 
 Opts = batchjob_args.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True,
-                              converge=True)
+                               converge=True)
 Opts.parser.add_argument('latex_filename', help="name of latex/PDF file to produce")
 Opts.parser.add_argument('--limit', type=int, default=2, help="sigmas of quoted confidence intervals")
 Opts.parser.add_argument('--all_limits', action='store_true')
@@ -28,16 +30,18 @@ Opts.parser.add_argument('--changes_replacing', nargs='+', default=None,
                          help='give sigma shifts for results with data x, y, z replacing data y, z.. with x')
 Opts.parser.add_argument('--changes_only', action='store_true',
                          help='Only include results in the changes_replacing set')
-
 Opts.parser.add_argument('--changes_data_ignore', nargs='+',
                          help='ignore these data tags when mapping to reference for comparison')
+Opts.parser.add_argument('--systematic_average', action='store_true',
+                         help='Combine two chains and quote results for the combination, e.g. as a crude way of ' +
+                              'including systematic errors between likelihood versions. Used with --changes_replacing or similar.')
 
 Opts.parser.add_argument('--shift_sigma_indep', action='store_true',
                          help="fractional shifts are relative to the sigma for independent data (sigma^2=sigma1^2+sigma2^2")
 Opts.parser.add_argument('--shift_sigma_subset', action='store_true',
                          help="fractional shifts are relative to the sigma for stricly subset data (sigma^2 = |sigma1^2-sigma2^2|, regularized to sigma/20)")
 
-# this is just for the latex labelsm set None to use those in chain .paramnames
+# this is just for the latex labels set None to use those in chain .paramnames
 Opts.parser.add_argument('--paramNameFile', default='clik_latex.paramnames',
                          help=".paramnames file for custom labels for parameters")
 
@@ -51,7 +55,7 @@ Opts.parser.add_argument('--titles', default=None)  # for compare plots
 Opts.parser.add_argument('--forpaper', action='store_true')
 Opts.parser.add_argument('--separate_tex', action='store_true')
 Opts.parser.add_argument('--header_tex', default=None)
-Opts.parser.add_argument('--height', default="10in")
+Opts.parser.add_argument('--height', default="13in")
 Opts.parser.add_argument('--width', default="12in")
 
 (batch, args) = Opts.parseForBatch()
@@ -76,16 +80,31 @@ def getTableLines(content, referenceDataJobItem=None):
     else:
         refResults = None
     return types.ResultTable(args.columns, [content], blockEndParams=args.blockEndParams, formatter=formatter,
-                                  paramList=args.paramList, limit=args.limit,
-                                  refResults=refResults, shiftSigma_indep=args.shift_sigma_indep,
-                                  shiftSigma_subset=args.shift_sigma_subset).lines
+                             paramList=args.paramList, limit=args.limit,
+                             refResults=refResults, shiftSigma_indep=args.shift_sigma_indep,
+                             shiftSigma_subset=args.shift_sigma_subset).lines
+
+
+def getSystematicAverageTableLines(jobItem1, jobItem2):
+    # if you have two versions of the likelihood with the same data, and don't know which is right,
+    # this just crudely adds the samples with equal weight per likelihood
+    samps1 = loadMCSamples(jobItem1.chainRoot, jobItem=jobItem1, settings=batch.getdist_options)
+    samps2 = loadMCSamples(jobItem2.chainRoot, jobItem=jobItem2, settings=batch.getdist_options)
+    samps = samps1.getCombinedSamplesWithSamples(samps2)
+    if False:
+        import planckStyle as s
+        g = s.getSubplotPlotter()
+        g.plots_1d([samps, samps1, samps2], params=params.list(),
+                   legend_labels=['Combined', texEscapeText(jobItem1.name), texEscapeText(jobItem2.name)])
+        g.export('joint_' + jobItem1.name)
+    return getTableLines(samps.getMargeStats())
 
 
 def paramResultTable(jobItem, deltaChisqJobItem=None, referenceDataJobItem=None):
     if deltaChisqJobItem is not None and deltaChisqJobItem.name == jobItem.name: deltaChisqJobItem = None
     if referenceDataJobItem is not None:
         if (args.changes_from_paramtag is None and referenceDataJobItem.normed_data == jobItem.normed_data
-            or args.changes_from_paramtag is not None and referenceDataJobItem.name == jobItem.name):
+                or args.changes_from_paramtag is not None and referenceDataJobItem.name == jobItem.name):
             referenceDataJobItem = None
     tableLines = []
     caption = []
@@ -111,7 +130,12 @@ def paramResultTable(jobItem, deltaChisqJobItem=None, referenceDataJobItem=None)
                     delta = likeMarge.meanLogLike - likeMarge_ref.meanLogLike
                     caption.append('$\\Delta\\bar{\\chi}^2_{\\rm eff} = ' + ('%.2f' % (delta * 2)) + '$')
         if jobItem.result_converge is not None: caption.append('$R-1 =' + jobItem.result_converge.worstR() + '$')
-        if jobItem.result_marge is not None: tableLines += getTableLines(jobItem.result_marge, referenceDataJobItem)
+        if jobItem.result_marge is not None:
+            if args.systematic_average:
+                tableLines += getSystematicAverageTableLines(jobItem, referenceDataJobItem)
+            else:
+                tableLines += getTableLines(jobItem.result_marge, referenceDataJobItem)
+
     tableLines.append('')
     if not args.forpaper: tableLines.append("; ".join(caption))
     if not bf is None and not args.forpaper:
@@ -232,7 +256,7 @@ for limit in limits:
             lines.append(section)
             theseItems = [jobItem for jobItem in parambatch
                           if (os.path.exists(jobItem.distPath) or args.bestfitonly) and (
-                    args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge))]
+                                  args.converge == 0 or jobItem.hasConvergeBetterThan(args.converge))]
 
             referenceDataJobItem = None
             if args.changes_from_datatag is not None:
@@ -286,7 +310,13 @@ for limit in limits:
                     referenceJobItem = baseJobItems.get(dataIndex(jobItem), None)
                 if args.changes_from_paramtag is not None:
                     referenceDataJobItem = referenceJobItem
-                if not args.forpaper: lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
+                if args.systematic_average and referenceDataJobItem is None: continue
+                if not args.forpaper:
+                    if args.systematic_average:
+                        lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '/' + texEscapeText(
+                            referenceDataJobItem.name) + '}')
+                    else:
+                        lines.append('\\subsection{ ' + texEscapeText(jobItem.name) + '}')
                 try:
                     tableLines = paramResultTable(jobItem, referenceJobItem, referenceDataJobItem)
                     if args.separate_tex: types.TextFile(tableLines).write(jobItem.distRoot + '.tex')
@@ -300,7 +330,7 @@ for limit in limits:
     (outdir, outname) = os.path.split(outfile)
     if len(outdir) > 0 and not os.path.exists(outdir): os.makedirs(outdir)
     types.TextFile(lines).write(outfile)
-    root = os.path.splitext(outfile)[0]
+    root = os.path.splitext(outname)[0]
 
     if not args.forpaper:
         print('Now converting to PDF...')
@@ -313,5 +343,3 @@ for limit in limits:
         for ext in delext:
             if os.path.exists(root + '.' + ext):
                 os.remove(root + '.' + ext)
-
-

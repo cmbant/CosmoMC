@@ -1,5 +1,7 @@
-    ! Module for galaxy weak lensing
-    ! AJM, some code from Julien Lesgourgues
+    ! Module for galaxy weak lensing, galaxy-galaxy and galaxy auto
+    ! e.g. for DES 1 YR
+    !AL 2018, following exactly the same approximations as in the DES papers
+    !(can only use Weyl potential for lensing)
 
     module wl
     use settings
@@ -7,37 +9,62 @@
     use CosmoTheory
     use Calculator_Cosmology
     use Likelihood_Cosmology
+    use Interpolation
     implicit none
     private
 
+    integer, parameter :: measurement_xip = 1, measurement_xim = 2, &
+        measurement_gammat = 3, measurement_wtheta = 4
+    character(LEN=Ini_Enumeration_Len), parameter :: measurement_names(4) = &
+        [character(Ini_Enumeration_Len):: 'xip', 'xim', 'gammat', 'wtheta']
+
+    logical,  parameter :: WL_timing = .false.
+
     type, extends(TCosmoCalcLikelihood) :: WLLikelihood
-        real(mcp), allocatable, dimension(:,:) :: wl_invcov,wl_cov
-        integer :: num_z_bins
+        real(mcp), allocatable :: invcov(:,:)
+        integer :: num_z_bins !lensing sources
+        integer :: num_gal_bins !lensing galaxies
         integer :: num_theta_bins
-        integer :: num_mask
-        real(mcp), allocatable, dimension(:) :: theta_bins
-        real(mcp), allocatable, dimension(:) :: z_bins
-        real(mcp), allocatable, dimension(:) :: xi_obs ! Observed correlation functions
-        integer :: num_z_p ! Source galaxy distribution p(z,bin)
-        real(mcp), allocatable, dimension(:,:) :: p
+        real(mcp), allocatable  :: theta_bins(:), theta_bin_radians(:)
+        real(mcp), allocatable :: z_bins(:)
+        integer :: num_z_p ! Source distribution p(z,bin)
+        Type(TCubicSpline), allocatable :: p_sp(:), pgal_sp(:)
         real(mcp), allocatable, dimension(:) :: z_p
-        integer, allocatable, dimension(:) :: mask_indices
-        real(mcp) :: ah_factor ! Anderson-Hartlap factor
-        logical :: cut_theta  ! Cut non-linear scales
+        integer :: nmeasurement_types
+        integer, allocatable :: measurement_types(:), num_type(:)
+        integer, allocatable :: used_measurement_types(:)
+        logical :: want_type(size(measurement_names))
+        real, allocatable :: data_selection(:,:,:,:)
+        integer :: num_used
+        integer, allocatable :: used_indices(:), used_items(:,:)
+        integer, allocatable :: bin_pairs(:,:,:)
+        real(mcp), allocatable :: corr_data(:,:,:,:)
+
+        real(mcp) :: ah_factor ! factor to rescale covariance
+        integer :: intrinsic_alignment_model
         logical :: use_non_linear ! Whether to use non-linear corrections
-        logical :: use_weyl ! Whether to use Weyl potential or matter P(k)
+        logical :: use_weyl !Wether to get lensing directly from the Weyl potential
+
+        real(mcp), private, allocatable :: data_vector(:) !derived based on cuts
+        real(mcp), private, allocatable :: ls_bessel(:)
+        integer, private, allocatable :: ls_cl(:)
+        real(mcp), private, allocatable :: j0s(:,:), j2s(:,:), j4s(:,:)
+        integer, private :: first_theta_bin_used
+        integer :: lmax = 50000
+        real(mcp) :: acc = 1._mcp !accuracy parameter
+
     contains
     procedure :: LogLike => WL_LnLike
     procedure :: ReadIni => WL_ReadIni
-    procedure, private :: get_convergence
+    procedure, private :: make_vector
+    procedure, private :: calc_theory
+    procedure, private :: cl2corr
+    procedure, private :: init_bessel_integration
     end type WLLikelihood
 
-    ! Integration accuracy parameters
-    integer, parameter :: nlmax = 65
-    real(mcp), parameter :: dlnl = 0.2d0
-    real(mcp) :: dlntheta = 0.25d0
-    real(mcp), parameter :: dx = 0.02d0
-    real(mcp), parameter :: xstop = 200.0d0
+    integer, parameter :: intrinsic_alignment_none=1, intrinsic_alignment_DES1YR=2
+    character(LEN=Ini_Enumeration_Len), parameter :: intrinsic_alignments(2) = &
+        [character(Ini_Enumeration_Len)::'none','DES1YR']
 
     public WLLikelihood, WLLikelihood_Add
     contains
@@ -46,20 +73,23 @@
     class(TLikelihoodList) :: LikeList
     class(TSettingIni) :: ini
     Type(WLLikelihood), pointer :: this
-    Type(TSettingIni) :: DataSets
+    Type(TSettingIni) :: DataSets, OverrideSettings
     integer i
     logical :: nonlinear, useweyl
 
+    !Written generally, but currently only supports DES parameters
     if (Ini%Read_Logical('use_WL',.false.)) then
         nonlinear = Ini%Read_Logical('wl_use_non_linear',.true.)
-        useweyl = Ini%Read_Logical('wl_use_weyl',.true.)
+        useweyl = Ini%Read_Logical('wl_use_weyl',.false.)
         call Ini%TagValuesForName('wl_dataset', DataSets)
         do i= 1, DataSets%Count
+            call Ini%SettingValuesForTagName('wl_dataset',DataSets%Name(i),OverrideSettings)
             allocate(this)
             this%needs_nonlinear_pk = nonlinear
             this%use_non_linear = nonlinear
             this%use_weyl = useweyl
-            call this%ReadDatasetFile(DataSets%Value(i))
+            call this%ReadDatasetFile(DataSets%Value(i),OverrideSettings)
+            call Ini%Read(Ini%NamedKey('wl_dataset_speed',DataSets%Name(i)),this%speed)
             this%LikelihoodType = 'WL'
             this%tag = DataSets%Name(i)
             this%needs_powerspectra = .true.
@@ -75,130 +105,196 @@
     use MatrixUtils
     class(WLLikelihood) this
     class(TSettingIni) :: Ini
-    character(LEN=:), allocatable :: measurements_file, window_file, measurements_format
     Type(TTextFile) :: F
-    real(mcp) :: dummy1,dummy2,pnorm
-    real(mcp), allocatable, dimension(:,:) :: temp
-    real(mcp), allocatable, dimension(:,:) :: cut_values
-    integer, allocatable, dimension(:) :: mask
-    integer i,iz,it,ib,j,k,nt,izl,izh
-    real(mcp) :: xi_plus_cut, xi_minus_cut
+    real(mcp), allocatable :: nz_source(:,:)
+    character(LEN=:), allocatable :: InLine
+    integer bin1, bin2, maxbin, theta_bin
+    real(mcp) theta_range(2)
+    character(Ini_Enumeration_Len) tp
+    integer status
+    integer cov_ix
+    character(LEN=:), allocatable :: measurements_format
+    integer, allocatable :: used_indices(:), used_items(:,:)
+    real(mcp), allocatable :: wl_cov(:,:)
+    real(mcp) :: theta, dat, x
+    integer lastbin1, lastbin2
+    integer i, j, b, maxused, this_type
+    integer, allocatable :: ls_tmp(:)
+    real(mcp), allocatable :: p(:)
 
     if (Feedback > 0) write (*,*) 'reading WL data set: '//trim(this%name)
 
+    measurements_format = Ini%Read_String('measurements_format',NotFoundFail=.true.)
+    IF (measurements_format /= 'DES') call MpiStop('WL: unknown or old measurements_format')
+
     this%num_z = Ini%Read_Int('nz_wl',100)
-    this%max_z = Ini%Read_Double('max_z')
-    this%cut_theta = Ini%Read_Logical('cut_theta',.false.)
+    this%max_z = Ini%Read_Double('max_z',0.d0)
 
     this%num_z_bins = Ini%Read_Int('num_z_bins')
-    this%num_theta_bins = Ini%Read_Int('num_theta_bins')
-    this%num_z_p = Ini%Read_Int('num_z_p')
-    nt = this%num_z_bins*(1+this%num_z_bins)/2
+    this%num_gal_bins = Ini%Read_Int('num_gal_bins', 0)
+    maxbin = max(this%num_z_bins, this%num_gal_bins)
 
-    allocate(this%theta_bins(this%num_theta_bins))
-    allocate(this%z_bins(this%num_z_bins))
-    allocate(this%xi_obs(this%num_theta_bins*nt*2))
+    this%acc = Ini%Read_Double('acc',this%acc)
+    this%lmax = Ini%Read_int('lmax',this%lmax)
+
+    call File%LoadTxt(Ini%ReadRelativeFilename('nz_file'), nz_source)
+    this%num_z_p = size(nz_source(:,2)) + 2
     allocate(this%z_p(this%num_z_p))
-    allocate(this%p(this%num_z_p,this%num_z_bins))
+    this%z_p(1:this%num_z_p-2) = nz_source(:,2)
+    !end with zero, and allow range to extend a bit because of marginalizing over mean
+    this%z_p(this%num_z_p-1) = 2*this%z_p(this%num_z_p-2) - this%z_p(this%num_z_p-3)
+    this%z_p(this%num_z_p) = 3*this%z_p(this%num_z_p-2) - 2*this%z_p(this%num_z_p-3)
+    this%max_z = max(this%max_z, maxval(this%z_p))
+    allocate(p(this%num_z_p))
+    allocate(this%P_sp(this%num_z_bins))
+    do i=1,this%num_z_bins
+        p(1:this%num_z_p-2) = nz_source(:,4+i-1)
+        p(this%num_z_p-1:this%num_z_p) = 0
+        call this%P_sp(i)%Init(this%z_p, p)
+    end do
+    deallocate(nz_source)
+
+    if (this%num_gal_bins > 0) then
+        call File%LoadTxt(Ini%ReadRelativeFilename('nz_gal_file'), nz_source)
+        if (size(nz_source(:,2)) /= this%num_z_p-2) call MpiStop('wl assumes windows used same bins')
+        if (any(nz_source(:,2) /= this%z_p(1:this%num_z_p-2))) &
+            call MpiStop('wl assumes windows used same bins')
+        allocate(this%Pgal_sp(this%num_gal_bins))
+        do i=1,this%num_gal_bins
+            p(1:this%num_z_p-2) = nz_source(:,4+i-1)
+            p(this%num_z_p-1:this%num_z_p) = 0
+            call this%Pgal_sp(i)%Init(this%z_p, p)
+        end do
+        deallocate(nz_source)
+    end if
+    deallocate(p)
+
+    call File%LoadTxt(Ini%ReadRelativeFilename('theta_bins_file'), this%theta_bins)
+    this%num_theta_bins = Ini%Read_Int('num_theta_bins',size(this%theta_bins))
+    if (size(this%theta_bins) /= this%num_theta_bins ) error stop 'size mismatch in theta_bins_file'
+
+    allocate(this%theta_bin_radians(this%num_theta_bins))
+    this%theta_bin_radians = this%theta_bins / 60 * pi/ 180
+    !Above is workaround for gfortran bug
+    !allocate(this%theta_bin_radians, source=this%theta_bins / 60 * pi/ 180)
 
     this%kmax = Ini%Read_Double('kmax')
-
     this%ah_factor = Ini%Read_Double('ah_factor',1.0d0)
+    call File%LoadTxt(Ini%ReadRelativeFilename('cov_file'),wl_cov)
 
-    measurements_file  = Ini%ReadFileName('measurements_file')
-    measurements_format = Ini%Read_String('measurements_format',NotFoundFail=.true.)
+    this%intrinsic_alignment_model = &
+        Ini%Read_Enumeration('intrinsic_alignment_model', &
+        intrinsic_alignments,intrinsic_alignment_DES1YR)
 
-    window_file  = Ini%ReadFileName('window_file')
-
-    call File%LoadTxt(Ini%ReadFileName('cov_file'),this%wl_cov)
-    if (size(this%wl_cov,1)/= 2*this%num_theta_bins*nt) call MpiStop('WL_ReadIni: wrong cov size')
-    
-    if (this%cut_theta) then
-        call File%LoadTxt(Ini%ReadFileName('cut_file'), cut_values)
-        if (size(cut_values,1)/=this%num_z_bins) call MpiStop('WL_ReadIni: bad cut values')
-    end if
-
-    do ib=1,this%num_z_bins
-        call F%Open(FormatString(window_file,ib,allow_unused=.true.))
-        do iz=1,this%num_z_p
-            read (F%unit,*) this%z_p(iz),this%p(iz,ib)
-        end do
-        call F%Close()
-    end do
-
-    call F%Open(measurements_file)
-    if (measurements_format == '1bin') then
-        do it = 1,this%num_theta_bins
-            read (F%unit,*) this%theta_bins(it),this%xi_obs(it),dummy1,this%xi_obs(it+this%num_theta_bins),dummy2
-        end do
-    elseif (measurements_format == 'nbin') then
-        k = 1
-        allocate(temp(2*this%num_theta_bins,nt))
-        do i=1,2*this%num_theta_bins
-            read (F%unit,*) dummy1,temp(i,:)
-            if (i.le.this%num_theta_bins) this%theta_bins(i)=dummy1
-        end do
-        do j=1,nt
-            do i=1,2*this%num_theta_bins
-                this%xi_obs(k) = temp(i,j)
-                k = k + 1
-            end do
-        end do
-        deallocate(temp)
+    call Ini%Read_Enumeration_List('data_types',measurement_names, &
+        this%measurement_types)
+    this%nmeasurement_types = size(this%measurement_types)
+    if (Ini%HasKey('used_data_types')) then
+        call Ini%Read_Enumeration_List('used_data_types',measurement_names, &
+            this%used_measurement_types)
     else
-        call MPIStop('ERROR: Not yet implemented WL measurements format: '//measurements_format)
+        allocate(this%used_measurement_types, source = this%measurement_types)
     end if
-    call F%Close()
+    this%want_type = .false.
+    this%want_type(this%used_measurement_types) = .true.
 
-    !Normalize window functions p so \int p(z) dz = 1
-    do ib=1,this%num_z_bins
-        pnorm = 0
-        do iz=2,this%num_z_p
-            pnorm = pnorm + 0.5d0*(this%p(iz-1,ib)+this%p(iz,ib))*(this%z_p(iz)-this%z_p(iz-1))
-        end do
-        this%p(:,ib) = this%p(:,ib)/pnorm
-    end do
-
-    ! Apply Anderson-Hartap correction
-    this%wl_cov = this%wl_cov/this%ah_factor
-
-    ! Compute theta mask
-    allocate(mask(this%num_theta_bins*nt*2))
-    if (allocated(cut_values)) then
-        mask = 0
-        iz = 0
-        do izl = 1,this%num_z_bins
-            do izh = izl,this%num_z_bins
-                iz = iz + 1 ! this counts the bin combinations iz=1 =>(1,1), iz=1 =>(1,2) etc
-                do i = 1,this%num_theta_bins
-                    j = (iz-1)*2*this%num_theta_bins
-                    xi_plus_cut = max(cut_values(izl,1),cut_values(izh,1))
-                    xi_minus_cut = max(cut_values(izl,2),cut_values(izh,2))
-                    if (this%theta_bins(i)>xi_plus_cut) mask(j+i) = 1
-                    if (this%theta_bins(i)>xi_minus_cut) mask(this%num_theta_bins + j+i) = 1
-                    ! Testing
-                    !write(*,'(5i4,3E15.3,2i4)') izl,izh,i,i+j,this%num_theta_bins + j+i,xi_plus_cut,&
-                    !     xi_minus_cut,this%theta_bins(i),mask(j+i),mask(this%num_theta_bins + j+i)
-                end do
-            end do
-        end do
-    else
-        mask = 1
+    if (this%use_weyl .and. any(this%want_type(measurement_gammat:measurement_wtheta))) then
+        call MPIstop('currently wl_use_weyl option can only be used with weak lensing data')
     end if
-    this%num_mask = sum(mask)
-    allocate(this%mask_indices(this%num_mask))
-    j = 1
-    do i=1,this%num_theta_bins*nt*2
-        if (mask(i) == 1) then
-            this%mask_indices(j) = i
-            j = j+1
+
+    call this%loadParamNames(Ini%ReadRelativeFileName('nuisance_params',NotFoundFail=.true.))
+
+    allocate(this%data_selection(size(measurement_names),maxbin,maxbin,2))
+    this%data_selection = -1
+    call F%Open(Ini%ReadRelativeFilename('data_selection'))
+    do while (F%ReadLineSkipEmptyAndComments(InLine))
+        read(InLine, *, iostat=status) tp, bin1, bin2, theta_range(:)
+        if (status/= 0) call MpiStop('WL: Error reading data_selection: ' //InLine)
+        i = Ini%EnumerationValue(tp, measurement_names)
+        if (i==-1) call MpiStop('data_selection has unknown measurement type')
+        if (bin1 < 1 .or. bin1 > maxbin .or. bin2<1 .or. bin2 > maxbin) &
+            call MpiStop('data_selection: invalid bin')
+        if (this%want_type(i)) then
+            this%data_selection(i, bin1, bin2, :) = theta_range
         end if
     end do
+    call F%Close
 
-    ! Precompute masked inverse
-    allocate(this%wl_invcov(this%num_mask,this%num_mask))
-    this%wl_invcov = this%wl_cov(this%mask_indices,this%mask_indices)
-    call Matrix_Inverse(this%wl_invcov)
+    cov_ix = 0
+    this%num_used = 0
+    maxused = this%nmeasurement_types*this%num_theta_bins*maxbin**2
+    allocate(used_indices(maxused))
+    allocate(used_items(maxused,4))
+    allocate(this%num_type(this%nmeasurement_types))
+    allocate(this%bin_pairs(2, maxbin**2, this%nmeasurement_types))
+    allocate(this%corr_data(this%num_theta_bins,maxbin, maxbin, this%nmeasurement_types))
+
+    this%first_theta_bin_used = this%num_theta_bins
+    do i = 1, this%nmeasurement_types
+        this%num_type(i)=0
+        this_type = this%measurement_types(i)
+        lastbin1= 0
+        lastbin2=0
+        call F%Open(Ini%ReadRelativeFilename('measurements['// &
+            trim(measurement_names(this_type))//']'))
+        do while (F%ReadLineSkipEmptyAndComments(InLine))
+            read(InLine, *, iostat=status) bin1, bin2, theta_bin, dat
+            if (status/= 0) call MpiStop('WL: Error reading measurements ' &
+                //measurement_names(this_type))
+            if (theta_bin <1 .or. theta_bin > this%num_theta_bins) &
+                call MpiStop('WL: invalid theta bin: '//InLine)
+            cov_ix = cov_ix + 1
+            if (lastbin1/=bin1 .or. lastbin2/=bin2) then
+                this%num_type(i) =this%num_type(i)+1
+                this%bin_pairs(1, this%num_type(i),i) = bin1
+                this%bin_pairs(2, this%num_type(i),i) = bin2
+                lastbin1 = bin1
+                lastbin2 = bin2
+            end if
+            this%corr_data(theta_bin, bin1, bin2, i) = dat
+            if (this%want_type(this_type)) then
+                theta_range = this%data_selection(this_type, bin1, bin2, 1:2)
+                theta = this%theta_bins(theta_bin)
+                if (theta>=theta_range(1) .and. theta <= theta_range(2)) then
+                    this%num_used = this%num_used + 1
+                    used_indices(this%num_used) = cov_ix
+                    used_items(this%num_used,1) = i
+                    used_items(this%num_used,2) = bin1
+                    used_items(this%num_used,3) = bin2
+                    used_items(this%num_used,4) = theta_bin
+                    this%first_theta_bin_used = min(theta_bin, this%first_theta_bin_used)
+                end if
+            end if
+        end do
+        call F%Close
+    end do
+    if (cov_ix /= size(wl_cov, dim=1) .or. &
+        cov_ix /= size(wl_cov, dim=2)) call MpiStop('WL: cov size does not match data size')
+
+    allocate(this%used_items, source = used_items(1:this%num_used,:))
+    allocate(this%used_indices, source = used_indices(1:this%num_used))
+
+    allocate(this%invcov, source = wl_cov(this%used_indices,this%used_indices))
+    call Matrix_Inverse(this%invcov)
+
+    allocate(this%data_vector(this%num_used))
+    call this%make_vector(this%corr_data, this%data_vector)
+
+    call this%init_bessel_integration()
+    !Get ell for calculating C_L. Linear then log.
+    b=0
+    allocate(ls_tmp(this%lmax))
+    do i=2, 100 -int(4/this%acc), max(1,int(4/this%acc))
+        b=b+1
+        ls_tmp(b) = i
+    end do
+    i=0
+    do while (ls_tmp(b) < this%lmax)
+        b=b+1
+        ls_tmp(b) = nint(100*exp(0.1266*i/this%acc))
+        i=i+1
+    end do
+    allocate(this%ls_cl, source = ls_tmp(1:b))
 
     end subroutine WL_ReadIni
 
@@ -209,43 +305,150 @@
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) :: DataParams(:)
     real(mcp) WL_LnLike
-    real(mcp) vec(this%num_mask)
-    real(mcp), allocatable :: xi(:)
+    real(mcp) vec(this%num_used)
+    real(mcp), allocatable :: corr_theory(:,:,:,:)
 
-    allocate(xi(size(this%xi_obs)))
-    call this%get_convergence(CMB,Theory, xi)
-    vec = xi(this%mask_indices)-this%xi_obs(this%mask_indices)
-    WL_LnLike = Matrix_QuadForm(this%wl_invcov,vec) / 2
+    allocate(corr_theory, source = this%corr_data*0)
+    call this%calc_theory(CMB,Theory, corr_theory, DataParams)
+    call this%make_vector(corr_theory, vec)
+
+    vec = vec - this%data_vector
+    WL_LnLike = Matrix_QuadForm(this%invcov,vec) / 2
 
     end function WL_LnLike
 
+    subroutine init_bessel_integration(this)
+    Class(WLLikelihood) :: this
+    real(mcp) dlog, tmp0, tmp2, tmp4, x
+    integer n, ix, ell, i, j, ell_last
+    integer, allocatable :: ell_sum_min(:), ell_sum_max(:), bigell(:), dell(:)
 
-    subroutine get_convergence(this,CMB,Theory,xi)
+    !Get array of roughly log-spaced ls_bessel to sample in the C_L
+    n = int(500*this%acc)
+    dlog = (log(real(this%lmax)) - log(1.))/n
+    allocate(dell(n))
+    ix = 0
+    ell_last = 1
+    do i=1, n
+        ell = int(exp(i*dlog))
+        if (ell /= ell_last) then
+            ix = ix+1
+            dell(ix) = ell-ell_last
+            ell_last = ell
+        end if
+    end do
+    allocate(this%ls_bessel(ix))
+    allocate(ell_sum_min(ix), ell_sum_max(ix))
+    ell = 2
+    do i=1, ix
+        this%ls_bessel(i) = (2*ell+dell(i) -1. )/2
+        ell_sum_min(i) = ell
+        ell_sum_max(i) = ell + dell(i) -1
+        ell = ell+ dell(i)
+    end do
+    !Calculate average of Bessels over each ell bin range
+    allocate(this%j0s(size(this%ls_bessel), this%first_theta_bin_used:this%num_theta_bins))
+    allocate(this%j2s(size(this%ls_bessel), this%first_theta_bin_used:this%num_theta_bins))
+    allocate(this%j4s(size(this%ls_bessel), this%first_theta_bin_used:this%num_theta_bins))
+
+    do i = 1, size(this%ls_bessel)
+        do j = this%first_theta_bin_used, this%num_theta_bins
+            tmp0 = 0
+            tmp2 = 0
+            tmp4 = 0
+            do ell = ell_sum_min(i),ell_sum_max(i)
+                x = ell * this%theta_bin_radians(j)
+                tmp0 = tmp0 + ell*Bessel_J0(x)
+                tmp2 = tmp2 + ell*Bessel_JN(2,x)
+                tmp4 = tmp4 + ell*Bessel_JN(4,x)
+            end do
+            this%j0s(i,j) = tmp0/(2*pi)
+            this%j2s(i,j) = tmp2/(2*pi)
+            this%j4s(i,j) = tmp4/(2*pi)
+        end do
+    end do
+
+    !allocate(this%ls_bessel, &
+    !    source = real((/ (i, i = 2, this%lmax, this%dl_bessel) /), mcp))
+    !!Precompute bessels
+    !allocate(this%j0s(size(this%ls_bessel), this%first_theta_bin_used:this%num_theta_bins))
+    !allocate(this%j2s(size(this%ls_bessel), this%first_theta_bin_used:this%num_theta_bins))
+    !allocate(this%j4s(size(this%ls_bessel), this%first_theta_bin_used:this%num_theta_bins))
+    !do i=this%first_theta_bin_used,this%num_theta_bins
+    !    do j=1, size(this%ls_bessel)
+    !        x = this%ls_bessel(j)*this%theta_bin_radians(i)
+    !        this%j0s(j,i) = this%ls_bessel(j)*Bessel_J0(x)
+    !        this%j2s(j,i) = this%ls_bessel(j)*Bessel_JN(2,x)
+    !        this%j4s(j,i) = this%ls_bessel(j)*Bessel_JN(4,x)
+    !    end do
+    !end do
+    !this%j0s = this%j0s * this%dl_bessel / (2 * pi)
+    !this%j2s = this%j2s * this%dl_bessel / (2 * pi)
+    !this%j4s = this%j4s * this%dl_bessel / (2 * pi)
+
+    end subroutine init_bessel_integration
+
+    subroutine make_vector(this, corr, vec)
+    Class(WLLikelihood) :: this
+    real(mcp), intent(in) :: corr(:,:,:,:)
+    real(mcp), intent(out) :: vec(this%num_used)
+    integer i
+    integer type_ix, f1, f2, theta_bin
+
+    do i=1, this%num_used
+        type_ix = this%used_items(i,1)
+        f1 = this%used_items(i,2)
+        f2 = this%used_items(i,3)
+        theta_bin = this%used_items(i,4)
+        vec(i) = corr(theta_bin, f1, f2, type_ix)
+    end do
+
+    end subroutine make_vector
+
+    subroutine calc_theory(this,CMB,Theory,corrs, DataParams)
     use Interpolation
+    use ArrayUtils
     Class(WLLikelihood) :: this
     Class(CMBParams) CMB
     Class(TCosmoTheoryPredictions), target :: Theory
-    real(mcp), intent(out) :: xi(:)
+    real(mcp), intent(out) :: corrs(:,:,:,:)
+    real(mcp), intent(in) :: DataParams(:)
     type(TCosmoTheoryPK), pointer :: PK
-    type(TCubicSpline) :: r_z, dzodr_z, P_z
-    type(TCubicSpline),  allocatable :: C_l(:,:), xi1_theta(:,:),xi2_theta(:,:)
-    real(mcp) :: h,z,kh,k
-    real(mcp), allocatable :: r(:),dzodr(:)
-    real(mcp), allocatable :: rbin(:),gbin(:,:)
-    real(mcp), allocatable :: ll(:),PP(:)
-    real(mcp), allocatable :: integrand(:)
-    real(mcp), allocatable :: Cl(:,:,:)
-    real(mcp), allocatable :: theta(:)
-    real(mcp), allocatable :: xi1(:,:,:),xi2(:,:,:)
-    real(mcp), allocatable :: i1p(:,:),i2p(:,:)
-    real(mcp) :: khmin, khmax, lmin, lmax, xmin, xmax, x, lll
-    real(mcp) :: Bessel0, Bessel4, Cval
-    real(mcp) :: i1, i2, lp
-    real(mcp) :: a2r
-    real(mcp) :: thetamin, thetamax
-    integer :: i,ib,jb,il,it,iz,nr,nrs,izl,izh,j
-    integer :: num_z, ntheta, min_iz
+    real(mcp) h, omm
+    real(mcp), allocatable :: chis(:), dchis(:), Hs(:), D_growth(:)
+    real(mcp) zshift
+    real(mcp) Alignment_z(this%num_z_p), fac(this%num_z_p)
+    real(mcp), allocatable :: qs(:,:), n_chi(:,:), qgal(:,:)
+    real(mcp), allocatable :: cl_kappa(:,:,:)
+    real(mcp), allocatable :: cl_w(:,:,:), cl_cross(:,:,:)
+    integer xim_index
+    integer i,b, ii, j, f1, f2, tp, type_ix, ix
+    real(mcp) kh, khmax, khmin, fac2, cltmp
 
+    real(mcp) bin_bias(this%num_gal_bins)
+    real(mcp) shear_calibration_parameters(this%num_z_bins)
+    real(mcp) intrinsic_alignment_A,  intrinsic_alignment_alpha,&
+        intrinsic_alignment_z0
+    real(mcp) source_photoz_errors(this%num_z_bins)
+    real(mcp) lens_photoz_errors(this%num_gal_bins)
+
+    real(mcp) :: tmparr(size(this%ls_cl))
+    real(mcp) :: kharr(this%num_z_p),zarr(this%num_z_p), powers(this%num_z_p), tmp(this%num_z_p)
+    real(mcp) :: time
+
+    time= TimerTime()
+
+    bin_bias = DataParams(1:this%num_gal_bins)
+    i = this%num_gal_bins
+    shear_calibration_parameters = DataParams(i+1:i+this%num_z_bins)
+    i = i + this%num_z_bins
+    intrinsic_alignment_A=DataParams(i+1)
+    intrinsic_alignment_alpha=DataParams(i+2)
+    intrinsic_alignment_z0=DataParams(i+3)
+    i=i+3
+    lens_photoz_errors = DataParams(i+1:i+this%num_gal_bins)
+    i = i + this%num_gal_bins
+    source_photoz_errors = DataParams(i+1: this%num_z_bins)
     if (this%use_non_linear) then
         if (this%use_weyl) then
             PK => Theory%NL_MPK_WEYL
@@ -261,185 +464,193 @@
     end if
 
     h = CMB%H0/100
-    num_z = PK%ny
-    khmin = exp(PK%x(1))
-    khmax = exp(PK%x(PK%nx))
-    a2r = pi/(180._mcp*60._mcp)
+    omm = CMB%omdm+CMB%omb
 
-    !-----------------------------------------------------------------------
-    ! Compute comoving distance r and dz/dr
-    !-----------------------------------------------------------------------
+    allocate(chis(this%num_z_p), dchis(this%num_z_p))
+    call this%Calculator%ComovingRadialDistanceArr(this%z_p, chis, this%num_z_p)
+    dchis(1) = (chis(2) + chis(1))/2
+    dchis(this%num_z_p) = chis(this%num_z_p) - chis(this%num_z_p-1)
+    dchis(2:this%num_z_p-1) = (chis(3:this%num_z_p) - chis(1:this%num_z_p-2))/2
+    allocate(Hs(this%num_z_p))
+    allocate(D_growth(this%num_z_p))
 
-    allocate(r(num_z),dzodr(num_z))
-    min_iz=1
-    do iz=1,num_z
-        z = PK%y(iz)
-        if (z==0) min_iz=iz+1
-        r(iz) = this%Calculator%ComovingRadialDistance(z)
-        dzodr(iz) = this%Calculator%Hofz(z)
+    !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(fac, i)
+    do i =1 , this%num_z_p
+        Hs(i) = this%Calculator%Hofz(this%z_p(i))
+        D_growth(i)= Theory%MPK%PowerAt(0.01d0,this%z_p(i))
     end do
-    call r_z%Init(PK%y,r,n=num_z)
-    call dzodr_z%Init(PK%y,dzodr,n=num_z)
+    !$OMP END PARALLEL DO
 
-    !-----------------------------------------------------------------------
-    ! Compute lensing efficiency
-    !-----------------------------------------------------------------------
+    D_growth = sqrt(D_growth/Theory%MPK%PowerAt(0.01d0,0.d0))
 
-    allocate(rbin(this%num_z_p),gbin(this%num_z_p,this%num_z_bins))
-    rbin=0
-    gbin=0
-    do iz=1,this%num_z_p
-        rbin(iz) = r_z%Value(this%z_p(iz))
-    end do
-    do ib=1,this%num_z_bins
-        do nr=2,this%num_z_p-1
-            do nrs=nr+1,this%num_z_p
-                gbin(nr,ib)=gbin(nr,ib)+0.5*(dzodr_z%Value(this%z_p(nrs))*this%p(nrs,ib)*(rbin(nrs)-rbin(nr))/rbin(nrs) &
-                    + dzodr_z%Value(this%z_p(nrs-1))*this%p(nrs-1,ib)*(rbin(nrs-1)-rbin(nr))/rbin(nrs-1))*(rbin(nrs)-rbin(nrs-1))
-            end do
-        end do
-    end do
+    Alignment_z = intrinsic_alignment_A * ((1 + this%z_p) / &
+        (1 + intrinsic_alignment_z0)) ** intrinsic_alignment_alpha &
+        * 0.0134 / D_growth
 
-    !-----------------------------------------------------------------------
-    ! Find convergence power spectrum using Limber approximation
-    !-----------------------------------------------------------------------
+    allocate(qs(this%num_z_p, this%num_z_bins))
+    allocate(qgal(this%num_z_p, this%num_gal_bins))
+    allocate(n_chi(this%num_z_p, this%num_z_bins))
 
-    allocate(ll(nlmax),PP(num_z))
-    allocate(integrand(this%num_z_p))
-    allocate(Cl(nlmax,this%num_z_bins,this%num_z_bins))
-    Cl = 0
-    do il=1,nlmax
-
-        ll(il)=1.*exp(dlnl*(il-1._mcp))
-        PP=0
-        do iz=min_iz,num_z
-            k = ll(il)/r(iz)
-            kh = k/h ! CAMB wants k/h values
-            z = PK%y(iz)
-            if ((kh .le. khmin) .or. (kh .ge. khmax)) then
-                PP(iz)=0.0d0
+    !Get lensing source qs and galaxy (lens) qgal, including intrinsic alignment model for qs
+    !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(b, zshift)
+    do i=1, this%num_z_p
+        !Neglecting any change in normalization of n due to shifting (?)
+        do b = 1, this%num_z_bins
+            zshift = this%z_p(i)- source_photoz_errors(b)
+            if (zshift <this%z_p(1) .or. zshift > this%z_p(this%num_z_p)) then
+                n_chi(i,b) =0
             else
-                PP(iz)= PK%PowerAt(kh,z)
-                ! Testing
-                !write(*,'(10E15.5)') k,z,PK_WEYL%PowerAt(kh,z)*k,9.0/(8.0*pi**2.0)&
-                !*PK%PowerAt(kh,z)/(h**3.0)*(h*1e5_mcp/const_c)**4.0*(CMB%omdm+CMB%omb)**2*(1+z)**2.0
+                n_chi(i,b) = Hs(i)*this%P_sp(b)%Value(zshift)
             end if
         end do
-
-        ! Compute integrand over comoving distance
-        call P_z%Init(r,PP,n=num_z)
-        do ib=1,this%num_z_bins
-            do jb=1,this%num_z_bins
-                integrand = 0
-                do nr=1,this%num_z_p
-                    integrand(nr) = gbin(nr,ib)*gbin(nr,jb)*P_z%Value(rbin(nr))
-                    if (.not. this%use_weyl) integrand(nr) = integrand(nr) *(1.0+this%z_p(nr))**2.0
-                end do
-                do nr=2,this%num_z_p
-                    Cl(il,ib,jb)=Cl(il,ib,jb)+0.5d0*(integrand(nr)+integrand(nr-1))*(rbin(nr)-rbin(nr-1))
-                end do
-            end do
+        do b = 1, this%num_gal_bins
+            zshift = this%z_p(i)- lens_photoz_errors(b)
+            if (zshift <this%z_p(1) .or. zshift > this%z_p(this%num_z_p)) then
+                qgal(i,b) =0
+            else
+                qgal(i,b) = Hs(i)*this%Pgal_sp(b)%Value(zshift)*bin_bias(b)
+            end if
         end do
-        if (.not. this%use_weyl) then
-            Cl(il,:,:) = Cl(il,:,:)/h**3.0*9._mcp/4._mcp*(h*1e5_mcp/const_c)**4.0*(CMB%omdm+CMB%omb)**2
+    end do
+    !$OMP END PARALLEL DO
+    !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(fac, i)
+    do b = 1, this%num_z_bins
+        fac = dchis*n_chi(:,b)
+        do i=1, this%num_z_p
+            qs(i,b) = dot_product(fac(i:this%num_z_p),(1 - chis(i) / chis(i:this%num_z_p)))
+        end do
+        if (this%intrinsic_alignment_model == intrinsic_alignment_DES1YR) then
+            qs(:,b) = qs(:,b) - Alignment_z * n_chi(:,b) / (chis * (1 + this%z_p) * 3 * h**2 * (1e5 / const_c) ** 2 / 2)
+        end if
+        if (this%use_weyl) then
+            qs(:,b) = qs(:,b) * chis
+        else
+            qs(:,b) = qs(:,b) * (3/2._mcp * omm * h**2 * (1e5 / const_c) ** 2) * chis * (1 + this%z_p)
         end if
     end do
+    !$OMP END PARALLEL DO
 
-    !-----------------------------------------------------------------------
-    ! Convert C_l to xi's
-    !-----------------------------------------------------------------------
+    if (WL_timing)  print *, 'time 1', TimerTime() - time
+    time= TimerTime()
 
-    !----------------------------------------------------------------------
-    ! TODO - option for other observable?
-    !-----------------------------------------------------------------------
+    !Get C_kappa
+    khmin = exp(PK%x(1))
+    khmax = exp(PK%x(PK%nx))
+    allocate(cl_kappa(size(this%ls_cl),this%num_z_bins,this%num_z_bins))
+    allocate(cl_w(size(this%ls_cl),this%num_gal_bins,this%num_gal_bins))
+    allocate(cl_cross(size(this%ls_cl),this%num_gal_bins,this%num_z_bins))
+    cl_kappa=0
+    cl_w=0
+    cl_cross=0
 
-    allocate(C_l(this%num_z_bins,this%num_z_bins))
-    do ib=1,this%num_z_bins
-        do jb=1,this%num_z_bins
-            call C_l(ib,jb)%Init(ll,Cl(:,ib,jb),n=nlmax)
-        end do
-    end do
-
-    thetamin = minval(this%theta_bins)*0.8
-    thetamax = maxval(this%theta_bins)*1.2
-    ntheta = ceiling(log(thetamax/thetamin)/dlntheta) + 1
-
-    lmin=ll(1)
-    lmax=ll(nlmax)
-    allocate(theta(ntheta))
-    allocate(xi1(ntheta,this%num_z_bins,this%num_z_bins),xi2(ntheta,this%num_z_bins,this%num_z_bins))
-    allocate(i1p(this%num_z_bins,this%num_z_bins),i2p(this%num_z_bins,this%num_z_bins))
-    xi1 = 0
-    xi2 = 0
-
-    do it=1,ntheta
-        theta(it) = thetamin*exp(dlntheta*(it-1._mcp))
-        xmin=lmin*theta(it)*a2r! Convert from arcmin to radians
-        xmax=lmax*theta(it)*a2r
-        x = xmin
-        lp = 0
-        i1p = 0
-        i2p = 0
-        do while(x<xstop .and. x<xmax)
-            lll=x/(theta(it)*a2r)
-            if(lll>lmax) then
-                write(*,*)'ERROR: l>lmax: '//trim(this%name)
-                call MPIStop()
+    fac = dchis/chis**2
+    if (.not. this%use_weyl) fac = fac / h**3
+    !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(j,kh, type_ix, tp, f1, f2, cltmp, ix, kharr, zarr, powers, tmp)
+    do i=1, size(this%ls_cl)
+        ix =0
+        do j = 1, this%num_z_p
+            kh= (this%ls_cl(i) + 0.5) / chis(j)/h
+            if (kh >= khmin .and. kh <= khmax) then
+                ix = ix +1
+                zarr(ix) = this%z_p(j)
+                kharr(ix) = kh
             end if
-            Bessel0 = Bessel_J0(x)
-            Bessel4 = Bessel_JN(4,x)
-            do ib=1,this%num_z_bins
-                do jb=ib,this%num_z_bins
-                    Cval = C_l(ib,jb)%Value(lll)*lll
-                    i1 = Cval*Bessel0
-                    i2 = Cval*Bessel4
-                    xi1(it,ib,jb) = xi1(it,ib,jb)+0.5*(i1p(ib,jb)+i1)*(lll-lp)
-                    xi2(it,ib,jb) = xi2(it,ib,jb)+0.5*(i2p(ib,jb)+i2)*(lll-lp)
-                    i1p(ib,jb) = i1
-                    i2p(ib,jb) = i2
-                end do
-            end do
-            x = x+dx
-            lp = lll
         end do
-
-        do ib=1,this%num_z_bins
-            do jb=ib,this%num_z_bins
-                xi1(it,jb,ib) = xi1(it,ib,jb)
-                xi2(it,jb,ib) = xi2(it,ib,jb)
-            end do
+        call PK%PowerAtArr(kharr, zarr, ix, powers)
+        ix=0
+        do j = 1, this%num_z_p
+            kh = (this%ls_cl(i) + 0.5) / chis(j)/h
+            if (kh >= khmin .and. kh <= khmax) then
+                ix = ix+1
+                tmp(j) = fac(j)* powers(ix)
+            else
+                tmp(j) = 0
+            end if
         end do
-
-    end do
-
-    xi1=xi1/pi/2._mcp
-    xi2=xi2/pi/2._mcp
-
-    !-----------------------------------------------------------------------
-    ! Get xi's in column vector format
-    !-----------------------------------------------------------------------
-
-    allocate(xi1_theta(this%num_z_bins,this%num_z_bins),xi2_theta(this%num_z_bins,this%num_z_bins))
-    do ib=1,this%num_z_bins
-        do jb=1,this%num_z_bins
-            call xi1_theta(ib,jb)%Init(theta,xi1(:,ib,jb),n=ntheta)
-            call xi2_theta(ib,jb)%Init(theta,xi2(:,ib,jb),n=ntheta)
-        end do
-    end do
-
-    iz = 0
-    do izl = 1,this%num_z_bins
-        do izh = izl,this%num_z_bins
-            iz = iz + 1 ! this counts the bin combinations iz=1 =>(1,1), iz=1 =>(1,2) etc
-            do i = 1,this%num_theta_bins
-                j = (iz-1)*2*this%num_theta_bins
-                xi(j+i) = xi1_theta(izl,izh)%Value(this%theta_bins(i))
-                xi(this%num_theta_bins + j+i) = xi2_theta(izl,izh)%Value(this%theta_bins(i))
+        do type_ix = 1, this%nmeasurement_types
+            tp = this%measurement_types(type_ix)
+            if (tp==measurement_xim .or. .not. this%want_type(tp)) cycle !assume get from xip (cl_kappa)
+            do j=1, this%num_type(type_ix)
+                f1 = this%bin_pairs(1,j,type_ix)
+                f2 = this%bin_pairs(2,j,type_ix)
+                if (tp==measurement_xip) then
+                    cltmp = 0
+                    do ii = 1, this%num_z_p
+                        cltmp = cltmp + tmp(ii)*qs(ii,f1)*qs(ii,f2)
+                    end do
+                    cl_kappa(i,f1,f2) = cltmp
+                else if (tp ==measurement_wtheta) then
+                    cltmp = 0
+                    do ii = 1, this%num_z_p
+                        cltmp = cltmp +  tmp(ii)*(qgal(ii,f1)*qgal(ii,f2))
+                    end do
+                    cl_w(i,f1,f2)=cltmp
+                else if (tp ==measurement_gammat) then
+                    cltmp = 0
+                    do ii = 1, this%num_z_p
+                        cltmp = cltmp + tmp(ii)*(qgal(ii,f1)*qs(ii,f2))
+                    end do
+                    cl_cross(i,f1,f2)=cltmp
+                end if
             end do
         end do
     end do
+    !$OMP END PARALLEL DO
 
-    end subroutine get_convergence
+    if (WL_timing) print *, 'time 2', TimerTime() - time
+    time= TimerTime()
+
+    xim_index = IndexOf(measurement_xim,this%measurement_types, &
+        this%nmeasurement_types)
+    do type_ix = 1, this%nmeasurement_types
+        tp = this%measurement_types(type_ix)
+        if (tp==measurement_xim .or. .not. this%want_type(tp)) cycle
+        !$OMP PARALLEL DO DEFAULT(SHARED),PRIVATE(j)
+        do j=1, this%num_type(type_ix)
+            call this%cl2corr(tp, cl_kappa, cl_w, cl_cross, corrs, type_ix, &
+                xim_index,j, shear_calibration_parameters)
+        end do
+        !$OMP END PARALLEL DO
+    end do
+    if (WL_timing) print *, 'time 3', TimerTime() - time
+
+    end subroutine calc_theory
+
+    subroutine cl2corr(this, tp, cl_kappa, cl_w, cl_cross, corrs, &
+        type_ix, xim_index, j, shear_calibration_parameters)
+    !This only a subroutine to work around issues with OPENMP
+    class(WLLikelihood) :: this
+    integer, intent(in) :: tp, type_ix, xim_index, j
+    real(mcp), intent(in) :: shear_calibration_parameters(*)
+    real(mcp), intent(in) :: cl_kappa(:,:,:), cl_w(:,:,:), cl_cross(:,:,:)
+    real(mcp), intent(inout) :: corrs(:,:,:,:)
+    integer f1, f2
+    real(mcp) cl_bessels(size(this%ls_bessel)), fac2
+    Type(TCubicSpline) :: CL_sp
+
+    !Note j0s, j2s and j4s already contain L Delta_L/(2*pi) factor
+    f1 = this%bin_pairs(1,j,type_ix)
+    f2 = this%bin_pairs(2,j,type_ix)
+    if (tp==measurement_xip) then
+        call CL_sp%Init(this%ls_cl, cl_kappa(:,f1,f2), size(this%ls_cl))
+        call CL_sp%Array(this%ls_bessel, cl_bessels)
+        fac2 =  (1 + shear_calibration_parameters(f1)) &
+            * ( 1 + shear_calibration_parameters(f2))
+        corrs(this%first_theta_bin_used:,f1,f2,type_ix) = matmul(cl_bessels, this%j0s) *fac2
+        if (xim_index/=0) &
+            corrs(this%first_theta_bin_used:,f1,f2,xim_index) = matmul(cl_bessels, this%j4s) *fac2
+    else if (tp == measurement_gammat) then
+        call CL_sp%Init(this%ls_cl, cl_cross(:,f1,f2), size(this%ls_cl))
+        call CL_sp%Array(this%ls_bessel, cl_bessels)
+        fac2 = ( 1 + shear_calibration_parameters(f2))
+        corrs(this%first_theta_bin_used:,f1,f2,type_ix) = matmul(cl_bessels, this%j2s) *fac2
+    else if (tp ==  measurement_wtheta) then
+        call CL_sp%Init(this%ls_cl, cl_w(:,f1,f2), size(this%ls_cl))
+        call CL_sp%Array(this%ls_bessel, cl_bessels)
+        corrs(this%first_theta_bin_used:,f1,f2,type_ix) = matmul(cl_bessels, this%j0s)
+    end if
+
+    end subroutine cl2corr
 
     end module wl
 

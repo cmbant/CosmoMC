@@ -318,8 +318,8 @@
 
     if ((P%NonLinear==NonLinear_lens .or. P%NonLinear==NonLinear_both) .and. &
         (P%DoLensing .or. num_redshiftwindows > 0)) then
-    P%WantTransfer  = .true.
-    call Transfer_SetForNonlinearLensing(P%Transfer)
+        P%WantTransfer  = .true.
+        call Transfer_SetForNonlinearLensing(P%Transfer)
     end if
 
     call Transfer_SortAndIndexRedshifts(P%Transfer)
@@ -333,7 +333,7 @@
     call Ini%Read('Alens', P%Alens)
 
     call Reionization_ReadParams(P%Reion, Ini)
-    call InitialPower_ReadParams(P%InitPower, Ini, P%WantTensors)
+    call P%InitPower%ReadParams(Ini, P%WantTensors)
     call Recombination_ReadParams(P%Recomb, Ini)
     if (Ini%HasKey('recombination')) then
         i = Ini%Read_Int('recombination', 1)
@@ -410,6 +410,10 @@
     P%Accuracy%AccuratePolarization = Ini%Read_Logical('accurate_polarization', .true.)
     P%Accuracy%AccurateReionization = Ini%Read_Logical('accurate_reionization', .true.)
     P%Accuracy%AccurateBB = Ini%Read_Logical('accurate_BB', .false.)
+    if (P%Accuracy%AccurateBB .and. P%WantCls .and. (P%Max_l < 3500 .or. &
+        (P%NonLinear/=NonLinear_lens .and. P%NonLinear/=NonLinear_both) .or. P%Max_eta_k < 18000)) &
+        write(*,*) 'WARNING: for accurate lensing BB you need high l_max_scalar, k_eta_max_scalar and non-linear lensing'
+
     P%DerivedParameters = Ini%Read_Logical('derived_parameters', .true.)
 
     version_check = Ini%Read_String('version_check')

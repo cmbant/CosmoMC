@@ -8,8 +8,8 @@
         CAMB_GetTransfers,CAMB_FreeCAMBdata,CAMB_InitCAMBdata, CAMB_TransfersToPowers, Transfer_SetForNonlinearLensing, &
         initial_adiabatic,initial_vector,initial_iso_baryon,initial_iso_CDM, initial_iso_neutrino, initial_iso_neutrino_vel, &
         highL_unlensed_cl_template, ThermoDerivedParams, nthermo_derived, BackgroundOutputs, &
-        Transfer_SortAndIndexRedshifts, &
-        Recombination_Name, reionization_name, power_name, threadnum, version, tensor_param_rpivot
+        Transfer_SortAndIndexRedshifts, TInitialPowerLaw, &
+        Recombination_Name, reionization_name, threadnum, version, tensor_param_rpivot
     use NonLinear, only : halofit_default, THalofit
     use Errors !CAMB
     use settings
@@ -53,6 +53,7 @@
     procedure :: BAO_D_v => CAMBCalc_BAO_D_v
     procedure :: AngularDiameterDistance => CAMBCalc_AngularDiameterDistance
     procedure :: ComovingRadialDistance => CAMBCalc_ComovingRadialDistance
+    procedure :: ComovingRadialDistanceArr => CAMBCalc_ComovingRadialDistanceArr
     procedure :: AngularDiameterDistance2 => CAMBCalc_AngularDiameterDistance2
     procedure :: LuminosityDistance => CAMBCalc_LuminosityDistance
     procedure :: Hofz => CAMBCalc_Hofz
@@ -119,7 +120,7 @@
 #else
     if (CMB%fdm/=0._mcp) call MpiStop('Compile with CosmoRec to use fdm')
 #endif
-    call this%SetCAMBInitPower(P,CMB,1)
+    call this%SetCAMBInitPower(P,CMB)
 
     end subroutine CAMBCalc_CMBToCAMB
 
@@ -129,16 +130,17 @@
     integer noutputs, i
 
     noutputs = size(BackgroundOutputs%z_outputs)
-    Theory%numderived = nthermo_derived + noutputs*4
+    Theory%numderived = nthermo_derived + noutputs*2
     if (Theory%numderived > max_derived_parameters) &
         call MpiStop('numderived > max_derived_parameters: increase in CosmologyTypes.f90')
     Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
     do i=1, noutputs
-        Theory%derived_parameters(nthermo_derived+(i-1)*4+1) = BackgroundOutputs%rs_by_D_v(i)
-        Theory%derived_parameters(nthermo_derived+(i-1)*4+2) = BackgroundOutputs%H(i)*const_c/1e3_mcp
-        Theory%derived_parameters(nthermo_derived+(i-1)*4+3) = BackgroundOutputs%DA(i)
-        Theory%derived_parameters(nthermo_derived+(i-1)*4+4) = (1+BackgroundOutputs%z_outputs(i))* &
-            BackgroundOutputs%DA(i) * BackgroundOutputs%H(i) !F_AP parameter
+        !Theory%derived_parameters(nthermo_derived+(i-1)*3+1) = BackgroundOutputs%rs_by_D_v(i)
+        !now use Hubble paramter in normal units and DM, comoving angular diameter distance
+        Theory%derived_parameters(nthermo_derived+(i-1)*2+1) = BackgroundOutputs%H(i)*const_c/1e3_mcp
+        Theory%derived_parameters(nthermo_derived+(i-1)*2+2) = BackgroundOutputs%DA(i)*(1+BackgroundOutputs%z_outputs(i))
+        !Theory%derived_parameters(nthermo_derived+(i-1)*4+4) = (1+BackgroundOutputs%z_outputs(i))* &
+        !    BackgroundOutputs%DA(i) * BackgroundOutputs%H(i) !F_AP parameter
     end do
     end subroutine CAMBCalc_SetDerived
 
@@ -220,7 +222,7 @@
 
     select type (Info)
     class is (CAMBTransferCache)
-        call this%SetCAMBInitPower(Info%Transfers%Params,CMB,1)
+        call this%SetCAMBInitPower(Info%Transfers%Params,CMB)
         call CAMB_TransfersToPowers(Info%Transfers)
         !this sets slow CAMB params correctly from value stored in Transfers
         if (global_error_flag/=0) then
@@ -252,7 +254,7 @@
 
         !redshifts are in increasing order, so last index is redshift zero
         if (CosmoSettings%Use_LSS .or. CosmoSettings%get_sigma8) then
-            Theory%sigma_8 = Info%Transfers%MTrans%sigma_8(size(Info%Transfers%MTrans%sigma_8,1),1)
+            Theory%sigma_8 = Info%Transfers%MTrans%sigma_8(size(Info%Transfers%MTrans%sigma_8))
         else
             Theory%sigma_8 = 0
         end if
@@ -300,7 +302,7 @@
         if (this%CAMB_timing) call Timer('CAMB_GetTransfers')
 
         if (error==0) then
-            call this%SetCAMBInitPower(Info%Transfers%Params,CMB,1)
+            call this%SetCAMBInitPower(Info%Transfers%Params,CMB)
             call CAMB_TransfersToPowers(Info%Transfers)
             error=global_error_flag
         end if
@@ -329,7 +331,7 @@
     end if
 
     if (DoPK .and. error==0) then
-        Theory%sigma_8 = Info%Transfers%MTrans%sigma_8(size(Info%Transfers%MTrans%sigma_8,1),1)
+        Theory%sigma_8 = Info%Transfers%MTrans%sigma_8(size(Info%Transfers%MTrans%sigma_8))
         call this%SetPkFromCAMB(Info%Transfers%MTrans,Theory,error)
         if (error/=0) write(*,*) 'WARNING: NaN PK?'
     end if
@@ -378,18 +380,18 @@
                         CL=0
                     else
                         if (CosmoSettings%CMB_Lensing) then
-                            CL(2:lmx) = cons*Cl_lensed(2:lmx,1, indicesT(i,j))
+                            CL(2:lmx) = cons*Cl_lensed(2:lmx, indicesT(i,j))
                         else
-                            if (indicesS(i,j)/=0) CL(2:lmx) = cons*Cl_Scalar(2:lmx,1, indicesS(i,j))
+                            if (indicesS(i,j)/=0) CL(2:lmx) = cons*Cl_Scalar(2:lmx, indicesS(i,j))
                         end if
                         if (CosmoSettings%lmax_computed_cl < lmaxCL) then
                             if (highL_norm ==0) & !normally normalize off TT
-                            & highL_norm = CL(lmx)/this%highL_lensedCL_template(lmx,indicesT(i,j))
+                                & highL_norm = CL(lmx)/this%highL_lensedCL_template(lmx,indicesT(i,j))
                             CL(lmx+1:lmaxCL) =  highL_norm*this%highL_lensedCL_template(lmx+1:lmaxCL,indicesT(i,j))
                         end if
                         if (CosmoSettings%compute_tensors) then
                             lmx = min(lmx,CosmoSettings%lmax_tensor)
-                            CL(2:lmx) =  CL(2:lmx) + cons*Cl_tensor(2:lmx,1, indicesT(i,j))
+                            CL(2:lmx) =  CL(2:lmx) + cons*Cl_tensor(2:lmx, indicesT(i,j))
                         end if
                     end if
                 end associate
@@ -405,7 +407,7 @@
             if (.not. CosmoSettings%CMB_lensing) call MpiStop('Must have lensing on to use lensing potential')
             associate(CL=> Theory%Cls(CL_Phi,CL_Phi)%CL)
                 do l=2, lmx
-                    CL(L) =  Cl_scalar(L,1, C_Phi)*(real(l+1)**2/l**2)/twopi * lens_recon_scale
+                    CL(L) =  Cl_scalar(L,C_Phi)*(real(l+1)**2/l**2)/twopi * lens_recon_scale
                 end do
                 CL(lmx+1:)=0
             end associate
@@ -414,7 +416,7 @@
         if (lmx/=0) then
             !lensing-temp
             do l=2, lmx
-                Theory%Cls(CL_phi,CL_T)%CL = Cl_scalar(l,1, C_PhiTemp)/real(l)**3 * sqrt(lens_recon_scale)
+                Theory%Cls(CL_phi,CL_T)%CL = Cl_scalar(l,C_PhiTemp)/real(l)**3 * sqrt(lens_recon_scale)
             end do
         end if
     end if
@@ -423,7 +425,7 @@
         !Get RMS deflection angle in arcmin
         rms=0
         do L=2, 2000
-            rms = rms +  Cl_scalar(L,1, C_Phi)*(real(l+1)**2/l**2)/twopi*(L+0.5_mcp)/(L*(L+1))
+            rms = rms +  Cl_scalar(L,C_Phi)*(real(l+1)**2/l**2)/twopi*(L+0.5_mcp)/(L*(L+1))
         end do
         Theory%Lensing_rms_deflect = sqrt(rms)*180/pi*60
     else
@@ -431,10 +433,10 @@
     end if
 
     if (CosmoSettings%compute_tensors) then
-        Theory%tensor_ratio_02 = TensorPower(0.002d0,1)/ScalarPower(0.002d0,1)
-        Theory%tensor_AT = TensorPower(CosmoSettings%tensor_pivot_k,1)
-        Theory%tensor_ratio_BB = TensorPower(0.01d0,1)/ScalarPower(0.01d0,1)
-        Theory%tensor_ratio_C10 = Cl_tensor(10, 1, 1)/Cl_scalar(10,1, 1)
+        Theory%tensor_ratio_02 = this%CAMBP%InitPower%TensorPower(0.002d0)/this%CAMBP%InitPower%ScalarPower(0.002d0)
+        Theory%tensor_AT = this%CAMBP%InitPower%TensorPower(CosmoSettings%tensor_pivot_k)
+        Theory%tensor_ratio_BB = this%CAMBP%InitPower%TensorPower(0.01d0)/this%CAMBP%InitPower%ScalarPower(0.01d0)
+        Theory%tensor_ratio_C10 = Cl_tensor(10, 1)/Cl_scalar(10, 1)
     else
         Theory%tensor_ratio_02 = 0
         Theory%tensor_ratio_BB = 0
@@ -469,8 +471,8 @@
 
     do zix=1,nz
         z(zix) = CP%Transfer%PK_redshifts(nz-zix+1)
-        Theory%sigma8_z%F(zix) = M%sigma_8(nz-zix+1,1)
-        Theory%growth_z%F(zix) = M%sigma2_vdelta_8(nz-zix+1,1)/M%sigma_8(nz-zix+1,1)
+        Theory%sigma8_z%F(zix) = M%sigma_8(nz-zix+1)
+        Theory%growth_z%F(zix) = M%sigma2_vdelta_8(nz-zix+1)/M%sigma_8(nz-zix+1)
     end do
     Theory%sigma8_z%X=z
     Theory%growth_z%X=z
@@ -483,26 +485,26 @@
 
         k = log(M%TransferData(Transfer_kh,:,1))
 
-        call Transfer_GetUnsplinedPower(M, PK,transfer_power_var,transfer_power_var)
+        call Transfer_GetUnsplinedPower(M, this%CAMBP, PK,transfer_power_var,transfer_power_var)
         PK = Log(PK)
         if (any(ieee_is_nan(PK))) then
             error = 1
             return
         end if
         allocate(Theory%MPK)
-        call Theory%MPK%Init(k,z,PK)
+        call Theory%MPK%InitExtrap(k,z,PK, CosmoSettings%extrap_kmax)
     end if
 
 
     if (CosmoSettings%use_Weylpower) then
-        call Transfer_GetUnsplinedPower(M, PK,transfer_Weyl,transfer_Weyl,hubble_units=.false.)
+        call Transfer_GetUnsplinedPower(M, this%CAMBP, PK,transfer_Weyl,transfer_Weyl,hubble_units=.false.)
         PK = Log(PK)
         if (any(ieee_is_nan(PK))) then
             error = 1
             return
         end if
         allocate(Theory%MPK_WEYL)
-        call Theory%MPK_WEYL%Init(k,z,PK)
+        call Theory%MPK_WEYL%InitExtrap(k,z,PK,CosmoSettings%extrap_kmax)
     end if
 
     if (CosmoSettings%use_SigmaR) then
@@ -515,7 +517,7 @@
         do i=1, nR
             Theory%Sigma_R%X(i) = exp((i-1)*dR)*minR
         end do
-        call Transfer_GetSigmaRArray(M, Theory%Sigma_R%X, Theory%Sigma_R%F, &
+        call Transfer_GetSigmaRArray(M, this%CAMBP, Theory%Sigma_R%X, Theory%Sigma_R%F, &
             var1 = transfer_nonu,var2=transfer_nonu)
     end if
 
@@ -568,13 +570,13 @@
         error = 1
         return
     end if
-    call Theory%NL_MPK%Init(Theory%MPK%x,Theory%MPK%y,PK)
+    call Theory%NL_MPK%InitExtrap(Theory%MPK%x,Theory%MPK%y,PK,CosmoSettings%extrap_kmax)
 
     if (allocated(Theory%MPK_WEYL)) then
         !Assume Weyl scales the same way under non-linear correction
         allocate(Theory%NL_MPK_WEYL)
         PK = Theory%MPK_WEYL%z + 2*log(Ratios)
-        call Theory%NL_MPK_WEYL%Init(Theory%MPK%x,Theory%MPK%y,PK)
+        call Theory%NL_MPK_WEYL%InitExtrap(Theory%MPK%x,Theory%MPK%y,PK,CosmoSettings%extrap_kmax)
     end if
 
     end subroutine CAMBCalc_GetNLandRatios
@@ -667,6 +669,18 @@
     CAMBCalc_ComovingRadialDistance = ComovingRadialDistance(z)
 
     end function CAMBCalc_ComovingRadialDistance
+
+    subroutine CAMBCalc_ComovingRadialDistanceArr(this, z, arr, n)
+    use CAMB, only : ComovingRadialDistanceArr  !!comoving radial distance also in Mpc no h units
+    class(CAMB_Calculator) :: this
+    integer, intent(in) :: n
+    real(mcp), intent(IN) :: z(n)
+    real(mcp), intent(out) :: arr(n)
+    !Note redshifts must be monotonically increasing
+
+    call ComovingRadialDistanceArr(arr, z, n, 1d-4)
+
+    end subroutine CAMBCalc_ComovingRadialDistanceArr
 
     real(mcp) function CAMBCalc_AngularDiameterDistance2(this, z1, z2)
     use CAMB, only : AngularDiameterDistance2  !!angular diam distance also in Mpc no h units
@@ -768,7 +782,6 @@
 
     P%Num_Nu_Massive = 3
     P%Num_Nu_Massless = 0.046
-    P%InitPower%nn = 1
     P%Accuracy%AccuratePolarization = CosmoSettings%num_cls/=1
     P%Reion%use_optical_depth = .false.
     P%OnlyTransfers = .true.
@@ -807,43 +820,43 @@
     end subroutine CAMBCalc_InitCAMBParams
 
     !Mapping between array of power spectrum parameters and CAMB
-    subroutine CAMBCalc_SetCAMBInitPower(this,P,CMB,ix)
+    subroutine CAMBCalc_SetCAMBInitPower(this,P,CMB)
     class(CAMB_Calculator) :: this
     type(CAMBParams)  P
     class(CMBParams) CMB
-    integer, intent(in) :: ix
 
-    if (Power_Name == 'power_tilt') then
-        P%InitPower%k_0_scalar = CosmoSettings%pivot_k
-        P%InitPower%k_0_tensor = CosmoSettings%tensor_pivot_k
-        if (P%InitPower%k_0_tensor/=P%InitPower%k_0_scalar) P%InitPower%tensor_parameterization = tensor_param_rpivot
-        P%InitPower%ScalarPowerAmp(ix) = cl_norm*CMB%InitPower(As_index)
-        P%InitPower%rat(ix) = CMB%InitPower(amp_ratio_index)
+    select type (InitPower=>P%InitPower)
+    class is (TInitialPowerLaw)
+        InitPower%pivot_scalar = CosmoSettings%pivot_k
+        InitPower%pivot_tensor = CosmoSettings%tensor_pivot_k
+        if (InitPower%pivot_tensor/=InitPower%pivot_scalar) InitPower%tensor_parameterization = tensor_param_rpivot
+        InitPower%As = cl_norm*CMB%InitPower(As_index)
+        InitPower%r = CMB%InitPower(amp_ratio_index)
 
-        P%InitPower%an(ix) = CMB%InitPower(ns_index)
+        InitPower%ns = CMB%InitPower(ns_index)
 
-        if (P%InitPower%rat(ix)>0 .and. .not. CosmoSettings%compute_tensors) &
+        if (InitPower%r>0 .and. .not. CosmoSettings%compute_tensors) &
             call MpiStop('computing r>0 but compute_tensors=F')
-        P%InitPower%n_run(ix) = CMB%InitPower(nrun_index)
-        P%InitPower%n_runrun(ix) = CMB%InitPower(nrunrun_index)
+        InitPower%nrun = CMB%InitPower(nrun_index)
+        InitPower%nrunrun = CMB%InitPower(nrunrun_index)
 
         if (CosmoSettings%inflation_consistency) then
             if (CMB%InitPower(nt_index)/=0 .or. CMB%InitPower(ntrun_index)/=0) &
                 & call MpiStop('Error: inflation_consistency but n_t not set to zero')
             ! first-order consistency relation
-            !P%InitPower%ant(ix) = - CMB%InitPower(amp_ratio_index)/8
+            !P%InitPower%At = - CMB%InitPower(amp_ratio_index)/8
             !next order consistency relation
-            P%InitPower%ant(ix) = - CMB%InitPower(amp_ratio_index)/8*(2-CMB%InitPower(ns_index) - CMB%InitPower(amp_ratio_index)/8)
-            P%InitPower%nt_run(ix) = CMB%InitPower(amp_ratio_index)/8* &
+            InitPower%At = - CMB%InitPower(amp_ratio_index)/8*(2-CMB%InitPower(ns_index) - CMB%InitPower(amp_ratio_index)/8)
+            InitPower%ntrun = CMB%InitPower(amp_ratio_index)/8* &
                 & (CMB%InitPower(amp_ratio_index)/8 + CMB%InitPower(ns_index) - 1)
             !note input n_T, nt run is ignored, so should be fixed
         else
-            P%InitPower%ant(ix) = CMB%InitPower(nt_index)
-            P%InitPower%nt_run(ix) = CMB%InitPower(ntrun_index)
+            InitPower%At = CMB%InitPower(nt_index)
+            InitPower%ntrun = CMB%InitPower(ntrun_index)
         end if
-    else
+        class default
         stop 'CAMB_Calculator:Wrong initial power spectrum'
-    end if
+    end select
 
     end subroutine CAMBCalc_SetCAMBInitPower
 
@@ -912,7 +925,6 @@
     call ReadValues%Add('Compiled_Recombination', Recombination_Name)
     call ReadValues%Add('Compiled_Equations', Eqns_name)
     call ReadValues%Add('Compiled_Reionization', Reionization_Name)
-    call ReadValues%Add('Compiled_InitialPower', Power_Name)
 
     end subroutine CAMBCalc_VersionTraceOutput
 

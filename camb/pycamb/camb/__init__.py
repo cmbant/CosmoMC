@@ -7,10 +7,10 @@ Python CAMB interface (http://camb.info)
 __author__ = "Antony Lewis"
 __contact__ = "antony at cosmologist dot info"
 __status__ = "beta"
-__version__ = "0.2.0.1"
+__version__ = "0.2.2"
 
 from .baseconfig import dll_import
-from .camb import CAMBdata, MatterTransferData, get_results, get_transfer_functions, get_background, \
+from .camb import CAMBdata, MatterTransferData, ClTransferData, get_results, get_transfer_functions, get_background, \
     get_age, get_zre_from_tau, set_z_outputs, set_feedback_level, set_params, get_matter_power_interpolator, \
     set_custom_scalar_sources, clear_custom_scalar_sources, set_params_cosmomc
 from . import model
@@ -18,7 +18,7 @@ from . import initialpower
 from . import reionization
 from .model import CAMBparams, TransferParams
 from .reionization import ReionizationParams
-from .initialpower import InitialPowerParams
+from .initialpower import InitialPowerLaw, SplinedInitialPower
 from .bispectrum import threej
 from ctypes import c_int, c_double, c_bool
 

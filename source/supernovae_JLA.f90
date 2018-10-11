@@ -231,7 +231,7 @@
     this%LikelihoodType = 'SN'
     this%name='JLA'
     this%needs_background_functions = .true.
-    this%version = JLA_version
+    this%version = Ini%Read_String_Default('jla_version',JLA_version)
     JLA_marginalize = Ini%Read_Logical('JLA_marginalize',.false.)
     if (JLA_marginalize) then
         JLA_marge_steps = Ini%Read_Int('JLA_marge_steps',7)

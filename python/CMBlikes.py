@@ -1,4 +1,4 @@
-# Load CosmoMC format .dataset files with lensing likelihood data
+# Load CosmoMC format .dataset files for binned or unbinned CMB data
 # AL July 2014 - Oct 2017
 from __future__ import absolute_import
 from __future__ import print_function
@@ -9,6 +9,15 @@ import sys
 import six
 from getdist import IniFile, ParamNames
 from scipy.linalg import sqrtm
+
+try:
+    sys.path.insert(0, 'c://work/dist/git/camb/pycamb')
+    from camb.mathutils import chi_squared as fast_chi_squared
+
+    del sys.path[0]
+except:
+    def fast_chi_squared(covinv, x):
+        return covinv.dot(x).dot(x)
 
 
 def lastTopComment(fname):
@@ -214,10 +223,10 @@ class DatasetLikelihood(object):
         for i in range(self.nmaps):
             for j in range(i + 1):
                 name = self.Cl_used_i_j_name([i, j])
-                if not name in names and i <> j:
+                if not name in names and i != j:
                     name = self.Cl_used_i_j_name([j, i])
                 if name in names:
-                    if cols[ix] <> -1:
+                    if cols[ix] != -1:
                         raise Exception('GetColsFromOrder: duplicate CL type')
                     cols[ix] = names.index(name)
                 ix += 1
@@ -256,7 +265,7 @@ class DatasetLikelihood(object):
         for i, L in enumerate(Ls):
             if L >= self.bin_min and L <= self.bin_max:
                 for ix in range(self.ncl):
-                    if cols[ix] <> -1:
+                    if cols[ix] != -1:
                         cl[ix, L - self.bin_min] = data[i, cols[ix]]
         if L < self.bin_max:
             raise Exception('CMBLikes_ReadClArr: C_l file does not go up to maximum used: %s' % self.bin_max)
@@ -291,7 +300,7 @@ class DatasetLikelihood(object):
         return bins
 
     def init_map_cls(self, nmaps, order):
-        if nmaps <> len(order): raise ValueError('CMBLikes init_map_cls: size mismatch')
+        if nmaps != len(order): raise ValueError('CMBLikes init_map_cls: size mismatch')
 
         class CrossPowerSpectrum(object):
             pass
@@ -318,7 +327,7 @@ class DatasetLikelihood(object):
         if self.has_map_names:
             # e.g. have multiple frequencies for given field measurement
             map_fields = ini.split('map_fields')
-            if len(map_fields) <> len(self.map_names):
+            if len(map_fields) != len(self.map_names):
                 raise Exception('CMBLikes: number of map_fields does not match map_names')
             self.map_fields = [self.typeIndex(f) for f in map_fields]
         else:
@@ -406,7 +415,7 @@ class DatasetLikelihood(object):
             self.nbins_used = self.bin_max - self.bin_min + 1  # needed by readBinWindows
             self.bins = self.readBinWindows(ini, 'bin_window')
         else:
-            if self.nmaps <> self.nmaps_required:
+            if self.nmaps != self.nmaps_required:
                 raise Exception('CMBlikes: unbinned likelihood must have nmaps==nmaps_required')
             self.nbins = self.pcl_lmax - self.pcl_lmin + 1
             if self.like_approx != 'exact':
@@ -425,7 +434,7 @@ class DatasetLikelihood(object):
 
         includes_noise = ini.bool('cl_hat_includes_noise', False)
         self.cl_noise = None
-        if self.like_approx <> 'gaussian' or includes_noise:
+        if self.like_approx != 'gaussian' or includes_noise:
             self.cl_noise = self.ReadClArr(ini, 'cl_noise')
             if not includes_noise:
                 self.bandpowers += self.cl_noise
@@ -471,12 +480,12 @@ class DatasetLikelihood(object):
             s = ini.relativeFileName('nuisance_params')
             self.nuisance_params = ParamNames(s)
             if ini.hasKey('calibration_param'):
-                self.calibration_param = ini.string('calibration_param')
-                if '.paramnames' in self.calibration_param:
-                    raise Exception('calibration_param should be name of parameter in nuisance_params')
+                    raise Exception('calibration_param not allowed with nuisance_params')
+            if ini.hasKey('calibration_paramname'):
+                self.calibration_param = ini.string('calibration_paramname')
             else:
                 self.calibration_param = None
-        elif ini.hasKey('calibration_param'):
+        elif ini.string('calibration_param', ''):
             s = ini.relativeFileName('calibration_param')
             if not '.paramnames' in s:
                 raise Exception('calibration_param must be paramnames file unless nuisance_params also specified')
@@ -495,6 +504,8 @@ class DatasetLikelihood(object):
         # read the covariance matrix, and the array of which CL are in the covariance,
         # which then defines which set of bandpowers are used (subject to other restrictions)
         covmat_cl = ini.string('covmat_cl', allowEmpty=False)
+        if ini.string('covmat_format', 'text') != 'text':
+            raise Exception('Only text oovmat supported in python so far')
         self.full_cov = np.loadtxt(ini.relativeFileName('covmat_fiducial'))
         covmat_scale = ini.float('covmat_scale', 1.0)
         cl_in_index = self.UseString_to_cols(covmat_cl)
@@ -518,27 +529,8 @@ class DatasetLikelihood(object):
                                                             (biny + self.bin_min) * num_in + cov_cl_used)]
 
         else:
-            raise Exception('unbinned covariance not implemented yet')
+            raise Exception('unbinned covariance not implemented')
         return pcov
-
-    def writeData(self, froot):
-        np.savetxt(froot + '_cov.dat', self.cov)
-        #            self.saveCl(froot + '_fid_cl.dat', self.fid_cl[:, 1:], cols=['TT', 'EE', 'TE', 'PP'])
-
-        with open(froot + '_bandpowers.dat', 'w') as f:
-            f.write("#%4s %5s %5s %8s %12s %10s %7s\n" % ('bin', 'L_min', 'L_max', 'L_av', 'PP', 'Error', 'Ahat'))
-            for b in range(self.nbins):
-                f.write("%5u %5u %5u %8.2f %12.5e %10.3e %7.3f\n" % (b + 1, self.lmin[b], self.lmax[b], self.lav[b],
-                                                                     self.bandpowers[b], np.sqrt(self.cov[b, b]),
-                                                                     self.Ahat[b]))
-        self.bins.write(froot, 'bin')
-        if self.linear_correction is not None:
-            self.linear_correction.write(froot, 'linear_correction_bin')
-
-        with open(froot + '_lensing_fiducial_correction', 'w') as f:
-            f.write("#%4s %12s \n" % ('bin', 'PP'))
-            for b in range(self.nbins):
-                f.write("%5u %12.5e\n" % (b + 1, self.fid_correction[b]))
 
     def get_binned_theory(self, ClArray, data_params={}):
         # Useful for plotting, not used for likelihood
@@ -675,7 +667,7 @@ class DatasetLikelihood(object):
             M = np.linalg.inv(C).dot(Chat)
             return (2 * L + 1) * self.fsky * (np.trace(M) - self.nmaps - np.linalg.slogdet(M)[1])
 
-    def chi_squared(self, ClArray, data_params={}):
+    def chi_squared(self, ClArray, data_params={}, return_binned_theory=False):
 
         self.get_theory_map_cls(ClArray, data_params)
 
@@ -717,11 +709,14 @@ class DatasetLikelihood(object):
             bigX[bin * self.ncl_used:(bin + 1) * self.ncl_used] = vecp[self.cl_used_index]
 
         if self.like_approx != 'exact':
-            chisq = np.dot(bigX, np.dot(self.covinv, bigX))
+            chisq = fast_chi_squared(self.covinv, bigX)
 
         if self.log_calibration_prior > 0:
             chisq += (np.log(data_params[self.calibration_param]) / self.log_calibration_prior) ** 2
-        return chisq
+        if return_binned_theory and self.binned:
+            return chisq, binned_theory
+        else:
+            return chisq
 
 
 def plotAndChisq(dataset, cl_file, data_params={}):

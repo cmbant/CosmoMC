@@ -41,7 +41,7 @@ endif
 ifneq ($(NERSC_HOST),)
 #setting for Edison/Cori on NERSC
 MPIF90C = ftn
-FFLAGS += -dynamic
+FFLAGS = -fpp -qopenmp -dynamic -axMIC-AVX512,CORE-AVX2  
 else
 ifeq ($(STATIC),YES)
 #so you can re-distribute the binary to another machine

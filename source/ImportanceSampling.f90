@@ -109,8 +109,8 @@
     real(mcp) weight_min, weight_max, mult_sum, mult_ratio, mult_max,weight
     real(mcp) max_like, max_truelike
     integer error,num, debug
-    character (LEN=:), allocatable :: post_root, data_point_txt_root
-    integer i
+    character (LEN=:), allocatable :: post_root, data_point_txt_root, in_params
+    integer i, j
     Type (ParamSet), allocatable :: Params
     logical :: has_likes(DataLikelihoods%Count)
     class(TDataLikelihood), pointer :: DataLike
@@ -121,6 +121,9 @@
     class(TFileStream), pointer :: InF
     Type(TTextFile), target :: InChain
     Type(TBinaryFile), target :: OutData, InData
+    Type(TTextFile) :: PropertiesFile
+    Type(TParamNames) :: InNames
+    integer input_indices(size(params_used))
 #ifdef MPI
     integer ierror
     real(mcp), allocatable :: like_diffs(:)
@@ -144,6 +147,18 @@
         if (this%redo_skip < 1) then
             this%redo_skip = nint(InChain%Lines()*this%redo_skip)
         end if
+        in_params = trim(InputFile)
+        if (instance>0) then
+            i = index(in_params,'_', back=.true.)
+            if (i > 0) in_params = in_params(:i-1)
+        end if
+        call InNames%init(in_params//'.paramnames')
+        do i =1, size(params_used)
+            j = InNames%Index(BaseParams%NameMapping%NameAtIndex(params_used(i)))
+            if (j<=0) call MpiStop('Input chain does not have parameter ' &
+                // BaseParams%NameMapping%NameAtIndex(params_used(i)))
+            input_indices(i) = j
+        end do
         InF => InChain
         if (.not. this%redo_theory) write (*,*) '**You probably want to set redo_theory**'
     else
@@ -161,6 +176,11 @@
     if (MpiRank==0 .and.BaseParams%NameMapping%nnames/=0) then
         call BaseParams%OutputParamNames(post_root,params_used, add_derived=.true.)
         call BaseParams%OutputParamRanges(post_root)
+    end if
+    if (MpiRank==0 .and. this%redo_skip>0.d0) then
+        call PropertiesFile%CreateFile(trim(post_root)//'.properties.ini')
+        call PropertiesFile%Write('burn_removed=T')
+        call PropertiesFile%Close()
     end if
 
     if (has_chain) then
@@ -189,6 +209,14 @@
 
         redo_loop= 1
         do
+            if (associated(InF, InData)) then
+                !Apr 2018 For some reason rewind seems to have stopped working in ifort at least
+                call InData%Close()
+                call InData%Open(trim(InputFile)//'.data')
+            else
+                call InF%Rewind()
+            end if
+
             call InF%Rewind()
             call ChainOutFile%CreateFile(trim(post_root)//'.txt')
             if (.not. this%redo_no_new_data) call OutData%CreateFile(trim(post_root)//'.data')
@@ -212,7 +240,7 @@
                 if (this%redo_from_text) then
                     error = 0
                     Params%P(:num_params)= BaseParams%center
-                    if (.not. IO_ReadChainRow(InChain, mult, like, Params%P, params_used)) exit
+                    if (.not. IO_ReadChainRow(InChain, mult, like, Params%P, params_used, input_indices=input_indices)) exit
                     num=num+1
                     if (this%redo_skip>=1 .and. num<=this%redo_skip) cycle
                 else
@@ -241,6 +269,7 @@
                         elseif (at_beginning==2) then
                             this%redo_skip = InF%Size()/(InF%Position() -last_file_loc) * this%redo_skip
                             if (Feedback > 0) print *,'skipping ',nint(this%redo_skip), ' models'
+                            cycle
                         end if
                     else if (num<=this%redo_skip) then
                         cycle
@@ -333,7 +362,7 @@
                     end if
                     end if
 
-                    if (mult /= 0) then
+                    if (mult > 1e-100_mcp) then
                         if (this%redo_output_txt_theory) then
                             data_point_txt_root = this%redo_output_txt_root // '_'//IntToStr(num)
                             call this%LikeCalculator%WriteParamPointTextData(data_point_txt_root, Params)
@@ -341,8 +370,10 @@
                         end if
                         call Params%WriteParams(this%LikeCalculator%Config,mult,truelike)
                         if (.not. this%redo_no_new_data) call Params%WriteModel(OutData, truelike,mult)
+                    else if (mult/=0) then
+                        if (Feedback >0) write (*,*) 'Skipping very small weight', mult,' : new like = ', truelike
                     else
-                        if (Feedback >1 ) write (*,*) 'Zero weight: new like = ', truelike
+                        if (Feedback >1) write (*,*) 'Zero weight: new like = ', truelike
                     end if
 
                     if (Feedback > 1) write (*,*) num, ' mult= ', real(mult), ' weight = ', real(weight)

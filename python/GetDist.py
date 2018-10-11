@@ -37,6 +37,14 @@ def main(args):
     if chain_root and chain_root.endswith('.txt'):
         chain_root = chain_root[:-4]
 
+    if chain_root is not None and ('*' in chain_root or '?' in chain_root):
+        import glob, copy
+        for f in glob.glob(chain_root + '.paramnames'):
+            fileargs = copy.copy(args)
+            fileargs.chain_root = f.replace('.paramnames', '')
+            main(fileargs)
+        return
+
     # Input parameters
     ini = IniFile(args.ini_file)
 
@@ -304,7 +312,7 @@ def main(args):
         if mc.loglikes is not None: mc.getLikeStats().saveAsText(rootdirname + '.likestats')
 
     if dumpNDbins:
-        num_bins_ND = ini.int('num_bins_ND', 10)
+        mc.num_bins_ND = ini.int('num_bins_ND', 10)
         line = ini.string('ND_params', '')
 
         if line not in ["", '0']:
