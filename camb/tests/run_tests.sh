@@ -13,7 +13,7 @@ rm -Rf dist/*
 rm -Rf build/*
 rm -f camb/*.so
 
-if [[ $TRAVIS_REPO_SLUG == "cmbant/CAMB" && "$TRAVIS_PULL_REQUEST" == "false" ]] 
+if [[ $TRAVIS_REPO_SLUG == "cmbant/CAMB" && $CHANNEL == "defaults" && "$TRAVIS_PULL_REQUEST" == "false" ]]
 then
  case "$TRAVIS_BRANCH" in
  devel*) export CAMB_PACKAGE_NAME=camb_devel ;;
@@ -26,7 +26,7 @@ then
  python --version
  mkdir -p test_dir
  pushd test_dir   
- pip install -i https://testpypi.python.org/pypi $CAMB_PACKAGE_NAME
+ pip install --index-url https://test.pypi.org/simple/ $CAMB_PACKAGE_NAME
  python -c "import camb; print(camb.__version__)"
  python -m unittest camb_tests.camb_test
  pip uninstall -y $CAMB_PACKAGE_NAME
