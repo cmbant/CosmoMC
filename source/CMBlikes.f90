@@ -401,7 +401,8 @@
         Err = .false.
         do while (F%ReadNextContentLine(S,InLine))
             read(InLine,*, iostat=status) l, tmp_ar
-            if (status/=0) call MpiStop('ReadBinWindows: error reading line '//trim(S))
+            if (status/=0) &
+                call MpiStop('ReadBinWindows: error reading line '//trim(S))
             if (l>=this%pcl_lmin .and. l <=this%pcl_lmax) then
                 binWindows%W(l,:,i) = tmp_ar
             else
