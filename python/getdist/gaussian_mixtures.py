@@ -178,7 +178,7 @@ class MixtureND(object):
         :param params: list of two parameter names or indices to use. If already 2D, can be None.
         :param num_points: number of grid points for evaluation
         :param xmin: optional lower value for first parameter
-        :param xmax: optioanl upper value for first parameter
+        :param xmax: optional upper value for first parameter
         :param ymin: optional lower value for second parameter
         :param ymax: optional upper value for second parameter
         :param sigma_max: maximum number of standard deviations away from mean to include in calculated range
@@ -269,12 +269,6 @@ class MixtureND(object):
                                               - cov[np.ix_(fixed_params, keep_params)].dot(
                     np.linalg.inv(cov[np.ix_(keep_params, keep_params)]).dot(
                         cov[np.ix_(keep_params, fixed_params)]))))
-                w = np.exp(
-                    -invcov[np.ix_(fixed_params, fixed_params)].dot(deltas).dot(deltas) / 2) / \
-                    np.sqrt(np.linalg.det(cov[np.ix_(fixed_params, fixed_params)]
-                                          - cov[np.ix_(fixed_params, keep_params)].dot(
-                        np.linalg.inv(cov[np.ix_(keep_params, keep_params)]).dot(
-                            cov[np.ix_(keep_params, fixed_params)]))))
             new_weights.append(logw)
             new_means.append(new_mean)
             new_covs.append(new_cov)
