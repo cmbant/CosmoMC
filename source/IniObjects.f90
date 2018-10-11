@@ -48,7 +48,9 @@
     procedure :: TNameValueList_AddReal
     procedure :: TNameValueList_AddInt
     procedure :: TNameValueList_AddLogical
-    generic :: Add => AddString, TNameValueList_AddDouble, TNameValueList_AddReal, TNameValueList_AddInt, TNameValueList_AddLogical
+    generic :: Add => AddString, TNameValueList_AddDouble, &
+        &                 TNameValueList_AddReal, TNameValueList_AddInt,&
+        &                 TNameValueList_AddLogical
     final :: TNameValueList_Free
     end Type TNameValueList
 
@@ -89,7 +91,7 @@
     procedure, private :: Ini_Read_Logical_Change
     procedure, private :: Ini_Read_String_Change
     generic :: Read => Ini_Read_Real_Change, Ini_Read_Double_Change, Ini_Read_Int_Change, &
-        & Ini_Read_Logical_Change,Ini_Read_String_Change
+        &                  Ini_Read_Logical_Change, Ini_Read_String_Change
     end Type TIniFile
 
 
