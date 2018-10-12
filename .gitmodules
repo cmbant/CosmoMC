@@ -1,0 +1,4 @@
+[submodule "camb"]
+	path = camb
+	url = https://github.com/cmbant/camb
+	branch = devel
