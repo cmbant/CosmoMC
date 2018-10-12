@@ -485,7 +485,7 @@
 
         k = log(M%TransferData(Transfer_kh,:,1))
 
-        call Transfer_GetUnsplinedPower(M, this%CAMBP, PK,transfer_power_var,transfer_power_var)
+        call Transfer_GetUnsplinedPower(M, CP, PK,transfer_power_var,transfer_power_var)
         PK = Log(PK)
         if (any(ieee_is_nan(PK))) then
             error = 1
@@ -497,7 +497,7 @@
 
 
     if (CosmoSettings%use_Weylpower) then
-        call Transfer_GetUnsplinedPower(M, this%CAMBP, PK,transfer_Weyl,transfer_Weyl,hubble_units=.false.)
+        call Transfer_GetUnsplinedPower(M, CP, PK,transfer_Weyl,transfer_Weyl,hubble_units=.false.)
         PK = Log(PK)
         if (any(ieee_is_nan(PK))) then
             error = 1
@@ -517,7 +517,7 @@
         do i=1, nR
             Theory%Sigma_R%X(i) = exp((i-1)*dR)*minR
         end do
-        call Transfer_GetSigmaRArray(M, this%CAMBP, Theory%Sigma_R%X, Theory%Sigma_R%F, &
+        call Transfer_GetSigmaRArray(M, CP, Theory%Sigma_R%X, Theory%Sigma_R%F, &
             var1 = transfer_nonu,var2=transfer_nonu)
     end if
 
