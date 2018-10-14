@@ -1,5 +1,8 @@
 language: sh
 
+git:
+  depth: false
+
 sudo: required
 
 branches:
@@ -19,7 +22,6 @@ before_install:
   - docker pull cmbant/cosmobox:latest
 
 install:
-  - git clone --depth=1 https://github.com/cmbant/forutils.git forutils
   - chmod +x tests/run_tests.sh
       
 script:

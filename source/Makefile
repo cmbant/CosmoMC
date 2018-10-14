@@ -4,11 +4,16 @@ OUTPUT_DIR ?= Release
 BUILD ?= MPI
 #set BUILD to MPI to force MPI, should be set in ../Makefile
 
-
-ifneq "$(wildcard ../forutils)" ""
+ifneq "$(wildcard ../camb/forutils)" ""
+FORUTILSPATH ?= $(shell pwd)/../camb/forutils
+else "$(wildcard ./forutils)" ""
+FORUTILSPATH ?= $(shell pwd)/forutils
+else "$(wildcard ../forutils)" ""
 FORUTILSPATH ?= $(shell pwd)/../forutils
-else
-$(error First install forutils from https://github.com/cmbant/forutils; or set FORUTILSPATH variable)
+endif
+
+ifeq ($(FORUTILSPATH),)
+$(error Use  git clone --recurse-submodules, install forutils from https://github.com/cmbant/forutils, or set FORUTILSPATH variable)
 endif
 
 ifortErr = $(shell which ifort >/dev/null; echo $$?)

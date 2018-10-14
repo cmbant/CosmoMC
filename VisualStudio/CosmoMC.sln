@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+# Visual Studio 15
+VisualStudioVersion = 15.0.28010.2041
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "CosmoMC", "CosmoMC.vfproj", "{207BF71A-E457-49F3-BEC8-B2F9E85F74BA}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -16,12 +16,12 @@ Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "CosmoMC_lib", "CosmoMC_lib.
 		{C49B68F7-0B03-438A-93FE-AD6F798C4FC9} = {C49B68F7-0B03-438A-93FE-AD6F798C4FC9}
 	EndProjectSection
 EndProject
-Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "ForUtils", "..\forutils\ForUtils\ForUtils.vfproj", "{F7C12681-233A-4C5A-9639-1EF3573BCE64}"
-EndProject
 Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "CAMBLib", "..\CAMB\VisualStudio\CAMBLib.vfproj", "{C49B68F7-0B03-438A-93FE-AD6F798C4FC9}"
 	ProjectSection(ProjectDependencies) = postProject
 		{F7C12681-233A-4C5A-9639-1EF3573BCE64} = {F7C12681-233A-4C5A-9639-1EF3573BCE64}
 	EndProjectSection
+EndProject
+Project("{6989167D-11E4-40FE-8C1A-2192A86A7E90}") = "ForUtils", "..\..\camb\forutils\ForUtils.vfproj", "{F7C12681-233A-4C5A-9639-1EF3573BCE64}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -66,20 +66,6 @@ Global
 		{C7D790F6-3574-43A1-A5E1-1E6FC5478F95}.Release|Win32.Build.0 = Release|Win32
 		{C7D790F6-3574-43A1-A5E1-1E6FC5478F95}.Release|x64.ActiveCfg = Release|x64
 		{C7D790F6-3574-43A1-A5E1-1E6FC5478F95}.Release|x64.Build.0 = Release|x64
-		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.Debug|Win32.ActiveCfg = Debug|x64
-		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.Debug|x64.ActiveCfg = Debug|x64
-		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.Debug|x64.Build.0 = Debug|x64
-		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.DebugMPI|Win32.ActiveCfg = Release|x64
-		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.DebugMPI|Win32.Build.0 = Release|x64
-		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.DebugMPI|x64.ActiveCfg = Debug|x64
-		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.DebugMPI|x64.Build.0 = Debug|x64
-		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.PICO|Win32.ActiveCfg = Release|x64
-		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.PICO|Win32.Build.0 = Release|x64
-		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.PICO|x64.ActiveCfg = Release|x64
-		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.PICO|x64.Build.0 = Release|x64
-		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.Release|Win32.ActiveCfg = Release|x64
-		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.Release|x64.ActiveCfg = Release|x64
-		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.Release|x64.Build.0 = Release|x64
 		{C49B68F7-0B03-438A-93FE-AD6F798C4FC9}.Debug|Win32.ActiveCfg = Debug|x64
 		{C49B68F7-0B03-438A-93FE-AD6F798C4FC9}.Debug|x64.ActiveCfg = Debug|x64
 		{C49B68F7-0B03-438A-93FE-AD6F798C4FC9}.Debug|x64.Build.0 = Debug|x64
@@ -94,8 +80,25 @@ Global
 		{C49B68F7-0B03-438A-93FE-AD6F798C4FC9}.Release|Win32.ActiveCfg = Release|x64
 		{C49B68F7-0B03-438A-93FE-AD6F798C4FC9}.Release|x64.ActiveCfg = Release|x64
 		{C49B68F7-0B03-438A-93FE-AD6F798C4FC9}.Release|x64.Build.0 = Release|x64
+		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.Debug|Win32.ActiveCfg = Debug|x64
+		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.Debug|x64.ActiveCfg = Debug|x64
+		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.Debug|x64.Build.0 = Debug|x64
+		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.DebugMPI|Win32.ActiveCfg = Release|x64
+		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.DebugMPI|Win32.Build.0 = Release|x64
+		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.DebugMPI|x64.ActiveCfg = Debug|x64
+		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.DebugMPI|x64.Build.0 = Debug|x64
+		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.PICO|Win32.ActiveCfg = Release|x64
+		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.PICO|Win32.Build.0 = Release|x64
+		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.PICO|x64.ActiveCfg = Release|x64
+		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.PICO|x64.Build.0 = Release|x64
+		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.Release|Win32.ActiveCfg = Release|x64
+		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.Release|x64.ActiveCfg = Release|x64
+		{F7C12681-233A-4C5A-9639-1EF3573BCE64}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {02D18FAF-FE51-4DD2-A9CC-D0A310BCDA7C}
 	EndGlobalSection
 EndGlobal
