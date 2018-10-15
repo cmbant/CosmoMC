@@ -70,6 +70,7 @@
     procedure :: InitInterp => TCubicSpline_InitInterp
     procedure :: Clear => TCubicSpline_Clear
     procedure :: FindNext => TCubicSpline_FindNext
+    procedure :: FindValue => TCubicSpline_FindValue
     procedure :: LoadState => TCubicSpline_LoadState
     procedure :: SaveState => TCubicSpline_SaveState
     generic :: Init => TCubicSpline_Init, TCubicSpline_InitInt
@@ -257,6 +258,7 @@
             call this%Error('Spline x = %f out of range',x)
         end if
     end if
+
     llo=1
     call this%FindNext(x,llo, xlo, xhi)
 
@@ -507,6 +509,39 @@
     xhi = this%X(llo+1)
 
     end subroutine TCubicSpline_FindNext
+
+    subroutine TCubicSpline_FindValue(this, x, llo, xlo, xhi, error)
+    class(TCubicSpline) :: this
+    real(sp_acc), intent(in) :: x
+    integer, intent(out) :: llo
+    integer lhi, k
+    real(sp_acc), intent(out) :: xlo, xhi
+    integer, intent(inout), optional :: error !initialize to zero outside, changed if bad
+
+    if (.not. this%Initialized) call this%FirstUse
+    if (x< this%Xmin_check .or. x> this%Xmax_check) then
+        if (present(error)) then
+            error = -1
+            return
+        else
+            call this%Error('Spline x = %f out of range',x)
+        end if
+    end if
+
+    llo=1
+    lhi=this%n
+    do while (lhi-llo > 1)
+        k=(lhi+llo)/2
+        if(this%X(k) > x)then
+            lhi=k
+        else
+            llo=k
+        endif
+    end do
+    xlo = this%X(llo)
+    xhi = this%X(llo+1)
+
+    end subroutine TCubicSpline_FindValue
 
     subroutine TCubicSpline_LoadState(this,F)
     class(TCubicSpline) :: this
@@ -769,18 +804,20 @@
 
     end subroutine TInterpGrid2D_Init
 
-    subroutine TInterpGrid2D_InitFromMatrixTextFile(this, Filename, colvals, rowvals)
+    subroutine TInterpGrid2D_InitFromMatrixTextFile(this, Filename, colvals, rowvals, dolog)
     class(TInterpGrid2D):: this
     character(LEN=*), intent(in) :: Filename
     real(sp_acc), intent(in) :: colvals(:), rowvals(:)
+    logical, intent(in), optional :: dolog
 
     call this%Clear()
-    this%ny = size(colvals)
-    this%nx = size(rowvals)
+    this%nx = size(colvals)
+    this%ny = size(rowvals)
     allocate(this%z(this%nx, this%ny))
     call File%ReadTextMatrix(Filename, this%z)
-    allocate(this%x, source = rowvals)
-    allocate(this%y, source = colvals)
+    if (DefaultFalse(dolog)) this%z = log(this%z)
+    allocate(this%x, source = colvals)
+    allocate(this%y, source = rowvals)
     call this%InitInterp()
 
     end subroutine TInterpGrid2D_InitFromMatrixTextFile
@@ -792,14 +829,14 @@
     Type(TBinaryFile) :: F
 
     call this%Clear()
-    this%ny = size(colvals)
-    this%nx = size(rowvals)
+    this%nx = size(colvals)
+    this%ny = size(rowvals)
     allocate(this%z(this%nx, this%ny))
     call F%OpenFile(Filename, mode='binary')
     call F%Read(this%z)
     call F%Close()
-    allocate(this%x, source = rowvals)
-    allocate(this%y, source = colvals)
+    allocate(this%x, source = colvals)
+    allocate(this%y, source = rowvals)
     call this%InitInterp()
 
     end subroutine TInterpGrid2D_InitFromMatrixBinaryFile

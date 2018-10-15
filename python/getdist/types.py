@@ -8,6 +8,8 @@ from getdist import paramnames
 import six
 import tempfile
 
+_sci_tolerance = 4
+
 
 class TextFile(object):
     def __init__(self, lines=None):
@@ -24,6 +26,10 @@ def texEscapeText(string):
     return string.replace('_', '{\\textunderscore}')
 
 
+def times_ten_power(exponent):
+    return '\cdot 10^{%d}' % exponent
+
+
 def float_to_decimal(f):
     # http://docs.python.org/library/decimal.html#decimal-faq
     """Convert a floating point number to a Decimal with no loss of information"""
@@ -38,13 +44,19 @@ def float_to_decimal(f):
     return result
 
 
-def numberFigs(number, sigfig):
+def numberFigs(number, sigfig, sci=False):
     # http://stackoverflow.com/questions/2663612/nicely-representing-a-floating-point-number-in-python/2663623#2663623
     assert (sigfig > 0)
     try:
         d = decimal.Decimal(number)
     except TypeError:
         d = float_to_decimal(float(number))
+    if sci:
+        exponent = d.adjusted()
+        if abs(exponent) > _sci_tolerance:
+            d = decimal.getcontext().multiply(d, float_to_decimal(10. ** -exponent))
+        else:
+            exponent = 0
     sign, digits = d.as_tuple()[0:2]
     if len(digits) < sigfig:
         digits = list(digits)
@@ -71,29 +83,38 @@ def numberFigs(number, sigfig):
         result = ['0.'] + ['0'] * (-shift - 1) + result
     if sign:
         result.insert(0, '-')
+    if sci:
+        return ''.join(result), exponent
     return ''.join(result)
 
 
 class NumberFormatter(object):
-    def __init__(self, sig_figs=4, separate_limit_tol=0.1):
+    def __init__(self, sig_figs=4, separate_limit_tol=0.1, err_sf=2):
         self.sig_figs = sig_figs
         self.separate_limit_tol = separate_limit_tol
+        self.err_sf = err_sf
 
-    def namesigFigs(self, value, limplus, limminus, wantSign=True):
+    def namesigFigs(self, value, limplus, limminus, wantSign=True, sci=False):
         frac = limplus / (abs(value) + limplus)
-        err_sf = 2
-        if value >= 20 and frac > 0.1 and limplus >= 2: err_sf = 1
-
-        plus_str = self.formatNumber(limplus, err_sf, wantSign)
-        minus_str = self.formatNumber(limminus, err_sf, wantSign)
         sf = self.sig_figs
         if frac > 0.1 and 100 > value >= 20:
             sf = 2
         elif frac > 0.01 and value < 1000:
             sf = 3
+        err_sf = self.err_sf
+        if value >= 20 and frac > 0.1 and limplus >= 2: err_sf = 1
+        if sci:
+            # First, call without knowing sig figs, to get the exponent
+            exponent = self.formatNumber(max(abs(value - limminus), abs(value + limplus)), sci=True)[1]
+            if exponent:
+                value, limplus, limminus = [
+                    (lambda x: decimal.getcontext().multiply(
+                        float_to_decimal(x), float_to_decimal(10. ** -exponent)))(lim)
+                    for lim in [value, limplus, limminus]]
+        plus_str = self.formatNumber(limplus, err_sf, wantSign)
+        minus_str = self.formatNumber(limminus, err_sf, wantSign)
         res = self.formatNumber(value, sf)
         maxdp = max(self.decimal_places(plus_str), self.decimal_places(minus_str))
-        # while abs(value) < 1 and maxdp < self.decimal_places(res):
         while maxdp < self.decimal_places(res):
             sf -= 1
             if sf == 0:
@@ -106,18 +127,26 @@ class NumberFormatter(object):
         while self.decimal_places(plus_str) > self.decimal_places(res):
             sf += 1
             res = self.formatNumber(value, sf)
-        return res, plus_str, minus_str
+        if sci:
+            return res, plus_str, minus_str, exponent
+        else:
+            return res, plus_str, minus_str
 
-    def formatNumber(self, value, sig_figs=None, wantSign=False):
+    def formatNumber(self, value, sig_figs=None, wantSign=False, sci=False):
         if sig_figs is None:
             sf = self.sig_figs
         else:
             sf = sig_figs
-        s = numberFigs(value, sf)
+        s = numberFigs(value, sf, sci=sci)
+        if sci:
+            s, exponent = s
         if wantSign:
             if s[0] != '-' and float(s) < 0: s = '-' + s
             if float(s) > 0: s = '+' + s
-        return s
+        if sci:
+            return s, exponent
+        else:
+            return s
 
     def decimal_places(self, s):
         i = s.find('.')
@@ -155,8 +184,8 @@ class TableFormatter(object):
     def startTable(self, ncol, colsPerResult, numResults):
         part = self.majorDividor + (" c" + self.minorDividor) * (colsPerResult - 1) + ' c'
         return '\\begin{tabular} {' + self.border + " l " + part * numResults + (
-                                                                                    self.colDividor + " l " + part * numResults) * (
-                                                                                    ncol - 1) + self.border + '}'
+                self.colDividor + " l " + part * numResults) * (
+                       ncol - 1) + self.border + '}'
 
     def endTable(self):
         return '\\end{tabular}'
@@ -358,9 +387,7 @@ class ResultTable(object):
         """
 
         if document:
-            lines = []
-            lines.append(r'\documentclass{article}')
-            lines.append(r'\pagestyle{empty}')
+            lines = [r'\documentclass{article}', r'\pagestyle{empty}']
             for package in packages:
                 lines.append(r'\usepackage{%s}' % package)
             lines.append('\\renewcommand{\\arraystretch}{1.5}')
@@ -376,7 +403,7 @@ class ResultTable(object):
     def write(self, fname, **kwargs):
         """
         Write the latex for the table to a file
-        
+
         :param fname: filename to write
         :param kwargs: arguments for :func:`~ResultTable.tableTex`
         """
@@ -428,7 +455,7 @@ class ResultTable(object):
 
 class ParamResults(paramnames.ParamList):
     """
-    Base class for a set of parameter results, inheriting from :class:`.~paramnames.ParamList`, 
+    Base class for a set of parameter results, inheriting from :class:`.~paramnames.ParamList`,
     so that self.names is a list of :class:`.~paramnames.ParamInfo` instances for each parameter, which
     have attribute holding results for the different parameters.
     """
@@ -452,7 +479,7 @@ class BestFit(ParamResults):
 
         ParamResults.__init__(self)
         if fileName is not None: self.loadFromFile(fileName, want_fixed=want_fixed)
-        if setParamNameFile is not None: self.setLabelsAndDerivedFromParamNames(setParamNameFile)
+        if setParamNameFile is not None: self.setLabelsFromParamNames(setParamNameFile)
 
     def getColumnLabels(self, **kwargs):
         return ['Best fit']
@@ -524,16 +551,26 @@ class BestFit(ParamResults):
         else:
             return None
 
+    def getParamDict(self, include_derived=True):
+        from collections import OrderedDict
+        res = OrderedDict()
+        for i, name in enumerate(self.names):
+            if include_derived or not name.isDerived:
+                res[name.name] = name.best_fit
+        res['weight'] = 1
+        res['loglike'] = self.logLike
+        return res
+
 
 class ParamLimit(object):
     """
     Class containing information about a marginalized parameter limit.
-    
+
     :ivar lower: lower limit
     :ivar upper: upper limit
     :ivar twotail: True if a two-tail limit, False if one-tail
     :ivar onetail_upper: True if one-tail upper limit
-    :ivar ontail_lower: True if one-tail lower limit
+    :ivar onetail_lower: True if one-tail lower limit
     """
 
     def __init__(self, minmax, tag='two'):
@@ -549,9 +586,9 @@ class ParamLimit(object):
         self.onetail_lower = tag == '<'
 
     def limitTag(self):
-        """        
+        """
         :return: Short text tag describing the type of limit (one-tail or two tail):
-                
+
                 - *two*: two-tail limit
                 - *>*: a one-tail upper limit
                 - *<*: a one-tail lower limit
@@ -567,9 +604,9 @@ class ParamLimit(object):
             return 'none'
 
     def limitType(self):
-        """        
+        """
         :return: a text description of the type of limit. One of:
-         
+
             - *two tail*
             - *one tail upper limit*
             - *one tail lower limit*
@@ -594,28 +631,28 @@ class ParamLimit(object):
 class MargeStats(ParamResults):
     """
     Stores marginalized 1D parameter statistics, including mean, variance and confidence limits,
-    inheriting from :class:`ParamResults`. 
-    
+    inheriting from :class:`ParamResults`.
+
     Values are stored as attributes of the :class:`~.paramnames.ParamInfo` objects stored in self.names.
-    Use *par= margeStats.parWithName('xxx')* to get the :class:`~.paramnames.ParamInfo` for parameter *xxx*; 
+    Use *par= margeStats.parWithName('xxx')* to get the :class:`~.paramnames.ParamInfo` for parameter *xxx*;
     Values stored are:
-    
+
     - *par.mean*: parameter mean
     - *par.err*: standard deviation
     - *limits*: list of :class:`~.types.ParamLimit` objects for the stored number of marginalized limits
-     
+
     For example to get the first and second lower limits (default 68% and 95%) for parameter *xxx*::
-    
+
          print(margeStats.names.parWithName('xxx').limits[0].lower)
          print(margeStats.names.parWithName('xxx').limits[1].lower)
-         
+
     See  :class:`~.types.ParamLimit` for details of limits.
     """
 
     def loadFromFile(self, filename):
         """
         Load from a plain text file
-        
+
         :param filename: file to load from
         """
         textFileLines = self.fileList(filename)
@@ -703,29 +740,40 @@ class MargeStats(ParamResults):
         if not param is None:
             lim = param.limits[limit - 1]
             sf = 3
-            if 'chi2_' in param.name:
+            if param.name.startswith('chi2'):
                 # Chi2 for low dof are very skewed, always want mean and sigma or limit
-                res, sigma, _ = formatter.numberFormatter.namesigFigs(param.mean, param.err, param.err, wantSign=False)
+                res, sigma, _ = formatter.numberFormatter.namesigFigs(param.mean, param.err, param.err, wantSign=False,
+                                                                      sci=False)
                 if limit == 1:
                     res += r'\pm ' + sigma
                 else:
                     # in this case give mean and effective dof
                     res += r'\,({\nu\rm{:}\,%.1f})' % (param.err ** 2 / 2)
-                    # res, plus_str, minus_str = formatter.numberFormatter.namesigFigs(param.mean, lim.upper - param.mean, lim.lower)
+                    # res, plus_str, minus_str = formatter.numberFormatter.namesigFigs(param.mean, lim.upper - param.mean, lim.lower, sci=False)
                     # res += '^{' + plus_str + '}_{>' + minus_str + '}'
             elif lim.twotail:
                 if not formatter.numberFormatter.plusMinusLimit(limit, lim.upper - param.mean, lim.lower - param.mean):
-                    res, plus_str, _ = formatter.numberFormatter.namesigFigs(param.mean, param.err, param.err,
-                                                                             wantSign=False)
+                    res, plus_str, _, exponent = formatter.numberFormatter.namesigFigs(param.mean, param.err, param.err,
+                                                                                       wantSign=False, sci=True)
                     res += r'\pm ' + plus_str
                 else:
-                    res, plus_str, minus_str = formatter.numberFormatter.namesigFigs(param.mean, lim.upper - param.mean,
-                                                                                     lim.lower - param.mean)
+                    res, plus_str, minus_str, exponent = formatter.numberFormatter.namesigFigs(param.mean,
+                                                                                               lim.upper - param.mean,
+                                                                                               lim.lower - param.mean,
+                                                                                               sci=True)
                     res += '^{' + plus_str + '}_{' + minus_str + '}'
+                if exponent:
+                    res = r'\left(\,%s\,\right)' % res + times_ten_power(exponent)
             elif lim.onetail_upper:
-                res = '< ' + formatter.numberFormatter.formatNumber(lim.upper, sf)
+                res, exponent = formatter.numberFormatter.formatNumber(lim.upper, sf, sci=True)
+                res = '< ' + res
+                if exponent:
+                    res += times_ten_power(exponent)
             elif lim.onetail_lower:
-                res = '> ' + formatter.numberFormatter.formatNumber(lim.lower, sf)
+                res, exponent = formatter.numberFormatter.formatNumber(lim.lower, sf, sci=True)
+                res = '> ' + res
+                if exponent:
+                    res += times_ten_power(exponent)
             else:
                 res = formatter.noConstraint
             if refResults is not None and res != formatter.noConstraint:
@@ -747,7 +795,10 @@ class MargeStats(ParamResults):
                         res += '\quad(%+.1f \\sigma)' % (delta / refVal.err)
             if self.hasBestFit:  # add best fit too
                 rangew = (lim.upper - lim.lower) / 10
-                bestfit = formatter.numberFormatter.namesigFigs(param.best_fit, rangew, -rangew)[0]
+                bestfit, _, _, exponent = formatter.numberFormatter.namesigFigs(param.best_fit, rangew, -rangew,
+                                                                                sci=True)
+                if exponent:
+                    bestfit += times_ten_power(exponent)
                 return [res, bestfit]
             return [res]
         else:
@@ -756,8 +807,8 @@ class MargeStats(ParamResults):
 
 class LikeStats(ParamResults):
     """
-    Stores likelihood-related statistics, including best-fit sample and extremal values of the N-D confidence region, 
-    inheriting from :class:`ParamResults`. 
+    Stores likelihood-related statistics, including best-fit sample and extremal values of the N-D confidence region,
+    inheriting from :class:`ParamResults`.
     TODO: currently only saves to text, does not load full data from file
     """
 
@@ -772,7 +823,7 @@ class LikeStats(ParamResults):
         self.logMeanInvLike = results.get('Ln(mean 1/like)', None)
         self.meanLogLike = results.get('mean(-Ln(like))', None)
         self.logMeanLike = results.get('-Ln(mean like)', None)
-        self.complexity = results.get('complexity',None)
+        self.complexity = results.get('complexity', None)
 
         # TODO: load N-D limits
 
@@ -782,7 +833,7 @@ class LikeStats(ParamResults):
             text += "Ln(mean 1/like) = %f\n" % self.logMeanInvLike
         text += "mean(-Ln(like)) = %f\n" % self.meanLogLike
         text += "-Ln(mean like)  = %f\n" % self.logMeanLike
-        #text += "complexity = %f\n" % self.complexity
+        # text += "complexity = %f\n" % self.complexity
 
         return text
 

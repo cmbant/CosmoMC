@@ -57,9 +57,15 @@ def check_gfortran(version=gfortran_min, msg=True, exit=False, import_fail_ok=Tr
     else:
         ok = False
     if not ok and msg:
-        raise Exception(
-            'You need gfortran %s or higher to compile (found: %s).' % (
-                version, gfortran_version))
+        try:
+            ifort = subprocess.check_output("ifort -v", shell=True)
+        except:
+            ifort = False
+        if not ifort:
+            raise Exception(
+                'You need gfortran %s or higher to compile (found: %s).' % (
+                    version, gfortran_version))
+
     if exit:
         sys.exit(1 if ok else 0)
     return ok, gfortran_version
@@ -77,7 +83,9 @@ def find_version():
     raise RuntimeError("Unable to find version string.")
 
 
-class SharedLibrary(build):
+class SharedLibrary(build, object):
+    cluster = False
+
     def run(self):
         CAMBDIR = os.path.join(file_dir, '..')
         if not os.path.exists(os.path.join(CAMBDIR, 'lensing.f90')):
@@ -101,8 +109,8 @@ class SharedLibrary(build):
             scrs = os.listdir(os.getcwd())
             if not ok:
                 print(
-                    'WARNING: gfortran %s or higher not in path (if you just installed you may need to log off and on again).' %
-                    gfortran_min)
+                        'WARNING: gfortran %s or higher not in path (if you just installed you may need to log off and on again).' %
+                        gfortran_min)
                 print('         You can get a Windows gfortran build from http://sourceforge.net/projects/mingw-w64/')
                 print('         (get the %s version to match this python installation)' % (('x86_64', 'i686')[is32Bit]))
                 print('Using pre-compiled binaries instead - any local changes will be ignored...')
@@ -121,7 +129,8 @@ class SharedLibrary(build):
                     os.remove(file)
         else:
             print("Compiling source...")
-            subprocess.call("make camblib.so COMPILER=gfortran PYCAMB_OUTPUT_DIR=%s/camb/" % pycamb_path, shell=True)
+            subprocess.call("make camblib.so PYCAMB_OUTPUT_DIR=%s/camb/ CLUSTER_SAFE=%d" %
+                            (pycamb_path, int(self.cluster)), shell=True)
             so_file = os.path.join(pycamb_path, 'camb', 'camblib.so')
             if not os.path.isfile(so_file): sys.exit('Compilation failed')
             subprocess.call("chmod 755 %s" % so_file, shell=True)
@@ -129,6 +138,13 @@ class SharedLibrary(build):
 
         os.chdir(file_dir)
         build.run(self)
+
+
+class SharedLibraryCluster(SharedLibrary):
+    cluster = True
+
+    def run(self):
+        super(SharedLibraryCluster, self).run()
 
 
 class CustomInstall(install):
@@ -165,11 +181,13 @@ if __name__ == "__main__":
           description='Code for Anisotropies in the Microwave Background',
           long_description=get_long_description(),
           author='Antony Lewis',
-          url="http://camb.info/",
-          cmdclass={'build': SharedLibrary, 'install': CustomInstall, 'sdist': CustomSdist},
+          url="https://camb.info/",
+          cmdclass={'build': SharedLibrary, 'build_cluster': SharedLibraryCluster,
+                    'install': CustomInstall, 'sdist': CustomSdist},
           packages=['camb', 'camb_tests'],
           package_data={'camb': [DLLNAME, 'HighLExtrapTemplate_lenspotentialCls.dat',
-                                 'PArthENoPE_880.2_marcucci.dat', 'PArthENoPE_880.2_standard.dat']},
+                                 'PArthENoPE_880.2_marcucci.dat', 'PArthENoPE_880.2_standard.dat',
+                                 'PRIMAT_Yp_DH_Error.dat']},
           test_suite='camb_tests',
           classifiers=[
               "Programming Language :: Python :: 2",

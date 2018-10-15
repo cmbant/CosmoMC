@@ -50,6 +50,7 @@
     procedure :: BAO_D_v => CAMBCalc_BAO_D_v
     procedure :: AngularDiameterDistance => CAMBCalc_AngularDiameterDistance
     procedure :: ComovingRadialDistance => CAMBCalc_ComovingRadialDistance
+    procedure :: ComovingRadialDistanceArr => CAMBCalc_ComovingRadialDistanceArr
     procedure :: AngularDiameterDistance2 => CAMBCalc_AngularDiameterDistance2
     procedure :: LuminosityDistance => CAMBCalc_LuminosityDistance
     procedure :: Hofz => CAMBCalc_Hofz
@@ -126,16 +127,17 @@
     integer noutputs, i
 
     noutputs = size(BackgroundOutputs%z_outputs)
-    Theory%numderived = nthermo_derived + noutputs*4
+    Theory%numderived = nthermo_derived + noutputs*2
     if (Theory%numderived > max_derived_parameters) &
         call MpiStop('numderived > max_derived_parameters: increase in CosmologyTypes.f90')
     Theory%derived_parameters(1:nthermo_derived) = ThermoDerivedParams(1:nthermo_derived)
     do i=1, noutputs
-        Theory%derived_parameters(nthermo_derived+(i-1)*4+1) = BackgroundOutputs%rs_by_D_v(i)
-        Theory%derived_parameters(nthermo_derived+(i-1)*4+2) = BackgroundOutputs%H(i)*const_c/1e3_mcp
-        Theory%derived_parameters(nthermo_derived+(i-1)*4+3) = BackgroundOutputs%DA(i)
-        Theory%derived_parameters(nthermo_derived+(i-1)*4+4) = (1+BackgroundOutputs%z_outputs(i))* &
-            BackgroundOutputs%DA(i) * BackgroundOutputs%H(i) !F_AP parameter
+        !Theory%derived_parameters(nthermo_derived+(i-1)*3+1) = BackgroundOutputs%rs_by_D_v(i)
+        !now use Hubble paramter in normal units and DM, comoving angular diameter distance
+        Theory%derived_parameters(nthermo_derived+(i-1)*2+1) = BackgroundOutputs%H(i)*const_c/1e3_mcp
+        Theory%derived_parameters(nthermo_derived+(i-1)*2+2) = BackgroundOutputs%DA(i)*(1+BackgroundOutputs%z_outputs(i))
+        !Theory%derived_parameters(nthermo_derived+(i-1)*4+4) = (1+BackgroundOutputs%z_outputs(i))* &
+        !    BackgroundOutputs%DA(i) * BackgroundOutputs%H(i) !F_AP parameter
     end do
     end subroutine CAMBCalc_SetDerived
 
@@ -487,7 +489,7 @@
             return
         end if
         allocate(Theory%MPK)
-        call Theory%MPK%Init(k,z,PK)
+        call Theory%MPK%InitExtrap(k,z,PK, CosmoSettings%extrap_kmax)
     end if
 
 
@@ -499,7 +501,7 @@
             return
         end if
         allocate(Theory%MPK_WEYL)
-        call Theory%MPK_WEYL%Init(k,z,PK)
+        call Theory%MPK_WEYL%InitExtrap(k,z,PK,CosmoSettings%extrap_kmax)
     end if
 
     if (CosmoSettings%use_SigmaR) then
@@ -565,13 +567,13 @@
         error = 1
         return
     end if
-    call Theory%NL_MPK%Init(Theory%MPK%x,Theory%MPK%y,PK)
+    call Theory%NL_MPK%InitExtrap(Theory%MPK%x,Theory%MPK%y,PK,CosmoSettings%extrap_kmax)
 
     if (allocated(Theory%MPK_WEYL)) then
         !Assume Weyl scales the same way under non-linear correction
         allocate(Theory%NL_MPK_WEYL)
         PK = Theory%MPK_WEYL%z + 2*log(Ratios)
-        call Theory%NL_MPK_WEYL%Init(Theory%MPK%x,Theory%MPK%y,PK)
+        call Theory%NL_MPK_WEYL%InitExtrap(Theory%MPK%x,Theory%MPK%y,PK,CosmoSettings%extrap_kmax)
     end if
 
     end subroutine CAMBCalc_GetNLandRatios
@@ -664,6 +666,18 @@
     CAMBCalc_ComovingRadialDistance = ComovingRadialDistance(z)
 
     end function CAMBCalc_ComovingRadialDistance
+
+    subroutine CAMBCalc_ComovingRadialDistanceArr(this, z, arr, n)
+    use CAMB, only : ComovingRadialDistanceArr  !!comoving radial distance also in Mpc no h units
+    class(CAMB_Calculator) :: this
+    integer, intent(in) :: n
+    real(mcp), intent(IN) :: z(n)
+    real(mcp), intent(out) :: arr(n)
+    !Note redshifts must be monotonically increasing    
+
+    call ComovingRadialDistanceArr(arr, z, n, 1d-4)
+
+    end subroutine CAMBCalc_ComovingRadialDistanceArr
 
     real(mcp) function CAMBCalc_AngularDiameterDistance2(this, z1, z2)
     use CAMB, only : AngularDiameterDistance2  !!angular diam distance also in Mpc no h units

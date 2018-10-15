@@ -1,0 +1,26 @@
+like_approx = gaussian
+fields_use = P
+fields_required =  T E P
+binned = T
+nbins= 9 
+use_min= 1 
+use_max= 9 
+cl_lmin = 2
+cl_lmax = 2500
+
+cl_hat_file = smicadx12_Dec5_ftl_mv2_ndclpp_p_teb_consext8_bandpowers.dat
+
+bin_window_files = smicadx12_Dec5_ftl_mv2_ndclpp_p_teb_consext8_window/window%u.dat
+bin_window_in_order = PP
+bin_window_out_order = PP
+
+covmat_cl = PP
+covmat_fiducial = smicadx12_Dec5_ftl_mv2_ndclpp_p_teb_consext8_cov.dat
+
+linear_correction_fiducial_file = smicadx12_Dec5_ftl_mv2_ndclpp_p_teb_consext8_lensing_fiducial_correction.dat
+linear_correction_bin_window_files = smicadx12_Dec5_ftl_mv2_ndclpp_p_teb_consext8_lens_delta_window/window%u.dat
+linear_correction_bin_window_in_order = TT EE TE PP
+linear_correction_bin_window_out_order =  PP PP PP PP
+
+calibration_param = ../planck_calib.paramnames
+            

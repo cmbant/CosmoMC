@@ -37,6 +37,14 @@ def main(args):
     if chain_root and chain_root.endswith('.txt'):
         chain_root = chain_root[:-4]
 
+    if chain_root is not None and ('*' in chain_root or '?' in chain_root):
+        import glob, copy
+        for f in glob.glob(chain_root + '.paramnames'):
+            fileargs = copy.copy(args)
+            fileargs.chain_root = f.replace('.paramnames', '')
+            main(fileargs)
+        return
+
     # Input parameters
     ini = IniFile(args.ini_file)
 
@@ -173,7 +181,7 @@ def main(args):
 
     # Output thinned data if requested
     # Must do this with unsorted output
-    if thin_factor != 0:
+    if thin_factor > 1:
         thin_ix = mc.thin_indices(thin_factor)
         filename = rootdirname + '_thin.txt'
         mc.writeThinData(filename, thin_ix, thin_cool)
@@ -304,7 +312,7 @@ def main(args):
         if mc.loglikes is not None: mc.getLikeStats().saveAsText(rootdirname + '.likestats')
 
     if dumpNDbins:
-        num_bins_ND = ini.int('num_bins_ND', 10)
+        mc.num_bins_ND = ini.int('num_bins_ND', 10)
         line = ini.string('ND_params', '')
 
         if line not in ["", '0']:

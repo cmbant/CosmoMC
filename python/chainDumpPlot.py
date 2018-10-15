@@ -42,7 +42,7 @@ def loadFiles(pat, max_files=400, cl_ix=1, calParam=None, rescale=1):
 
 def CLdensity(samples, param, scalarMap, nbins=300, deltaL=1, Lmax=200, color_pow=0.25):
 #    H, xedges, yedges = np.histogram2d(x, y, bins=(100, 20), weights=param)
-    minCl = np.min(samples) * 1.04
+    minCl = np.min(samples) / 1.04
     if minCl > 0: minCl = 0
     maxCl = np.max(samples) * 1.04
     delta = (maxCl - minCl) / (nbins - 1)
@@ -90,7 +90,7 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=200):
         cmap(np.linspace(minval, maxval, n)))
     return new_cmap
 
-def getColorMap(parvals, parname):
+def getColorMap(parvals):
     jet = plt.get_cmap('jet')
     cmap = truncate_colormap(jet, 0.05, 0.9)
     # delta = np.max(parvals) - np.min(parvals)
@@ -122,7 +122,7 @@ def setLabels(scalarMap, cNorm, par):
 def rainbowLinePlot(ls, pars, cls, parname, lpow=2, delta_to=None, last_colors=None, alpha=1):
 
     parvals = [par.parWithName(parname).best_fit for par in pars]
-    scalarMap, cNorm = last_colors or getColorMap(parvals, parname)
+    scalarMap, cNorm = last_colors or getColorMap(parvals)
     sc = (ls * (ls + 1.)) ** (lpow / 2. - 1)
     for parval, cl in zip(parvals, cls):
         colorVal = scalarMap.to_rgba(parval)
@@ -137,7 +137,7 @@ def rainbowLinePlot(ls, pars, cls, parname, lpow=2, delta_to=None, last_colors=N
 def rainbowDensityPlot(ls, pars, cls, parname, lpow=2, delta_to=None, Lmax=200, color_pow=0.25, last_colors=None):
 
     parvals = np.array([par.parWithName(parname).best_fit for par in pars])
-    scalarMap, cNorm = last_colors or getColorMap(parvals, parname)
+    scalarMap, cNorm = last_colors or getColorMap(parvals)
     samples = np.zeros((len(cls), Lmax - 1))
     for i, cl in enumerate(cls):
         samples[i, :] = cl[:Lmax - 1]

@@ -14,7 +14,7 @@ try:
     import pandas
     from distutils.version import LooseVersion
 
-    use_pandas = LooseVersion(pandas.version.version) > LooseVersion("0.14.0")
+    use_pandas = LooseVersion(pandas.__version__) > LooseVersion("0.14.0")
 except:
     use_pandas = False
 
@@ -38,17 +38,6 @@ def lastModified(files):
 
 def slice_or_none(x, start=None, end=None):
     return getattr(x, "__getitem__", lambda _: None)(slice(start, end))
-
-
-def array_dimension(a):
-    "Dimension for numpy or list/tuple arrays, not very safe (does not work if string elements)"
-    d = 0
-    while True:
-        try:
-            a = a[0]
-            d += 1
-        except:
-            return d
 
 
 def chainFiles(root, chain_indices=None, ext='.txt', first_chain=0, last_chain=-1, chain_exclude=None):
@@ -91,10 +80,15 @@ def loadNumpyTxt(fname, skiprows=None):
     :param skiprows: The number of rows to skip at the begging of the file
     :return: numpy array of the data values
     """
-    if use_pandas:
-        return pandas.read_csv(fname, delim_whitespace=True, header=None, dtype=np.float64, skiprows=skiprows).values
-    else:
-        return np.loadtxt(fname, skiprows=skiprows)
+    try:
+        if use_pandas:
+            return pandas.read_csv(fname, delim_whitespace=True, header=None, dtype=np.float64,
+                                   skiprows=skiprows, comment='#').values
+        else:
+            return np.loadtxt(fname, skiprows=skiprows)
+    except ValueError:
+        print('Error reading %s' % fname)
+        raise
 
 
 def getSignalToNoise(C, noise=None, R=None, eigs_only=False):
@@ -182,6 +176,8 @@ class WeightedSamples(object):
         self.min_weight_ratio = min_weight_ratio
         if filename:
             cols = loadNumpyTxt(filename, skiprows=ignore_rows)
+            if not len(cols):
+                raise WeightedSampleError('Empty chain: %s' % filename)
             self.setColData(cols, are_chains=files_are_chains)
             self.name_tag = name_tag or os.path.basename(filename)
         else:
@@ -491,7 +487,10 @@ class WeightedSamples(object):
         :param where: if specified, a filter for the samples to use (where x>=5 would mean only process samples with x>=5).
         :return: parameter mean
         """
-        return self.weighted_sum(paramVec, where) / self.get_norm(where)
+        if isinstance(paramVec, (list, tuple)):
+            return np.array([self.weighted_sum(p, where) for p in paramVec]) / self.get_norm(where)
+        else:
+            return self.weighted_sum(paramVec, where) / self.get_norm(where)
 
     def var(self, paramVec, where=None):
         """
@@ -501,6 +500,8 @@ class WeightedSamples(object):
         :param where: if specified, a filter for the samples to use (where x>=5 would mean only process samples with x>=5).
         :return: parameter variance
         """
+        if isinstance(paramVec, (list, tuple)):
+            return np.array([self.var(p) for p in paramVec])
         if where is not None:
             return np.dot(self.mean_diff(paramVec, where) ** 2, self.weights[where]) / self.get_norm(where)
         else:
@@ -829,7 +830,7 @@ class Chains(WeightedSamples):
     :ivar paramNames: a :class:`~.paramnames.ParamNames` instance holding the parameter names and labels
     """
 
-    def __init__(self, root=None, jobItem=None, paramNamesFile=None, names=None, labels=None, **kwargs):
+    def __init__(self, root=None, jobItem=None, paramNamesFile=None, names=None, labels=None, renames=None, **kwargs):
         """
 
         :param root: optional root name for files
@@ -837,6 +838,7 @@ class Chains(WeightedSamples):
         :param paramNamesFile: optional filename of a .paramnames files that holds parameter names
         :param names: optional list of names for the parameters
         :param labels: optional list of latex labels for the parameters
+        :param renames: optional dictionary of parameter aliases
         :param kwargs: extra options for :class:`~.chains.WeightedSamples`'s constructor
 
         """
@@ -854,6 +856,8 @@ class Chains(WeightedSamples):
         self.setParamNames(paramNamesFile or names)
         if labels is not None:
             self.paramNames.setLabels(labels)
+        if renames is not None:
+            self.updateRenames(renames)
 
     def setParamNames(self, names=None):
         """
@@ -915,6 +919,18 @@ class Chains(WeightedSamples):
         self.index = index
         return self.index
 
+    def getRenames(self):
+        """
+        Updates the renames known to each parameter with the given dictionary of renames.
+        """
+        return self.paramNames.getRenames()
+
+    def updateRenames(self, renames):
+        """
+        Updates the renames known to each parameter with the given dictionary of renames.
+        """
+        self.paramNames.updateRenames(renames)
+
     def setParams(self, obj):
         """
         Adds array variables obj.name1, obj.name2 etc, where
@@ -950,11 +966,12 @@ class Chains(WeightedSamples):
         """
         Returns a dictionary of parameter values for sample number ix
         """
-        res = {}
+        from collections import OrderedDict
+        res = OrderedDict()
         for i, name in enumerate(self.paramNames.names):
             res[name.name] = self.samples[ix, i]
-        res['weight'] = self.weights[i]
-        res['loglike'] = self.loglikes[i]
+        res['weight'] = self.weights
+        res['loglike'] = self.loglikes
         return res
 
     def _makeParamvec(self, par):
@@ -1022,12 +1039,26 @@ class Chains(WeightedSamples):
             self.name_tag = self.name_tag or os.path.basename(root)
             for fname in files_or_samples:
                 if print_load_details: print(fname)
-                self.chains.append(WeightedSamples(fname, **WSkwargs))
+                try:
+                    self.chains.append(WeightedSamples(fname, **WSkwargs))
+                except WeightedSampleError:
+                    if print_load_details:
+                        print('Ignored file %s (likely empty)' % fname)
             nchains = len(self.chains)
             if not nchains:
                 raise WeightedSampleError('loadChains - no chains found for ' + root)
         else:
             # From arrays
+            def array_dimension(a):
+                # Dimension for numpy or list/tuple arrays, not very safe (does not work if string elements)
+                d = 0
+                while True:
+                    try:
+                        a = a[0]
+                        d += 1
+                    except:
+                        return d
+
             dim = array_dimension(files_or_samples)
             if dim in [1, 2]:
                 self.setSamples(slice_or_none(files_or_samples, ignore_lines),

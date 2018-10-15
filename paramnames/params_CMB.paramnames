@@ -29,9 +29,11 @@ omegamh2*     \Omega_m h^2 #includes massive neutrinos
 omeganuh2*    \Omega_\nu h^2 
 omegamh3*     \Omega_m h^3 #well determined orthogonal to degeneracy for 6-param model
 sigma8*       \sigma_8
+S8*           S_8 #\sigma_8(\Omega_m/0.3)^{0.5}
 s8omegamp5*   \sigma_8 \Omega_m^{0.5}
 s8omegamp25*  \sigma_8 \Omega_m^{0.25}
 s8h5*         \sigma_8/h^{0.5}
+rdragh*       r_{\rm drag} h #Mpc
 rmsdeflect*   \langle d^2\rangle^{1/2}  #rms lensing deflection in arcmin (2<=L<=2000)
 zrei*         z_{\rm re}
 A*            10^9 A_s

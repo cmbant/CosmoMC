@@ -31,7 +31,7 @@ see the <A HREF="http://getdist.readthedocs.org/en/latest/">GetDist documentatio
 <P>
 The getdist.plots module (directly, or via planckStyle) is used to make plots from chain results using your own custom scripts.
 <P>
-The sample scripts (under batch2/outputs) make use of <b>planckStyle</b>. This can be interchanged with <b>getdist.plots</b> if you do not want
+The sample scripts (under batch3/outputs for 2018 results, or batch2/outputs for 2015 results) make use of <b>planckStyle</b>. This can be interchanged with <b>getdist.plots</b> if you do not want
 to use the Planck style (or some extra functions used in the batch2/output samples). Both implement the functions
 <UL>
 <LI><b>getSinglePlotter</b>, to get a plotter object suitable for single plot figures
@@ -46,12 +46,13 @@ import planckStyle
 
 g = planckStyle.getSinglePlotter(chain_dir = './PLA')
 
-roots = ['base_nnu_mnu_plikHM_TT_lowTEB', 'base_nnu_mnu_plikHM_TT_lowTEB_lensing', 'base_nnu_mnu_plikHM_TT_lowTEB_lensing_post_BAO']
+roots = ['base_nnu_mnu_plikHM_TTTEEE_lowl_lowE', 'base_nnu_mnu_plikHM_TTTEEE_lowl_lowE_post_lensing', 'base_nnu_mnu_plikHM_TTTEEE_lowl_lowE_lensing_BAO']
 g.plot_2d(roots, 'mnu', 'nnu', filled=True)
 g.add_legend(['Planck', 'Planck+lensing', 'Planck+lensing+BAO'], legend_loc='upper right');
 g.export('mnu_nnu.png')
 </pre>
 </blockquote>
+(for 2018 chains just change TT_lowTEB to TTTEEE_lowl_lowE)
 The chain_dir argument can be neglected if you have set up a default in config.ini.
 You can do "from pylab import *" and use standard matplotlib commands to customize the plots, and
 there are also many plot script options you can use to customize settings, and also change global getdist plot settings using g.settings.xxx.
@@ -62,17 +63,17 @@ import planckStyle
 
 g = planckStyle.getSinglePlotter(chain_dir = './PLA', ratio=1)
 
-roots = ['base_nnu_mnu_plikHM_TT_lowTEB', 'base_nnu_mnu_plikHM_TT_lowTEB_lensing', 'base_nnu_mnu_plikHM_TT_lowTEB_lensing_post_BAO']
+roots = ['base_nnu_mnu_plikHM_TTTEEE_lowl_lowE', 'base_nnu_mnu_plikHM_TTTEEE_lowl_lowE_post_lensing', 'base_nnu_mnu_plikHM_TTTEEE_lowl_lowE_lensing_BAO']
 g.settings.solid_contour_palefactor = 0.8
-g.plot_2d(roots, 'mnu', 'nnu', filled=True, colors=['orange', 'darkred', 'green'], lims=[0, 1.3, 2, 4.2])
+g.plot_2d(roots, 'mnu', 'nnu', filled=True, colors=['orange', 'darkred', 'green'], lims=[0, 0.5, 2.2, 3.6])
 g.add_legend(['Planck', 'Planck+lensing', 'Planck+lensing+BAO'], legend_loc='upper right', colored_text=True);
 g.add_y_marker(3.046)
 g.export('mnu_nnu2.png')
 </pre>
 </blockquote>
 Outputs of the two versions should look like this:<BR>
-<IMG SRC="https://cosmologist.info/cosmomc/pics/planck2015/mnu_nnu.png">
-<IMG SRC="https://cosmologist.info/cosmomc/pics/planck2015/mnu_nnu2.png">
+<IMG SRC="https://uk.wordwebsoftware.com/antony/cosmomc/2018_mnu_nnu.png">
+<IMG SRC="https://uk.wordwebsoftware.com/antony/cosmomc/2018_mnu_nnu2.png">
 <P>
 See sample scripts in batch2/outputs, the <A HREF="http://getdist.readthedocs.org/en/latest/plot_gallery.html">Plot Gallery and tutorial</A>, and the full
 <A HREF="http://getdist.readthedocs.org/en/latest/">GetDist documentation</A>. Note that if you have installed CosmoMC, you don't need to separately install the GetDist python package.
@@ -90,14 +91,14 @@ For simple calculations like finding the mean and variance of new derived parame
 import getdist.plots as gplot
 g = gplot.getSinglePlotter(chain_dir=r'./PLA')
 
-samples = g.sampleAnalyser.samplesForRoot('base_plikHM_TT_lowTEB_lensing')
+samples = g.sampleAnalyser.samplesForRoot('base_plikHM_TTTEEE_lowl_lowE_lensing')
 
 p = samples.getParams()
 
 derived = p.sigma8 * p.omegam ** 0.6
 
-print 'mean, err = ', samples.mean(derived), samples.std(derived)
-print '95% limits: ', samples.twoTailLimits(derived, 0.95)
+print('mean = %s, err = %s'%(samples.mean(derived), samples.std(derived)))
+print('95%% limits: %s'%samples.twoTailLimits(derived, 0.95))
 </pre>
 </blockquote>
 Here p.omegam is a vector of parameter values, similar p.sigma8; samples.mean and samples.std sum the samples with the corresponding weights to calculate the result.
@@ -112,45 +113,50 @@ For example if you want to do a power law fit in the variable &Omega;<sub>m</sub
 import GetDistPlots as s
 
 g = s.getSinglePlotter(chain_dir=r'./PLA')
-samples = g.sampleAnalyser.samplesForRoot('base_plikHM_TT_lowTEB')
+samples = g.sampleAnalyser.samplesForRoot('base_plikHM_TTTEEE_lowl_lowE_lensing')
 
-print samples.PCA(['omegam', 'H0'], 'LL', 'omegam')
+print(samples.PCA(['omegam', 'H0'], 'LL', 'omegam'))
 </pre>
 </blockquote>
 which fits  &Omega;<sub>m</sub> and H<sub>0</sub>, using log transforms (L), normalized so the exponent of &Omega;<sub>m</sub>  is unity (as in GetDist PCA outputs).
 The output includes
 <pre>
 Principle components
-PC1 (e-value: 0.006151)
-[0.042284]  (\Omega_m/0.314833)^{1.000000}
-[0.042284]  (H_0/67.300590)^{2.971216}
-          = 1.000011 +- 0.004690
-ND limits:     0.984    1.017    0.983    1.019
+PC1 (e-value: 0.008353)
+[0.023238]  (\Omega_m/0.315200)^{1.000000}
+[0.023238]  (H_0/67.357701)^{2.923650}
+          = 1.000005 +- 0.003003
 </pre>
-which tells you that &Omega;<sub>m</sub>H<sub>0</sub><sup>2.97</sup>is constrained at the 0.4% level.
+which tells you that &Omega;<sub>m</sub>H<sub>0</sub><sup>2.92</sup> is constrained at the 0.3% level.
 <P>
 Samples can also be loaded directly from single chains, optionally with custom settings, e.g.
 <pre>
 import getdist
 
-samples = getdist.loadMCSamples(r'./PLA/base/plik_HM_TT_lowTEB/base_plikHM_TT_lowTEB', settings={'ignore_rows':0.3})
+samples = getdist.loadMCSamples(r'./PLA/base/plikHM_TTTEEE_lowl_lowE_lensing/base_plikHM_TTTEEE_lowl_lowE_lensing', settings={'ignore_rows':0.3})
 </pre>
+Or from a grid or list of directories you can find chains automatically e.g. 
+<pre>
+import planckStyle as s
+g = s.getSinglePlotter(chain_dir=['./PLA', './mychains/xxx/'])
+samples = g.getSamples('base_plikHM_TTTEEE_lowl_lowE_lensing')
+</pre>
+
 
 <A NAME="derived"></A>
 <h3>Adding and plotting new derived parameters</h3>
 You can use the <b>addDerived</b> function of the MCSamples class to add a new parameter to existing chains, which can then be used like any of the original parameters.
-An example gives the idea (from batch2/outputs/DA-H-BAO.py), which adds a new parameter with name tag 'rsH' which is a function of the original parameters 'Hubble057' and 'rdrag':
+An example gives the idea (from batch3/outputs/DA-H-BAO.py), which adds a new parameter with name tag 'rsH' which is a function of the original parameters 'Hubble051' and 'rdrag':
 <blockquote>
 <pre>
 p = samples.getParams()
 rd_fid = 149.28
-rsH = p.Hubble057 * p.rdrag / rd_fid
-samples.addDerived(rsH, name='rsH', label=r'H(0.57) (r_{\mathrm{drag}}/r_{\mathrm{drag}}^{\rm fid})\, [{\rm km} \,{\rm s}^{-1}{\rm Mpc}^{-1}]')
-samples.updateBaseStatistics()
+rsH = p.Hubble051 * p.rdrag / rd_fid
+samples.addDerived(rsH, name='rsH', label=r'H(0.51) (r_{\mathrm{drag}}/r_{\mathrm{drag}}^{\rm fid})\, [{\rm km} \,{\rm s}^{-1}{\rm Mpc}^{-1}]')
 </pre>
 </blockquote>
-The last line is needed to ensure caches etc are cleared, but only needs to be called once if you are adding several new parameters.
-After doing this, you can use 'rsH' as you would any of the original parameter names in the chain.
+After doing this, you can use 'rsH' as you would any of the original parameter names in the chain. If your new parameter has a hard boundary, set the 
+<b>range</b> parameter for addDerived with the [min, max] bounds.
 
 <h3>Analysing samples directly</h3>
 Rather than reading chain files, you can also analyse samples directly, for example using the constructor
@@ -185,6 +191,7 @@ g.add_2d_contours(root, 'x', 'y', filled=True, density=density)
 
 Multi-purpose use and utility cosmology scripts include
 <UL>
+<LI>cosmomc_to_camb.py: for converting a dictionary of cosmomc parameters to a python CAMB "CAMBparams" object
 <LI>extractBestFitCAMB.py: for converting .minimum best-fit file to CAMB input .ini file (not all parameter combinations)
 <LI>extractBestFitParams.py: for converting .minimum best-fit file to cosmomc input params[xx] settings if you want to fix them
 <LI>makePerfectForecastDataset.py: a simple old script for simulating perfect fake CMB datasets
@@ -195,7 +202,7 @@ Multi-purpose use and utility cosmology scripts include
 Instructions below are for installing python to run things natively on your machine. You could also use <A HREF="http://cosmologist.info/CosmoBox/">CosmoBox</A>.
 <H3>Python on Windows</H3>
 See the <A HREF="https://www.python.org/downloads/windows/">Python 2.7 download</A>, or install a package like  <A HREF="https://store.continuum.io/cshop/anaconda/">Anaconda</A> (Python 2.7 or 3.4+).
-Also install matplotlib and PySide standard packages using standard methods, or download builds from
+Also install matplotlib and PySide standard packages using standard methods (usually included by default in Anaconda), or download builds from
  <A HREF="http://www.lfd.uci.edu/~gohlke/pythonlibs/">here</A>.
 <H3>Python on a Mac</H3>
 There are several options, here's one:
@@ -213,8 +220,8 @@ There are several options, here's one:
    sudo port install dvipng
 </pre>
 </UL>
-Check that <b>python --version</b> says 2.7.9. If not, edit your system path to remove other python installations.
+Check that <b>python --version</b> says the correct latest version. If not, edit your system path to remove other python installations.
 <H4>Writing Python</H4>
-While not needed for GetDist/Cosmomc scripts to run, you may also find an integrated development environment like <A hREF="http://pydev.org/">PyDev</A> or <A HREF="https://www.jetbrains.com/pycharm/">PyCharm</A> useful (they are similar). This will let you run in one click, check syntax as you type, format nicely, etc.
+While not needed for GetDist/Cosmomc scripts to run, you may also find an integrated development environment like <A hREF="http://pydev.org/">PyDev</A> or <A HREF="https://www.jetbrains.com/pycharm/">PyCharm</A> useful (they are similar, the latter usually better). This will let you run in one click, check syntax as you type, format nicely, etc.
 
 </body> 

@@ -16,8 +16,9 @@ class ParamBounds(object):
         :param fileName: optional file name to read from
         """
         self.names = []
-        self.lower = {}
-        self.upper = {}
+        from collections import OrderedDict
+        self.lower = OrderedDict()
+        self.upper = OrderedDict()
         if fileName is not None: self.loadFromFile(fileName)
 
     def loadFromFile(self, fileName):
@@ -30,10 +31,12 @@ class ParamBounds(object):
                     if len(strings) == 3:
                         self.setRange(strings[0], strings[1:])
         elif extension in ('.yaml', '.yml'):
-            from getdist.yaml_format_tools import yaml_load_file, get_info_params, get_range
+            from getdist.yaml_format_tools import yaml_load_file, get_info_params
+            from getdist.yaml_format_tools import get_range, is_fixed_param
             info_params = get_info_params(yaml_load_file(fileName))
             for p, info in info_params.items():
-                self.setRange(p, get_range(info))
+                if not is_fixed_param(info):
+                    self.setRange(p, get_range(info))
 
     def __str__(self):
         s = ''
@@ -96,8 +99,8 @@ class ParamBounds(object):
         """
         :return: dictionary of fixed parameter values
         """
-
-        res = {}
+        from collections import OrderedDict
+        res = OrderedDict()
         for name in self.names:
             value = self.fixedValue(name)
             if value is not None:

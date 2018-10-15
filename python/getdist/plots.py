@@ -14,26 +14,13 @@ import numpy as np
 from paramgrid import gridconfig, batchjob
 import getdist
 from getdist import MCSamples, loadMCSamples, ParamNames, ParamInfo, IniFile
-from getdist.paramnames import escapeLatex
+from getdist.paramnames import escapeLatex, makeList, mergeRenames
 from getdist.parampriors import ParamBounds
 from getdist.densities import Density1D, Density2D
 from getdist.gaussian_mixtures import MixtureND
 import logging
 
 """Plotting scripts for GetDist outputs"""
-
-
-def makeList(roots):
-    """
-    Checks if the given parameter is a list, If not, Creates a list with the parameter as an item in it.
-
-    :param roots: The parameter to check
-    :return: A list containing the parameter.
-    """
-    if isinstance(roots, (list, tuple)):
-        return roots
-    else:
-        return [roots]
 
 
 class GetDistPlotError(Exception):
@@ -108,6 +95,7 @@ class GetDistPlotSettings(object):
         # self.prob_label = 'Probability'
         self.norm_prob_label = 'P'
         self.prob_y_ticks = False
+
         self.lineM = ['-k', '-r', '-b', '-g', '-m', '-c', '-y', '--k', '--r', '--b', '--g',
                       '--m']  # : line styles/colors
         self.plot_args = None
@@ -379,6 +367,7 @@ class MCSampleAnalysis(object):
         self.chain_dirs = []
         self.chain_locations = []
         self.ini = None
+        self.chain_settings_have_priority = True
         if chain_locations is not None:
             if isinstance(chain_locations, six.string_types):
                 chain_locations = [chain_locations]
@@ -413,12 +402,13 @@ class MCSampleAnalysis(object):
         else:
             self.chain_dirs.append(chain_dir)
 
-    def reset(self, settings=None):
+    def reset(self, settings=None, chain_settings_have_priority=True):
         """
         Resets the caches, starting afresh optionally with new analysis settings
 
         :param settings: Either an :class:`~.inifile.IniFile` instance,
                the name of an .ini file, or a dict holding sample analysis settings.
+        :param chain_settings_have_priority: whether to prioritize settings saved with the chain
         """
         self.analysis_settings = {}
         if isinstance(settings, IniFile):
@@ -437,6 +427,7 @@ class MCSampleAnalysis(object):
         self.densities_1D = dict()
         self.densities_2D = dict()
         self.single_samples = dict()
+        self.chain_settings_have_priority = chain_settings_have_priority
 
     def samplesForRoot(self, root, file_root=None, cache=True, settings=None):
         """
@@ -446,6 +437,7 @@ class MCSampleAnalysis(object):
         :param root: The root name (without path, e.g. my_chains)
         :param file_root: optional full root path, by default searches in self.chain_dirs
         :param cache: if True, return cached object if already loaded
+        :param settings: optional dictionary of settings to use
         :return: :class:`~.mcsamples.MCSamples` for the given root name
         """
         if isinstance(root, MCSamples): return root
@@ -457,7 +449,10 @@ class MCSampleAnalysis(object):
                 root = os.path.basename(root)
         if root in self.mcsamples and cache: return self.mcsamples[root]
         jobItem = None
-        dist_settings = settings or {}
+        if self.chain_settings_have_priority:
+            dist_settings = settings or {}
+        else:
+            dist_settings = {}
         if not file_root:
             for chain_dir in self.chain_dirs:
                 if hasattr(chain_dir, "resolveRoot"):
@@ -475,7 +470,9 @@ class MCSampleAnalysis(object):
                         break
         if not file_root:
             raise GetDistPlotError('chain not found: ' + root)
-
+        if not self.chain_settings_have_priority:
+            dist_settings.update(self.ini.params)
+            if settings: dist_settings.update(settings)
         self.mcsamples[root] = loadMCSamples(file_root, self.ini, jobItem, settings=dist_settings)
         return self.mcsamples[root]
 
@@ -714,7 +711,11 @@ class GetDistPlotter(object):
         :return: The default line style.
         """
         try:
-            return self.settings.lineM[plotno]
+            res = self.settings.lineM[plotno]
+            i = 0
+            while i < len(res) and res[i] in ['-', '.', ':']:
+                i += 1
+            return res[:i], res[i:]
         except IndexError:
             print('Error adding line ' + str(plotno) + ': Add more default line stype entries to settings.lineM')
             raise
@@ -728,12 +729,12 @@ class GetDistPlotter(object):
         :return: dict with ls, dashes, lw and color set appropriately
         """
         args = self._get_plot_args(plotno, **kwargs)
-        if not 'ls' in args: args['ls'] = self._get_default_ls(plotno)[:-1]
+        if not 'ls' in args: args['ls'] = self._get_default_ls(plotno)[0]
         if not 'dashes' in args:
             dashes = self._get_dashes_for_ls(args['ls'])
             if dashes is not None: args['dashes'] = dashes
         if not 'color' in args:
-            args['color'] = self._get_default_ls(plotno)[-1]
+            args['color'] = self._get_default_ls(plotno)[1]
         if not 'lw' in args: args['lw'] = self.settings.lw1
         return args
 
@@ -923,10 +924,11 @@ class GetDistPlotter(object):
         else:
             proxyIx = -1
 
-        def clean_args(args): #prevent unused argument warnings
+        def clean_args(args):  # prevent unused argument warnings
             cont_args = dict(args)
             if 'color' in cont_args: del cont_args['color']
             if 'ls' in cont_args: del cont_args['ls']
+            if 'lw' in cont_args: del cont_args['lw']
             return cont_args
 
         if kwargs.get('filled'):
@@ -946,7 +948,8 @@ class GetDistPlotter(object):
                     cols = color
             levels = sorted(np.append([density.P.max() + 1], contour_levels))
             CS = ax.contourf(density.x, density.y, density.P, levels, colors=cols, alpha=alpha, **clean_args(kwargs))
-            if proxyIx >= 0: self.contours_added[proxyIx] = (plt.Rectangle((0, 0), 1, 1, fc=CS.tcolors[-1][0]))
+            if proxyIx >= 0: self.contours_added[proxyIx] = (
+                plt.Rectangle((0, 0), 1, 1, fc=matplotlib.colors.to_rgb(CS.tcolors[-1][0])))
             ax.contour(density.x, density.y, density.P, levels[:1], colors=CS.tcolors[-1],
                        linewidths=self.settings.lw_contour, alpha=alpha * self.settings.alpha_factor_contour_lines,
                        **clean_args(kwargs))
@@ -1086,13 +1089,15 @@ class GetDistPlotter(object):
         lws = kwargs.get('lws')
         alphas = kwargs.get('alphas')
         ls = kwargs.get('ls')
+        if isinstance(ls, six.string_types):
+            ls = [ls] * nroots
         for i, args in enumerate(line_args):
             c = args.copy()  # careful to copy before modifying any
             line_args[i] = c
             if colors and i < len(colors) and colors[i]:
                 c['color'] = colors[i]
             if ls and i < len(ls) and ls[i]: c['ls'] = ls[i]
-            if alphas and i < len(alphas) and alphas[i]: c['alpha'] = alphas[i]
+            if alphas and i < len(alphas) and alphas[i] is not None: c['alpha'] = alphas[i]
             if lws and i < len(lws) and lws[i]: c['lw'] = lws[i]
         return line_args
 
@@ -1269,8 +1274,8 @@ class GetDistPlotter(object):
             # if prune is None and hasattr(plt.colors, 'is_color_like'): return  # is_color_like tests for matplotlib 2
             if x: xmin, xmax = axis.get_view_interval()
             if x and (abs(xmax - xmin) < 0.01 or max(abs(xmin), abs(xmax)) >= 1000):
-                axis.set_major_locator(plt.MaxNLocator(int(self.settings.subplot_size_inch / 2) + 3, prune=prune,
-                                                       steps=np.arange(1, 11)))
+                maxN = int(self.settings.subplot_size_inch / 2) + 3
+                axis.set_major_locator(plt.MaxNLocator(maxN, prune=prune, steps=np.arange(1, 11)))
             else:
                 axis.set_major_locator(plt.MaxNLocator(int(self.settings.subplot_size_inch / 2) + 4, prune=prune))
 
@@ -1282,8 +1287,15 @@ class GetDistPlotter(object):
         :param x: True if x axis, False for y axis
         :param prune: Parameter for MaxNLocator constructor, ,  ['lower' | 'upper' | 'both' | None]
         """
-        formatter = matplotlib.ticker.ScalarFormatter(useOffset=False)
-        axis.set_major_formatter(formatter)
+        sFormatter = matplotlib.ticker.ScalarFormatter(useOffset=False)
+        sFormatter.set_powerlimits((-4, 5))
+        if isinstance(axis, matplotlib.axis.XAxis):
+            axis.set_major_formatter(sFormatter)
+        else:
+            # from https://stackoverflow.com/questions/25750170
+            sci_func = (lambda x, pos:
+                        "${}$".format(sFormatter._formatSciNotation('%.10g' % x)))
+            axis.set_major_formatter(matplotlib.ticker.FuncFormatter(sci_func))
         plt.tick_params(axis='both', which='major', labelsize=self.settings.axes_fontsize)
         if x and self.settings.x_label_rotation != 0: plt.setp(plt.xticks()[1], rotation=self.settings.x_label_rotation)
         self._set_locator(axis, x, prune=prune)
@@ -1468,10 +1480,15 @@ class GetDistPlotter(object):
     def get_param_array(self, root, params=None, renames={}):
         """
         Gets an array of :class:`~.paramnames.ParamInfo` for named params
+        in the given `root`.
+
+        If a parameter is not found in `root`, returns the original ParamInfo if ParamInfo
+        was passed, or fails otherwise.
 
         :param root: The root name of the samples to use
         :param params: the parameter names (if not specified, get all)
-        :param renames: optional dictionary mapping input names and equivalent names used by the samples
+        :param renames: optional dictionary mapping input names and equivalent names
+                        used by the samples
         :return: list of :class:`~.paramnames.ParamInfo` instances for the parameters
         """
         if hasattr(root, 'paramNames'):
@@ -1483,26 +1500,44 @@ class GetDistPlotter(object):
 
         if params is None or len(params) == 0:
             return names.names
+        # Fail only for parameters for which a string was passed
+        if isinstance(params, six.string_types):
+            error = True
         else:
-            if isinstance(params, six.string_types) or \
-                    not all([isinstance(param, ParamInfo) for param in params]):
-                return names.parsWithNames(params, error=True, renames=renames)
-        return params
+            is_ParamInfo = [isinstance(param, ParamInfo) for param in params]
+            error = [not a for a in is_ParamInfo]
+            # Add renames of given ParamInfo's to the renames dict
+            renames_from_ParamInfo = {param.name: getattr(param, "renames", [])
+                                      for i, param in enumerate(params) if is_ParamInfo[i]}
+            renames = mergeRenames(renames, renames_from_ParamInfo)
+            params = [getattr(param, "name", param) for param in params]
+        old = [(old if isinstance(old, ParamInfo) else ParamInfo(old)) for old in params]
+        return [new or old for new, old in zip(
+            names.parsWithNames(params, error=error, renames=renames),
+            old)]
 
     def _check_param(self, root, param, renames={}):
         """
         Get :class:`~.paramnames.ParamInfo` for given name for samples with specified root
 
+        If a parameter is not found in `root`, returns the original ParamInfo if ParamInfo
+        was passed, or fails otherwise.
+
         :param root: The root name of the samples
         :param param: The parameter name (or :class:`~.paramnames.ParamInfo`)
-        :param renames: optional dictionary mapping input names and equivalent names used by the samples
+        :param renames: optional dictionary mapping input names and equivalent names
+                        used by the samples
         :return: a :class:`~.paramnames.ParamInfo` instance, or None if name not found
         """
-        if not isinstance(param, ParamInfo):
-            return self.paramNamesForRoot(root).parWithName(param, error=True, renames=renames)
-        elif renames:
-            return self.paramNamesForRoot(root).parWithName(param.name, error=False, renames=renames)
-        return param
+        if isinstance(param, ParamInfo):
+            name = param.name
+            if hasattr(param, 'renames'):
+                renames = {name: makeList(renames.get(name, [])) + list(param.renames)}
+        else:
+            name = param
+        # NB: If a parameter is not found, errors only if param is a ParamInfo instance
+        return self.paramNamesForRoot(root).parWithName(
+            name, error=(name == param), renames=renames)
 
     def param_latex_label(self, root, name, labelParams=None):
         """
@@ -1780,7 +1815,7 @@ class GetDistPlotter(object):
                          label_order=label_order)
         return plot_col, plot_row
 
-    def _subplot(self, x, y, **kwargs):
+    def _subplot(self, x, y, pars=None, **kwargs):
         """
         Create a subplot with given parameters.
 
@@ -1790,6 +1825,8 @@ class GetDistPlotter(object):
         :return: an :class:`~matplotlib:matplotlib.axes.Axes` instance for the subplot axes
         """
         self.subplots[y, x] = ax = plt.subplot(self.plot_row, self.plot_col, y * self.plot_col + x + 1, **kwargs)
+        if pars is not None:
+            ax.params = pars
         return ax
 
     def _subplot_number(self, i):
@@ -1868,7 +1905,7 @@ class GetDistPlotter(object):
     def triangle_plot(self, roots, params=None, legend_labels=None, plot_3d_with_param=None, filled=False, shaded=False,
                       contour_args=None, contour_colors=None, contour_ls=None, contour_lws=None, line_args=None,
                       label_order=None, legend_ncol=None, legend_loc=None, upper_roots=None, upper_kwargs={},
-                      param_limits={}, **kwargs):
+                      diag1d_kwargs={}, param_limits={}, **kwargs):
         """
         Make a trianglular array of 1D and 2D plots.
 
@@ -1890,8 +1927,8 @@ class GetDistPlotter(object):
         :param legend_ncol: The number of columns for the legend
         :param legend_loc: The location for the legend
         :param upper_roots: set to fill the upper triangle with subplots using this list of sample root names
-                             (TODO: this needs some work to easily work without a lot of tweaking)
-        :param upper_kwargs: list of dict for arguments when making upper-triangle 2D plots
+        :param upper_kwargs: dict for same-named arguments for use when making upper-triangle 2D plots (contour_colors, etc). Set show_1d=False to not add to the diagonal.
+        :param diag1d_kwargs: list of dict for arguments when making 1D plots on grid diagonal
         :param param_limits: a dictionary holding a mapping from parameter names to axis limits for that parameter
         :param kwargs: optional keyword arguments for :func:`~GetDistPlotter.plot_2d` or :func:`~GetDistPlotter.plot_3d` (lower triangle only)
 
@@ -1921,12 +1958,12 @@ class GetDistPlotter(object):
         ticks = dict()
         filled = kwargs.get('filled_compare', filled)
 
-        def defLineArgs(cont_args):
+        def defLineArgs(cont_args, cont_colors):
             cols = []
             for plotno, _arg in enumerate(cont_args):
                 if not _arg.get('filled'):
-                    if contour_colors is not None and len(contour_colors) > plotno:
-                        cols.append(contour_colors[plotno])
+                    if cont_colors is not None and len(cont_colors) > plotno:
+                        cols.append(cont_colors[plotno])
                     else:
                         cols.append(None)
                 else:
@@ -1940,21 +1977,32 @@ class GetDistPlotter(object):
                     _line_args += [{'color': col}]
             return _line_args
 
+        if upper_roots is not None:
+            if plot_3d_with_param is not None:
+                logging.warning("triangle_plot upper_roots currently doesn't work with plot_3d_with_param")
+            upper_contour_args = self._make_contour_args(len(upper_roots), filled=upper_kwargs.get('filled', filled),
+                                                         contour_args=upper_kwargs.get('contour_args', contour_args),
+                                                         colors=upper_kwargs.get('contour_colors', contour_colors),
+                                                         ls=upper_kwargs.get('contour_ls', contour_ls),
+                                                         lws=upper_kwargs.get('contour_lws', contour_lws))
+            upper_line_args = upper_kwargs.get('line_args') or defLineArgs(upper_contour_args,
+                                                                           upper_kwargs.get('contour_colors',
+                                                                                            contour_colors))
+            upargs = self._make_line_args(len(upper_roots), line_args=upper_line_args,
+                                          ls=upper_kwargs.get('contour_ls', contour_ls),
+                                          lws=upper_kwargs.get('contour_lws', contour_lws))
+
         contour_args = self._make_contour_args(len(roots), filled=filled, contour_args=contour_args,
                                                colors=contour_colors, ls=contour_ls, lws=contour_lws)
         if line_args is None:
-            line_args = defLineArgs(contour_args)
+            line_args = defLineArgs(contour_args, contour_colors)
         line_args = self._make_line_args(len(roots), line_args=line_args, ls=contour_ls, lws=contour_lws)
         roots1d = copy.copy(roots)
         if upper_roots is not None:
-            if plot_3d_with_param is not None:
-                logging.warning("triangle_plot currently doesn't fully work with plot_3d_with_param")
-            upper_contour_args = self._make_contour_args(len(upper_roots), **upper_kwargs)
-            args = upper_kwargs.copy()
-            args['line_args'] = args.get('line_args') or defLineArgs(upper_contour_args)
-            upargs = self._make_line_args(len(upper_roots), **args)
-            for root, arg in zip(upper_roots, upargs):
-                if not root in roots1d:
+            show_1d = upper_kwargs.get('show_1d', True)
+            if isinstance(show_1d, bool): show_1d = [show_1d] * len(upargs)
+            for root, arg, show in zip(upper_roots, upargs, show_1d):
+                if show and not root in roots1d:
                     roots1d.append(root)
                     line_args.append(arg)
 
@@ -1964,8 +2012,7 @@ class GetDistPlotter(object):
             self.plot_1d(roots1d, param, do_xlabel=i == plot_col - 1,
                          no_label_no_numbers=self.settings.no_triangle_axis_labels,
                          label_right=True, no_zero=True, no_ylabel=True, no_ytick=True, line_args=line_args,
-                         lims=param_limits.get(param.name, None))
-            # set no_ylabel=True for now, can't see how to not screw up spacing with right-sided y label
+                         lims=param_limits.get(param.name, None), **diag1d_kwargs)
             if self.settings.no_triangle_axis_labels:
                 self._spaceTicks(ax.xaxis, bounds=self._get_param_bounds(roots1d, param.name))
             lims[i] = ax.get_xlim()
@@ -1974,7 +2021,7 @@ class GetDistPlotter(object):
             for i2 in range(i + 1, len(params)):
                 param2 = params[i2]
                 pair = [param, param2]
-                ax = self._subplot(i, i2)
+                ax = self._subplot(i, i2, pars=[param, param2])
                 if plot_3d_with_param is not None:
                     self.plot_3d(roots, pair + [col_param], color_bar=False, line_offset=1, add_legend_proxy=False,
                                  do_xlabel=i2 == plot_col - 1, do_ylabel=i == 0, contour_args=contour_args,
@@ -1990,7 +2037,7 @@ class GetDistPlotter(object):
                 self._inner_ticks(ax)
 
                 if upper_roots is not None:
-                    ax = self._subplot(i2, i)
+                    ax = self._subplot(i2, i, pars=[param2, param])
                     pair.reverse()
                     if plot_3d_with_param is not None:
                         self.plot_3d(upper_roots, pair + [col_param], color_bar=False, line_offset=1,
@@ -2096,7 +2143,7 @@ class GetDistPlotter(object):
             axarray = []
             for y, (yparam, subplot_roots) in enumerate(zip(yparams, yroots)):
                 if x > 0: sharey = yshares[y]
-                ax = self._subplot(x, y, sharex=sharex, sharey=sharey)
+                ax = self._subplot(x, y, pars=[xparam, yparam], sharex=sharex, sharey=sharey)
                 if y == 0:
                     sharex = ax
                     xshares.append(ax)
@@ -2209,8 +2256,8 @@ class GetDistPlotter(object):
         Low-level function to adds a 2D sample scatter plot to the current axes (or ax if specified).
 
         :param root: The root name of the samples to use
-        :param param1: name of x parameter
-        :param param2: name of y parameter
+        :param x: name of x parameter
+        :param y: name of y parameter
         :param color: color to plot the samples
         :param alpha: The alpha to use.
         :param extra_thin: thin the weight one samples by this additional factor before plotting
@@ -2259,12 +2306,12 @@ class GetDistPlotter(object):
             from matplotlib.colors import Normalize, to_rgb
             max_weight = weights.max()
             dup_fac = 4
-            filter = weights > max_weight / (100 * dup_fac)
-            x = samples[0][filter]
-            y = samples[1][filter]
-            z = samples[2][filter]
+            filt = weights > max_weight / (100 * dup_fac)
+            x = samples[0][filt]
+            y = samples[1][filt]
+            z = samples[2][filt]
             # split up high-weighted samples into multiple copies
-            weights = weights[filter] / max_weight * dup_fac
+            weights = weights[filt] / max_weight * dup_fac
             intweights = np.ceil(weights)
             thin_ix = mcsamples.thin_indices(1, intweights)
             x = x[thin_ix]
@@ -2272,14 +2319,14 @@ class GetDistPlotter(object):
             z = z[thin_ix]
             weights /= intweights
             weights = weights[thin_ix]
-            map = ScalarMappable(Normalize(z.min(), z.max()), self.settings.colormap_scatter)
-            map.set_array(z)
-            cols = map.to_rgba(z)
+            mappable = ScalarMappable(Normalize(z.min(), z.max()), self.settings.colormap_scatter)
+            mappable.set_array(z)
+            cols = mappable.to_rgba(z)
             if fixed_color:
                 cols[:, :3] = to_rgb(fixed_color)
             cols[:, 3] = weights / dup_fac * alpha
             alpha = None
-            self.last_scatter = map
+            self.last_scatter = mappable
             scat = (ax or plt.gca()).scatter(x, y, edgecolors='none',
                                              s=scatter_size or self.settings.scatter_size,
                                              c=cols, alpha=alpha)
@@ -2487,7 +2534,7 @@ class GetDistPlotter(object):
         if fname is None: fname = os.path.basename(sys.argv[0]).replace('.py', '')
         if tag: fname += '_' + tag
         if not '.' in fname: fname += '.' + getdist.default_plot_output
-        if adir is not None and not os.sep in fname: fname = os.path.join(adir, fname)
+        if adir is not None and os.sep not in fname and '/' not in fname: fname = os.path.join(adir, fname)
         adir = os.path.dirname(fname)
         if adir and not os.path.exists(adir): os.makedirs(adir)
         if watermark:
@@ -2505,3 +2552,15 @@ class GetDistPlotter(object):
         """
         p = ParamNames(fname)
         return [name.name for name in p.names]
+
+    def get_axes_for_params(self, par1, par2):
+        def compare_param(p1, p2):
+            if isinstance(p1, ParamInfo): p1 = p1.name
+            if isinstance(p2, ParamInfo): p2 = p2.name
+            return p1 == p2
+
+        for ax in self.subplots.reshape(-1):
+            params = getattr(ax, 'params')
+            if params is not None and compare_param(params[0], par1) and compare_param(params[1], par2):
+                return ax
+        return None

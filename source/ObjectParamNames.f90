@@ -209,7 +209,8 @@
             P=> Names
         enddo
     end do
-    if (this%nnames/= NamesOrig%nnames + n) stop 'ParamNames_Add: duplicate parameters?'
+    if (this%nnames/= NamesOrig%nnames + n) &
+        stop 'ParamNames_Add: duplicate parameters?'
 
     this%num_derived = count(this%is_derived)
     this%num_MCMC = this%nnames-this%num_derived
@@ -295,11 +296,12 @@
     end function ParamNames_name
 
 
-    subroutine ParamNames_ReadIndices(this,InLine, params, num, unknown_value)
+    subroutine ParamNames_ReadIndices(this,InLine, params, num, unknown_value,no_derived)
     class(TParamNames) :: this
     character(LEN=*), intent(in) :: InLine
     integer, intent(out) :: params(*)
     integer, intent(in), optional :: unknown_value
+    logical, intent(in), optional :: no_derived
     integer  :: num, status
     character(LEN=ParamNames_maxlen) part
     integer param,len,ix, pos, max_num, outparam, outvalue
@@ -328,6 +330,7 @@
         if (status/=0) exit
         pos = pos + len_trim(part)
         ix = this%index(part)
+        if (ix > this%num_MCMC .and. DefaultFalse(no_derived)) ix = 0
         if (ix>0) then
             outvalue = ix
         else

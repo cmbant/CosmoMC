@@ -10,10 +10,10 @@ import time
 import numpy as np
 from scipy.stats import norm
 import getdist
-from getdist import types, covmat, ParamInfo, IniFile
+from getdist import chains, types, covmat, ParamInfo, IniFile, ParamNames
 from getdist.densities import Density1D, Density2D, DensityND
 from getdist.densities import getContourLevels as getOtherContourLevels
-from getdist.chains import Chains, chainFiles, lastModified, print_load_details
+from getdist.chains import Chains, chainFiles, lastModified
 from getdist.convolve import convolve1D, convolve2D
 import getdist.kde_bandwidth as kde
 from getdist.parampriors import ParamBounds
@@ -58,7 +58,7 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, settings={}
     :param file_root: The root name of the files to read (no extension)
     :param ini: The name of a .ini file with analysis settings to use
     :param jobItem: an optional grid jobItem instance for a CosmoMC grid output
-    :param no_cache: Indicates whether or not we should cached loaded samples in a pickle
+    :param no_cache: Indicates whether or not we should cache loaded samples in a pickle
     :param settings: dictionary of analysis settings to override defaults
     :param dist_settings: (old) alias for settings
     :return: The :class:`MCSamples` instance
@@ -86,7 +86,7 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, settings={}
                           np.any(np.array(samples.contours) != np.array(cache.contours))
                 cache.updateSettings(ini=ini, settings=settings, doUpdate=changed)
                 return cache
-        except:
+        except Exception as e:
             pass
     if not len(files):
         raise IOError('No chains found: ' + file_root)
@@ -95,7 +95,8 @@ def loadMCSamples(file_root, ini=None, jobItem=None, no_cache=False, settings={}
     return samples
 
 
-def loadCobayaSamples(info, collections, name_tag=None, ignore_rows=0, ini=None, settings={}):
+def loadCobayaSamples(info, collections, name_tag=None,
+                      ignore_rows=0, ini=None, settings={}):
     """
     Loads a set of samples from Cobaya's output.
     Parameter names, ranges and labels are taken from the "info" dictionary
@@ -104,37 +105,47 @@ def loadCobayaSamples(info, collections, name_tag=None, ignore_rows=0, ini=None,
     For a description of the various analysis settings and default values see
     `analysis_defaults.ini <http://getdist.readthedocs.org/en/latest/analysis_settings.html>`_.
 
-    :param info: info dictionary, common to all collections (use "updated" one)
     :param collections: collection(s) of samples from Cobaya
+    :param info: info dictionary, common to all collections
+                 (use the "updated" one, returned by `cobaya.run`)
     :param name_tag: name for this sample to be shown in the plots' legend
     :param ignore_rows: initial samples to skip, number (`int>=1`) or fraction (`float<1`)
     :param ini: The name of a .ini file with analysis settings to use
     :param settings: dictionary of analysis settings to override defaults
     :return: The :class:`MCSamples` instance
     """
+    if not hasattr(info, "keys"):
+        raise TypeError("Cannot regonise arguments. Are you sure you are calling "
+                        "with (info, collections, ...) in that order?")
     if hasattr(collections, "data"):
         collections = [collections]
     # Check consistency between collections
     columns = list(collections[0].data)
     if not all([list(c.data) == columns for c in collections[1:]]):
         raise ValueError("The given collections don't have the same columns.")
-    from getdist.yaml_format_tools import get_info_params, is_derived_param, _derived_pre, get_range
+    from getdist.yaml_format_tools import _p_label, _p_renames, _weight, _minuslogpost
+    from getdist.yaml_format_tools import get_info_params, get_range, is_derived_param
     # Check consistency with info
     info_params = get_info_params(info)
-    columns_noprefix = [p[(len(_derived_pre) if p.startswith(_derived_pre) else 0):]
-                        for p in columns[2:]]
-    assert columns_noprefix == list(info_params.keys()), (
-        "Info and collections are not compatible. "
-        "Are you sure that you are using an *updated* info dictionary?")
-    names = [p + ("*" if is_derived_param(info_params[p]) else "") for p in info_params]
-    labels = [i["latex"] for i in info_params.values()]
-    ranges = {p: get_range(info) for p, info in info_params.items()}
+    assert set(columns[2:]) == set(info_params.keys()), (
+            "Info and collection(s) are not compatible, because their parameters differ: "
+            "the collection(s) have %r and the info has %r. " % (
+                columns[2:], list(info_params.keys())) +
+            "Are you sure that you are using an *updated* info dictionary "
+            "(i.e. the output of `cobaya.run`)?")
+    # We need to use *collection* sorting, not info sorting!
+    names = [p + ("*" if is_derived_param(info_params[p]) else "")
+             for p in columns[2:]]
+    labels = [(info_params[p] or {}).get(_p_label, p) for p in columns[2:]]
+    ranges = {p: get_range(info_params[p]) for p in columns[2:]}
+    renames = {p: info_params.get(p, {}).get(_p_renames, []) for p in columns[2:]}
     samples = [c[c.data.columns[2:]].values for c in collections]
-    weights = [c["weight"].values for c in collections]
-    loglikes = [-c["minuslogpost"].values for c in collections]
+    weights = [c[_weight].values for c in collections]
+    loglikes = [-c[_minuslogpost].values for c in collections]
     return MCSamples(samples=samples, weights=weights, loglikes=loglikes,
-                     names=names, labels=labels, ranges=ranges, ignore_rows=ignore_rows,
-                     name_tag=name_tag, ini=ini, settings=settings)
+                     names=names, labels=labels, ranges=ranges, renames=renames,
+                     ignore_rows=ignore_rows, name_tag=name_tag, ini=ini,
+                     settings=settings)
 
 
 class Kernel1D(object):
@@ -171,11 +182,14 @@ class MCSamples(Chains):
                         or list of arrays if more than one chain
         :param weights: array of weights for samples, or list of arrays if more than one chain
         :param loglikes: array of -log(Likelihood) for samples, or list of arrays if more than one chain
+
         :param kwargs: keyword arguments passed to inherited classes, e.g. to manually make a samples object from sample arrays in memory:
 
                - **paramNamesFile**: optional name of .paramnames file with parameter names
-               - **names**: list of names for the parameters
-               - **labels**:  list of latex labels for the parameters
+               - **names**: list of names for the parameters,
+                            or list of arrays if more than one chain
+               - **labels**: list of latex labels for the parameters
+               - **renames**: dictionary of parameter aliases
                - **ignore_rows**:
 
                      - if int >=1: The number of rows to skip at the file in the beginning of the file
@@ -237,6 +251,8 @@ class MCSamples(Chains):
         self.subplot_size_inch3 = 6.0
         self.plot_output = getdist.default_plot_output
         self.out_dir = ""
+        self.no_warning_params = []
+        self.no_warning_chi2_params = True
 
         self.max_split_tests = 4
         self.force_twotail = False
@@ -263,10 +279,10 @@ class MCSamples(Chains):
         if samples is not None:
             self.readChains(samples, weights, loglikes)
 
-
     def setRanges(self, ranges):
         """
-        Sets the ranges parameters, e.g. hard priors on positivity etc. If a min or max value is None, then it is assumed to be unbounded.
+        Sets the ranges parameters, e.g. hard priors on positivity etc.
+        If a min or max value is None, then it is assumed to be unbounded.
 
         :param ranges: A list or a tuple of [min,max] values for each parameter,
                        or a dictionary giving [min,max] values for specific parameter names
@@ -277,6 +293,8 @@ class MCSamples(Chains):
         elif isinstance(ranges, dict):
             for key, value in six.iteritems(ranges):
                 self.ranges.setRange(key, value)
+        elif isinstance(ranges, ParamBounds):
+            self.ranges = copy.deepcopy(ranges)
         else:
             raise ValueError('MCSamples ranges parameter must be list or dict')
         self.needs_update = True
@@ -370,6 +388,8 @@ class MCSamples(Chains):
         ini.setAttr('converge_test_limit', self, self.contours[-1])
         ini.setAttr('corr_length_thin', self)
         ini.setAttr('corr_length_steps', self)
+        ini.setAttr('no_warning_params', self, [])
+        ini.setAttr('no_warning_chi2_params', self, True)
         self.batch_path = ini.string('batch_path', self.batch_path, allowEmpty=False)
 
     def _initLimits(self, ini=None):
@@ -422,12 +442,12 @@ class MCSamples(Chains):
         if ini: self.initParameters(ini)
         if doUpdate and self.samples is not None: self.updateBaseStatistics()
 
-    def readChains(self, files_or_samples=None, weights=None, loglikes=None):
+    def readChains(self, files_or_samples, weights=None, loglikes=None):
         """
         Loads samples from a list of files or array(s), removing burn in,
         deleting fixed parameters, and combining into one self.samples array
 
-        :param files_or_samples: The list of file names to read
+        :param files_or_samples: The list of file names to read, samples or list of samples
         :param weights: array of weights if setting from arrays
         :param loglikes: array of -2 log(likelihood) if setting from arrays
         :return: self.
@@ -437,9 +457,9 @@ class MCSamples(Chains):
         if self.ignore_frac and (
                 not self.jobItem or (not self.jobItem.isImportanceJob and not self.jobItem.isBurnRemoved())):
             self.removeBurnFraction(self.ignore_frac)
-            if print_load_details: print('Removed %s as burn in' % self.ignore_frac)
+            if chains.print_load_details: print('Removed %s as burn in' % self.ignore_frac)
         elif not int(self.ignore_rows):
-            if print_load_details: print('Removed no burn in')
+            if chains.print_load_details: print('Removed no burn in')
 
         self.deleteFixedParams()
 
@@ -570,7 +590,8 @@ class MCSamples(Chains):
                                      self.weights.shape[0])
         return fraction_indices
 
-    def PCA(self, params, param_map=None, normparam=None, writeDataToFile=False, filename=None, conditional_params=[]):
+    def PCA(self, params, param_map=None, normparam=None, writeDataToFile=False, filename=None,
+            conditional_params=[], n_best_only=None):
         """
         Perform principle component analysis (PCA). In other words,
         get eigenvectors and eigenvalues for normalized variables
@@ -585,6 +606,7 @@ class MCSamples(Chains):
         :param writeDataToFile: True if should write the output to file.
         :param filename: The filename to write, by default root_name.PCA.
         :param conditional_params: optional list of parameters to treat as fixed, i.e. for PCA conditional on fixed values of these parameters
+        :param n_best_only: return just the short summary constraint for the tightest n_best_only constraints
         :return: a string description of the output of the PCA
         """
         logging.info('Doing PCA for %s parameters', len(params))
@@ -701,10 +723,10 @@ class MCSamples(Chains):
 
         PCAtext += '\n'
         PCAtext += 'Principle components\n'
-
+        PCAmodeTexts = []
         for i in range(n):
             isort = isorted[i]
-            PCAtext += 'PC%i (e-value: %f)\n' % (i + 1, evals[isort])
+            summary = 'PC%i (e-value: %f)\n' % (i + 1, evals[isort])
             for j in range(n):
                 label = self.parLabel(indices[j])
                 if param_map[j] in ['L', 'M']:
@@ -713,18 +735,19 @@ class MCSamples(Chains):
                         div = "%f" % (-np.exp(PCmean[j]))
                     else:
                         div = "%f" % (np.exp(PCmean[j]))
-                    PCAtext += '[%f]  (%s/%s)^{%s}\n' % (u[i][j], label, div, expo)
+                    summary += '[%f]  (%s/%s)^{%s}\n' % (u[i][j], label, div, expo)
                 else:
                     expo = "%f" % (sd[j] / u[i][j])
                     if doexp:
-                        PCAtext += '[%f]   exp((%s-%f)/%s)\n' % (u[i][j], label, PCmean[j], expo)
+                        summary += '[%f]   exp((%s-%f)/%s)\n' % (u[i][j], label, PCmean[j], expo)
                     else:
-                        PCAtext += '[%f]   (%s-%f)/%s)\n' % (u[i][j], label, PCmean[j], expo)
-
+                        summary += '[%f]   (%s-%f)/%s)\n' % (u[i][j], label, PCmean[j], expo)
             newmean[i] = self.mean(PCdata[:, i])
             newsd[i] = np.sqrt(self.mean((PCdata[:, i] - newmean[i]) ** 2))
-            PCAtext += '          = %f +- %f\n' % (newmean[i], newsd[i])
-            PCAtext += '\n'
+            summary += '          = %f +- %f\n' % (newmean[i], newsd[i])
+            summary += '\n'
+            PCAmodeTexts += [summary]
+            PCAtext += summary
 
         # Find out how correlated these components are with other parameters
         PCAtext += 'Correlations of principle components\n'
@@ -752,7 +775,12 @@ class MCSamples(Chains):
         if writeDataToFile:
             with open(filename or self.rootdirname + ".PCA", "w") as f:
                 f.write(PCAtext)
-        return PCAtext
+        if n_best_only:
+            if n_best_only == 1:
+                return PCAmodeTexts[0]
+            return PCAmodeTexts[:n_best_only]
+        else:
+            return PCAtext
 
     def getNumSampleSummaryText(self):
         """
@@ -1114,9 +1142,11 @@ class MCSamples(Chains):
         bin_range = max(par.param_max, par.range_max) - min(par.param_min, par.range_min)
         if h is None or h < 0.01 * N_eff ** (-1. / 5) * (par.range_max - par.range_min) / bin_range:
             hnew = 1.06 * par.sigma_range * N_eff ** (-1. / 5) / bin_range
-            logging.warning(
-                'auto bandwidth for %s very small or failed (h=%s,N_eff=%s). Using fallback (h=%s)' % (
-                    par.name, h, N_eff, hnew))
+            if par.name not in self.no_warning_params \
+                    and (not self.no_warning_chi2_params or 'chi2_' not in par.name):
+                logging.warning(
+                    'auto bandwidth for %s very small or failed (h=%s,N_eff=%s). Using fallback (h=%s)' % (
+                        par.name, h, N_eff, hnew))
             h = hnew
 
         par.kde_h = h
@@ -1795,7 +1825,7 @@ class MCSamples(Chains):
             raise ValueError("parv and prior_mask or different sizes!")
 
         # create a slice object iterating over everything
-        mskSlices = [slice(None) for i in range(ndim)]
+        mskSlices = [slice(None) for _ in range(ndim)]
 
         for i in range(ndim):
             if vrap[i].has_limits_bot:
@@ -1819,7 +1849,7 @@ class MCSamples(Chains):
     def _unflattenValues(self, q, xsizes):
         ndim = len(xsizes)
 
-        ixs = list([np.array(q) for i in range(ndim)])
+        ixs = list([np.array(q) for _ in range(ndim)])
 
         if ndim == 1:
             ixs[0] = q
@@ -1962,10 +1992,10 @@ class MCSamples(Chains):
         if writeDataToFile:
             # note store things in confusing transpose form
 
-            postfile = self.rootname + "_posterior" + "_%sD.dat" % (ndim)
-            contfile = self.rootname + "_posterior" + "_%sD_cont.dat" % (ndim)
+            postfile = self.rootname + "_posterior" + "_%sD.dat" % ndim
+            contfile = self.rootname + "_posterior" + "_%sD_cont.dat" % ndim
 
-            allND = [np.array(binsND) for i in range(ndim + 1)]
+            allND = [np.array(binsND) for _ in range(ndim + 1)]
             allND[0] = np.ravel(binsND, order='C')
             for i in range(ndim):
                 # [index[::-1] for column-major order
@@ -1979,13 +2009,13 @@ class MCSamples(Chains):
 
             if meanlikes:
                 allND[0] = np.ravel(binNDlikes, order='C')
-                likefile = self.rootname + "_meanlike" + "_%sD.dat" % (ndim)
+                likefile = self.rootname + "_meanlike" + "_%sD.dat" % ndim
                 filename = os.path.join(self.plot_data_dir, likefile)
                 np.savetxt(filename, np.transpose(allND), "%16.7E")
 
             if maxlikes:
                 allND[0] = np.ravel(binNDmaxlikes, order='C')
-                likefile = self.rootname + "_maxlike" + "_%sD.dat" % (ndim)
+                likefile = self.rootname + "_maxlike" + "_%sD.dat" % ndim
                 filename = os.path.join(self.plot_data_dir, likefile)
                 np.savetxt(filename, np.transpose(allND), "%16.7E")
 
@@ -2066,7 +2096,7 @@ class MCSamples(Chains):
         """
         par = self.paramNames.parWithName(name)
         if par:
-            return par.limmax
+            return getattr(par, 'limmax', None)
         return None
 
     def getLower(self, name):
@@ -2078,8 +2108,16 @@ class MCSamples(Chains):
         """
         par = self.paramNames.parWithName(name)
         if par:
-            return par.limmin
+            return getattr(par, 'limmin', None)
         return None
+
+    def getBestFit(self):
+        bf_file = self.root + '.minimum'
+        if os.path.exists(bf_file):
+            return types.BestFit(bf_file)
+        else:
+            raise MCSamplesError(
+                'Best fit can only be included if loaded from file and file_root.minimum exists (cannot be calculated from samples)')
 
     def getMargeStats(self, include_bestfit=False):
         """
@@ -2094,12 +2132,7 @@ class MCSamples(Chains):
         m.limits = self.contours
         m.names = self.paramNames.names
         if include_bestfit:
-            bf_file = self.root + '.minimum'
-            if os.path.exists(bf_file):
-                return types.BestFit(bf_file)
-            else:
-                raise MCSamplesError(
-                    'Best fit can only be included if loaded from file and file_root.minimum exists (cannot be calculated from samples)')
+            m.addBestFit(self.getBestFit())
         return m
 
     def getLikeStats(self):
@@ -2113,7 +2146,7 @@ class MCSamples(Chains):
 
     def getTable(self, columns=1, include_bestfit=False, **kwargs):
         """
-        Creates and returns a :class:`~.types.ResultTable` instance.
+        Creates and returns a :class:`~.types.ResultTable` instance. See also :func:`~MCSamples.getInlineLatex`.
 
         :param columns: number of columns in the table
         :param include_bestfit: True if should include the bestfit parameter values (assuming set)
@@ -2122,18 +2155,23 @@ class MCSamples(Chains):
         """
         return types.ResultTable(columns, [self.getMargeStats(include_bestfit)], **kwargs)
 
-    def getLatex(self, params=None, limit=1):
+    def getLatex(self, params=None, limit=1, err_sig_figs=None):
         """
         Get tex snippet for constraints on a list of parameters
 
-        :param params: list of parameter names
+        :param params: list of parameter names, or a single parameter name
         :param limit: which limit to get, 1 is the first (default 68%), 2 is the second (limits array specified by self.contours)
-        :return: labels, texs: a list of parameter labels, and a list of tex snippets
+        :param err_sig_figs: significant figures in the error
+        :return: labels, texs: a list of parameter labels, and a list of tex snippets, or for a single parameter, the latex snippet.
         """
+        if isinstance(params, six.string_types):
+            return self.getInlineLatex(params, limit, err_sig_figs)
+
         marge = self.getMargeStats()
         if params is None: params = marge.list()
 
         formatter = types.NoLineTableFormatter()
+        if err_sig_figs: formatter.numberFormatter.err_sf = err_sig_figs
         texs = []
         labels = []
         for par in params:
@@ -2147,15 +2185,17 @@ class MCSamples(Chains):
 
         return labels, texs
 
-    def getInlineLatex(self, param, limit=1):
+    def getInlineLatex(self, param, limit=1, err_sig_figs=None):
         r"""
         Get snippet like: A=x\\pm y. Will adjust appropriately for one and two tail limits.
 
         :param param: The name of the parameter
         :param limit: which limit to get, 1 is the first (default 68%), 2 is the second (limits array specified by self.contours)
+        :param err_sig_figs: significant figures in the error
         :return: The tex snippet.
         """
-        labels, texs = self.getLatex([param], limit)
+        labels, texs = self.getLatex([param], limit, err_sig_figs)
+        if texs[0] is None: raise ValueError('parameter %s not found' % param)
         if not texs[0][0] in ['<', '>']:
             return labels[0] + ' = ' + texs[0]
         else:
@@ -2290,13 +2330,54 @@ class MCSamples(Chains):
             self.ranges.setRange(name, range)
         return super(MCSamples, self).addDerived(paramVec, name, label=label, comment=comment)
 
+    def getParamBestFitDict(self):
+        """
+        Gets a dictionary of parameter values for the best fit point, assuming .minimum best fit file exists
+        :return: dictionary of parameter values
+        """
+        res = self.getBestFit().getParamDict()
+        res.update(self.ranges.fixedValueDict())
+        return res
+
     def getParamSampleDict(self, ix):
         """
-        Returns a dictionary of parameter values for sample number ix
+        Gets a dictionary of parameter values for sample number ix
+        :return: dictionary of parameter values
         """
         res = super(MCSamples, self).getParamSampleDict(ix)
         res.update(self.ranges.fixedValueDict())
         return res
+
+    def getCombinedSamplesWithSamples(self, samps2, sample_weights=[1, 1]):
+        """
+        Make a new  :class:`MCSamples` instance by appending samples from samps2 for parameters which are in common.
+        By default they are weighted so that the probability mass of each set of samples is the same,
+        independent of tha actual sample sizes. The Weights parameter can be adjusted to change the
+        relative weighting.
+        :param samps2:  :class:`MCSamples` instance to merge
+        :param sample_weights: relative weights for combining the samples. Set to None to just directly append samples.
+        :return: a new  :class:`MCSamples` instance with the combined samples
+        """
+
+        params = ParamNames()
+        params.names = [ParamInfo(name=p.name, label=p.label, derived=p.isDerived) for p in samps2.paramNames.names if
+                        p.name in self.paramNames.list()]
+        if self.loglikes is not None and samps2.loglikes is not None:
+            loglikes = np.concatenate([self.loglikes, samps2.loglikes])
+        else:
+            loglikes = None
+        if sample_weights is None:
+            fac = 1
+            sample_weights = [1, 1]
+        else:
+            fac = np.sum(self.weights) / np.sum(samps2.weights)
+        weights = np.concatenate([self.weights * sample_weights[0], samps2.weights * sample_weights[1] * fac])
+        p1 = self.getParams()
+        p2 = samps2.getParams()
+        samples = np.array([np.concatenate([getattr(p1, name), getattr(p2, name)]) for name in params.list()]).T
+        samps = MCSamples(samples=samples, weights=weights, loglikes=loglikes, paramNamesFile=params, ignore_rows=0,
+                          ranges=self.ranges, settings=copy.deepcopy(self.ini.params))
+        return samps
 
     def saveAsText(self, root, chain_index=None, make_dirs=False):
         """
@@ -2310,7 +2391,7 @@ class MCSamples(Chains):
         if not chain_index:
             self.ranges.saveToFile(root + '.ranges')
 
-    def saveChainsAsText(self, root, make_dirs=False):
+    def saveChainsAsText(self, root, make_dirs=False, properties={}):
         if self.chains is None:
             chains = self.getSeparateChains()
         else:
@@ -2319,6 +2400,14 @@ class MCSamples(Chains):
             chain.saveAsText(root, i, make_dirs)
         self.ranges.saveToFile(root + '.ranges')
         self.paramNames.saveAsText(root + '.paramnames')
+        if properties:
+            ini_name = root + '.properties.ini'
+            if os.path.exists(ini_name):
+                ini = IniFile(ini_name)
+            else:
+                ini = IniFile()
+            ini.params.update(properties)
+            ini.saveFile(ini_name)
 
     # Write functions for GetDist.py
     def writeScriptPlots1D(self, filename, plotparams=None, ext=None):

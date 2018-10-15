@@ -95,7 +95,7 @@
             return
         end if
         if (j/=3 .and. mcp==kind(1.0) .or. j/=4 .and. mcp/=kind(1.0)) &
-        call MpiStop('ReadModel: wrong file format (old cosmomc version?)')
+            call MpiStop('ReadModel: wrong file format (old cosmomc version?)')
         if (np/=num_params_used) call MpiStop('ReadModel: number of parameters changed')
         read(F%unit) has_names
         allocate(this%current_param_indices(num_params_used))

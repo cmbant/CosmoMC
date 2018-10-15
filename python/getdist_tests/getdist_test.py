@@ -93,7 +93,7 @@ class GetDistFileTest(unittest.TestCase):
 
         ini.params['plot_data_dir'] = 'plot_data/'
         ini.saveFile(fname)
-        res = callGetDist([fname, self.root])
+        callGetDist([fname, self.root])
         self.assertTrue(os.path.isfile(os.path.join(self.tempdir, 'plot_data', 'testchain_2D_x_y')))
         checkRun()
         shutil.rmtree(os.path.join(self.tempdir, 'plot_data'))
@@ -232,7 +232,7 @@ class GetDistTest(unittest.TestCase):
         g.newPlot()
         g.plots_2d([samples, samples2], 'x', ['z', 'y'])
         g.newPlot()
-        self.assertEqual([name.name for name in samples.paramNames.parsWithNames('x.*')], ['x.yx', 'x.2'])
+        self.assertEquals([name.name for name in samples.paramNames.parsWithNames('x.*')], ['x.yx', 'x.2'])
         g.triangle_plot(samples, 'x.*')
         samples.updateSettings({'contours': '0.68 0.95 0.99'})
         g.settings.num_contours = 3

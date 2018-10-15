@@ -63,6 +63,7 @@
     logical OK
     Type(ThetaParameterization), pointer :: CMBParameterization
     Type(BackgroundParameterization), pointer :: BackgroundParam
+    Type(AstroParameterization), pointer :: AstParam
 
     OK = .true.
     if (nametag =='background') then
@@ -73,6 +74,10 @@
         allocate(CMBParameterization)
         this%Parameterization => CMBParameterization
         call CMBParameterization%InitWithSetNames(Ini,Names,this)
+    else if (nametag=='astro') then
+        allocate(AstParam)
+        this%Parameterization => AstParam
+        call AstParam%InitWithSetNames(Ini,Names,this)
     else
         OK =  this%TGeneralConfig%SetParameterizationName(nametag,Ini,Names)
     end if
