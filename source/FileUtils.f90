@@ -1404,18 +1404,20 @@
     integer, intent(in), optional :: inm,inn
     real(kind(1.d0)), intent(out) :: mat(:,:)
     character(LEN=:), allocatable :: InLine
+    real(kind(1.d0)), allocatable :: readarr(:)
     integer j,k, status, n,m
     Type(TTextFile) :: F
 
     m = PresentDefault(size(mat,dim=1),inm)
     n = PresentDefault(size(mat,dim=2),inn)
     call F%Open(aname)
-
+    allocate(readarr(n))
     do j=1,m
         status = 1
         if (.not. F%ReadLineSkipEmptyAndComments(InLine)) exit
-        read (InLine,*, iostat=status) mat(j,1:n)
+        read (InLine,*, iostat=status) readarr
         if (status/=0) exit
+        mat(j,1:n) = readarr
     end do
     if (status/=0) then
         call F%Rewind()  !Try other possible format
@@ -1497,16 +1499,19 @@
     character(LEN=:), allocatable :: InLine
     integer, optional, intent(out) :: m, n
     character(LEN=:), allocatable, optional, intent(out) :: comment
+    integer, allocatable :: readarr(:)
     integer status
 
     call F%Open(aname)
     nn = F%Columns()
     mm = F%Lines()
     allocate(mat(mm,nn))
+    allocate(readarr(nn))
     j=1
     do while (F%ReadLineSkipEmptyAndComments(InLine, comment = comment))
-        read (InLine,*, iostat=status) mat(j,1:nn)
+        read (InLine,*, iostat=status) readarr
         if (status/=0) call F%Error( 'LoadTxt: error reading line:' //trim(InLine))
+        mat(j,1:nn) = readarr
         j = j+1
     end do
     call F%Close()
