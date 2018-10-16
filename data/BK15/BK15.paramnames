@@ -1,0 +1,16 @@
+BBdust         A_{B,\mathrm{dust}}
+BBsync         A_{B,\mathrm{sync}}
+BBalphadust    \alpha_{B,\mathrm{dust}}
+BBbetadust     \beta_{B,\mathrm{dust}}
+BBTdust        T_{\mathrm{dust}}
+BBalphasync    \alpha_{B,\mathrm{sync}}
+BBbetasync     \beta_{B,\mathrm{sync}}
+BBdustsynccorr \epsilon_{\mathrm{dust,sync}}
+EEtoBB_dust     EE_{\mathrm{dust}}/BB_{\mathrm{dust}}
+EEtoBB_sync     EE_{\mathrm{sync}}/BB_{\mathrm{sync}}
+Delta_dust        \Delta_{\mathrm{dust}}
+Delta_sync        \Delta_{\mathrm{sync}}
+gamma_corr     \gamma_{\mathrm{corr}}
+gamma_95       \gamma_{\mathrm{95}}
+gamma_150      \gamma_{\mathrm{150}}
+gamma_220      \gamma_{\mathrm{220}}
