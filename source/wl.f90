@@ -474,7 +474,7 @@
     allocate(Hs(this%num_z_p))
     allocate(D_growth(this%num_z_p))
 
-    !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(fac, i)
+    !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(i)
     do i =1 , this%num_z_p
         Hs(i) = this%Calculator%Hofz(this%z_p(i))
         D_growth(i)= Theory%MPK%PowerAt(0.01d0,this%z_p(i))
@@ -545,7 +545,7 @@
 
     fac = dchis/chis**2
     if (.not. this%use_weyl) fac = fac / h**3
-    !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(j,kh, type_ix, tp, f1, f2, cltmp, ix, kharr, zarr, powers, tmp)
+    !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(j,kh, type_ix, tp, f1, f2, cltmp, ii, ix, kharr, zarr, powers, tmp)
     do i=1, size(this%ls_cl)
         ix =0
         do j = 1, this%num_z_p
@@ -562,7 +562,7 @@
             kh = (this%ls_cl(i) + 0.5) / chis(j)/h
             if (kh >= khmin .and. kh <= khmax) then
                 ix = ix+1
-                tmp(j) = fac(j)* powers(ix)
+                tmp(j) = fac(j) * powers(ix)
             else
                 tmp(j) = 0
             end if
@@ -579,13 +579,13 @@
                         cltmp = cltmp + tmp(ii)*qs(ii,f1)*qs(ii,f2)
                     end do
                     cl_kappa(i,f1,f2) = cltmp
-                else if (tp ==measurement_wtheta) then
+                else if (tp==measurement_wtheta) then
                     cltmp = 0
                     do ii = 1, this%num_z_p
                         cltmp = cltmp +  tmp(ii)*(qgal(ii,f1)*qgal(ii,f2))
                     end do
                     cl_w(i,f1,f2)=cltmp
-                else if (tp ==measurement_gammat) then
+                else if (tp==measurement_gammat) then
                     cltmp = 0
                     do ii = 1, this%num_z_p
                         cltmp = cltmp + tmp(ii)*(qgal(ii,f1)*qs(ii,f2))

@@ -1444,15 +1444,18 @@
     integer, optional, intent(out) :: m, n
     character(LEN=:), allocatable, optional, intent(out) :: comment
     integer status
+    real(kind(1.d0)), allocatable :: readarr(:)
 
     call F%Open(aname)
     nn = F%Columns()
     mm = F%Lines()
     allocate(mat(mm,nn))
+    allocate(readarr(nn))
     j=1
     do while (F%ReadLineSkipEmptyAndComments(InLine, comment = comment))
-        read (InLine,*, iostat=status) mat(j,1:nn)
+        read (InLine,*, iostat=status) readarr
         if (status/=0) call F%Error( 'LoadTxt: error reading line:' //trim(InLine))
+        mat(j,1:nn) = readarr
         j = j+1
     end do
     call F%Close()
