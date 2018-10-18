@@ -186,24 +186,15 @@
     do i= 1, Combs%Count
         associate( comb =>this%LinearCombinations(i) )
             Comb%name = Combs%Name(i)
-            print *, 'Comb%Name', Comb%name
             num_lin = -1
             call this%NameMapping%ReadIndices(Combs%Value(i), params, num_lin)
-            print *, 'params', params
-            print *, 'Combs%Value(i) ', Combs%Value(i)
             allocate(Comb%Combination(num_params),source = 0._mcp)
-            print *, 'num_params', num_params
             InLine = Ini%Read_String(Ini%NamedKey('linear_combination_weights',Comb%name), NotFoundFail=.true.)
-            print *, 'Ini%Read_String(Ini%NamedKey(linear_combination_weights,Comb%name), NotFoundFail=.true.)', InLine
             read(InLine,*, iostat=status) Comb%Combination(params(:num_lin))
-            print *, 'params, num lin', params, num_lin, params(:num_lin)
-            print *, 'Comb%Combination(params(:num_lin))', Comb%Combination(params(:num_lin))
             if (status/=0) call MpiStop('Error reading linear_combination_weights: '//trim(InLIne))
             InLine = Ini%Read_String(Ini%NamedKey('prior',Comb%name))
-            print *, 'Ini%Read_String(Ini%NamedKey(prior,Comb%name))', InLine
             if (InLine/='') then
                 read(InLine,*, iostat=status) Comb%mean, Comb%std
-                print *, 'mean and std', Comb%mean, Comb%std
                 if (status/=0) call MpiStop('Error reading linear_combination_prior: '//trim(InLIne))
             end if
         end associate
