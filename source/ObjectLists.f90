@@ -477,17 +477,17 @@
         else if (k==2) then
             allocate(ArrD(sz))
             read(fid) ArrD
-            P => arrR
+            P => arrD
             call this%AddArrayPointer(P)
         else if (k==3) then
             allocate(ArrI(sz))
             read(fid) ArrI
-            P => arrR
+            P => arrI
             call this%AddArrayPointer(P)
         else if (k==4) then
             allocate(ArrL(sz))
             read(fid) ArrL
-            P => arrR
+            P => arrL
             call this%AddArrayPointer(P)
         else if (k==5) then
             allocate(character(sz)::St)

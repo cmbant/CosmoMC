@@ -8,7 +8,7 @@
 <center>
 <h2>CosmoMC Readme </h2></center>
 
-<center><b>July 2018</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
+<center><b>October 2018</b>. Check the <a href="http://cosmologist.info/cosmomc/">web
 page</a> for the latest version.<BR>
 </center>
 <P>
@@ -109,7 +109,7 @@ For code editing some project files are available for standard development envir
   <i>Set test.ini (or your .ini file) as the program argument. This is not set up to compile with MPI, so mainly useful for development. Visual Fortran does not use the provided Makefiles, but works out dependencies automatically (and has much better debugging support than gdb with CodeBlocks).</i>
 </ul><P>
 <P>
-See <A HREF="http://cosmologist.info/cosmomc/cosmomc.bib">BibTex file</A> for relevant citations.
+See <A HREF="https://github.com/cmbant/CosmoMC/blob/master/cosmomc.bib">BibTex file</A> for relevant citations.
 <P>
 
 <A NAME="Running"><h2  style ="color:darkred">Running and input parameters</h2></A>
@@ -565,7 +565,17 @@ installed manually or obtained from the cosmomc git repository (access available
 -->
 <A NAME="Version"><h2  style ="color:darkred">Version History</h2></A>
 <UL>
-<LI><B>July 2017</B><BR>
+<LI><B>October 2018</B><BR>
+<UL>
+<li>Added <a href="https://des.ncsa.illinois.edu/releases/y1a1">DES 1 Yr data</a> (batch3/DES.ini and variants, likelihood is implemented natively in wl.f90)
+<li>Added <a href="http://bicepkeck.org/bk15_2018_release.html">BICEP-Keck 2015</a> likelihood and data (batch3/BK15.ini)</li>
+<li>Misc updates to CAMB and getdist (see github history)</li>
+<li>Fix bug settings nnu&lt;3.046 and degenerate neutrino masses</li>
+<li>Fixed gfortran issue with checkpointing</li>
+</li>
+</UL>
+
+<LI><B>July 2018</B><BR>
 <UL>
 <li>Added Planck 2018 lensing likelihoods (batch3/lensing.ini and batch3/lensonly.ini)</li>
 <li>Added Riess et al. SH0ES H_0 constraints in (in batch3/)</li>
@@ -1040,7 +1050,7 @@ Fixed bounds checking in MatterPowerAt (harmless with 2df). Added an exact likel
 <LI><B>Nov 2002</B><BR> Added support for polarization, and improved compatibility with different compilers and systems.
 </UL>
 <A NAME="Reference"><h2  style ="color:darkred">Reference links</h2></A>
-See the  <A HREF="http://cosmologist.info/cosmomc/cosmomc.bib">BibTex file</A> of CosmoMC references you should cite (including data likelihoods), along with some references of potential interest. These are the two main CosmoMC papers and some general sampling references:
+See the  <A HREF="https://github.com/cmbant/CosmoMC/blob/master/cosmomc.bib">BibTex file</A> of CosmoMC references you should cite (including data likelihoods), along with some references of potential interest. These are the two main CosmoMC papers and some general sampling references:
 <UL>
 <LI><a href="http://arxiv.org/abs/1304.4473">Efficient sampling of fast and slow cosmological parameters</a>
 <LI><a href="http://arxiv.org/abs/astro-ph/0205436">Cosmological parameters from CMB and other data: a Monte-Carlo approach</a>
