@@ -25,3 +25,4 @@ install:
 script:
   - docker run -v $(pwd):/cosmomc -e TRAVIS_BRANCH -t cmbant/cosmobox:gcc8 /bin/bash -c "/cosmomc/tests/run_tests.sh"
 
+
