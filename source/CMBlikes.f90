@@ -1012,7 +1012,8 @@
             call this%MapPair_to_Theory_i_j(order,i,j,f1,f2)
             CL%theory_i = f1
             CL%theory_j = f2
-            allocate(CL%CL(this%pcl_lmin:this%pcl_lmax), source=0._mcp)
+            allocate(CL%CL(this%pcl_lmin:this%pcl_lmax))
+            CL%CL=0
         end do
     end do
 
