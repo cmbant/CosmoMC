@@ -9,7 +9,6 @@ branches:
   only:
     - master
     - devel
-    - devel_submodules
     
 services:
   - docker
@@ -20,11 +19,11 @@ env:
     - secure: "slXmqyKKIQ0eA21iLjptTCdlBaSMtjl2E/Gg+PVgHfc7DZ/O0LFCxV+IzSdnsYXsjhp9e8NN866/CVSHaT/DeLXfBQNHt7m0zp0Y1rnsGUvpG57Qp7czSI5JZw0Xy4sdXDw4YOyRsDspVGL23LNukTiHKEq8my5QjYFCBLycVCi7iXC4dGNOwY/PY8wFaDE1NwkH8ZtCD85jqKZhavYrGabDHpGbTaQNgkjwRSujGJG1tIi+pCsj3txWJxOPktwoL9zMOHC80GKb3UaDk3s0OorCMCQc0CW1cmetJUutvzd4fB3Zf6XQ4RForLi1V+hExObNHBrhB5U/Ot68eWVYoW9tFWOE99HTMzlsHp2RAiq2pxHj39TIJZF7ndZLa2ig/ms9Q2kRSSKQiLH41HV1yDmVDshDtw/9TRHGvnBuTAomL6CDH7/WKXsP1pMmEE6BhNpRbajm8Xb+P08bcpFlrHi1YRLPNv2Z5MF974Hc8jsYY3DX+co2DqMHz6sLIcmdYswAhIu5cgprLeomTlWraVkGjSBvVklMKF7H3KGMa64Jv6jljBgQIyc2fjmQLSiEyUqT7RkaJmz3DPEPekvbEEfJyxqlu2Is9hqSb//oYsiZdYSTIfbxU+3fZh5MSfPdooG3+w7x4LdFqjqP84XoDN/OymE8kRlkfxErS6hXJZY="    
 
 before_install:
-  - docker pull cmbant/cosmobox:latest
+  - docker pull cmbant/cosmobox:gcc8
 
 install:
   - chmod +x tests/run_tests.sh
       
 script:
-  - docker run -v $(pwd):/cosmomc -e TRAVIS_BRANCH -t cmbant/cosmobox /bin/bash -c "/cosmomc/tests/run_tests.sh"
+  - docker run -v $(pwd):/cosmomc -e TRAVIS_BRANCH -t cmbant/cosmobox:gcc8 /bin/bash -c "/cosmomc/tests/run_tests.sh"
 
