@@ -6,10 +6,14 @@ BUILD ?= MPI
 
 ifneq "$(wildcard ../camb/forutils)" ""
 FORUTILSPATH ?= $(shell pwd)/../camb/forutils
-else "$(wildcard ./forutils)" ""
+else 
+ifneq "$(wildcard ./forutils)" ""
 FORUTILSPATH ?= $(shell pwd)/forutils
-else "$(wildcard ../forutils)" ""
+else 
+ifneq "$(wildcard ../forutils)" ""
 FORUTILSPATH ?= $(shell pwd)/../forutils
+endif
+endif
 endif
 
 ifeq ($(FORUTILSPATH),)

@@ -356,7 +356,7 @@
 
     if (FileSettings%use_matterpower) then
         if (CosmoSettings%use_matterpower) then
-            if (any(FileSettings%power_redshifts/=CosmoSettings%power_redshifts)) &
+            if (any(abs(FileSettings%power_redshifts-CosmoSettings%power_redshifts)>1e-6)) &
                 & call MpiStop('TCosmoTheoryPredictions_ReadTheory: power_redshifts differ - check')
             if (CosmoSettings%extrap_kmax /= FileSettings%extrap_kmax) &
                 call MpiStop('TCosmoTheoryPredictions_ReadTheory: extrap_kmax differ - check')

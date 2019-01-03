@@ -18,6 +18,7 @@
     procedure :: WritePerformanceStats => Cosmo_WritePerformanceStats
     procedure :: InitConfig => TCosmoLikeCalculator_InitConfig
     procedure :: UpdateTheoryForLikelihoods => Cosmo_UpdateTheoryForLikelihoods
+    procedure :: SetTheoryParams => TCosmoLikeCalculator_SetTheoryParams
     end Type TCosmoLikeCalculator
 
     public TCosmoLikeCalculator
@@ -33,6 +34,16 @@
         this%CosmoCalc => p
     end select
     end subroutine TCosmoLikeCalculator_InitConfig
+    
+    
+    subroutine TCosmoLikeCalculator_SetTheoryParams(this, Params)
+    class(TCosmoLikeCalculator) :: this
+    class(TCalculationAtParamPoint), target :: Params
+
+    call this%CosmoCalc%SetCurrentPoint(Params)
+    call this%TTheoryLikeCalculator%SetTheoryParams(Params)
+
+    end subroutine TCosmoLikeCalculator_SetTheoryParams
 
     subroutine Cosmo_GetTheoryForLike(this,Like)
     class(TCosmoLikeCalculator) :: this
@@ -48,7 +59,7 @@
     if (any(like%dependent_params(1:num_hard)) .and. .not. backgroundSet) then
         select type (CMB=>this%TheoryParams)
         class is (CMBParams)
-            call this%CosmoCalc%SetParamsForBackground(CMB)
+            call this%CosmoCalc%SetParamsForBackground(CMB, this%Params%Info)
         end select
         backgroundSet = .true.
     end if
@@ -81,7 +92,7 @@
                     call this%CosmoCalc%GetNewPowerData(CMB, this%Params%Info, Theory,error)
                 end if
             else
-                if (this%SlowChanged) call this%CosmoCalc%GetNewBackgroundData(CMB, Theory, error)
+                if (this%SlowChanged) call this%CosmoCalc%GetNewBackgroundData(CMB, this%Params%Info, Theory, error)
             end if
         end select
     end select

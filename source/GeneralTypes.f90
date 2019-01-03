@@ -154,10 +154,10 @@
 
     subroutine ParamArrayToTheoryParams(this, Params, CMB)
     class(TParameterization) :: this
-    real(mcp) Params(:)
+    class(TCalculationAtParamPoint) :: Params
     Class(TTheoryParams), target :: CMB
 
-    CMB%BaseParams(1:num_theory_params) = Params(1:num_theory_params)
+    CMB%BaseParams(1:num_theory_params) = Params%P(1:num_theory_params)
 
     end subroutine ParamArrayToTheoryParams
 
@@ -196,11 +196,11 @@
 
     end function TParameterization_NonBaseParameterPriors
 
-    subroutine TParameterization_CalcDerivedParams(this, P, Theory, derived)
+    subroutine TParameterization_CalcDerivedParams(this, Params, Theory, derived)
     class(TParameterization) :: this
     real(mcp), allocatable :: derived(:)
     class(TTheoryPredictions), allocatable :: Theory !can be unallocated for simple cases (e.g. generic)
-    real(mcp) :: P(:)
+    class(TCalculationAtParamPoint) :: Params
 
 
     end subroutine TParameterization_CalcDerivedParams
@@ -260,7 +260,7 @@
 
     if (ChainOutFile%unit==0) return
 
-    call Config%Parameterization%CalcDerivedParams(this%P, this%Theory, derived)
+    call Config%Parameterization%CalcDerivedParams(this, this%Theory, derived)
     call DataLikelihoods%addLikelihoodDerivedParams(this%P, this%Theory, derived, this%Likelihoods, like)
 
     if (allocated(derived)) numderived = size(derived)
@@ -318,7 +318,7 @@
     end subroutine TTheoryCalculator_ReadImportanceParams
 
     subroutine TTheoryCalculator_GetTheoryForImportance(this, CMB, Theory, error)
-    class(TTheoryCalculator) :: this
+    class(TTheoryCalculator), target :: this
     class(TTheoryParams) :: CMB
     class(TTheoryPredictions) :: Theory
     integer error

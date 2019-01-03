@@ -113,7 +113,7 @@
 
     subroutine TP_ParamArrayToTheoryParams(this, Params, CMB)
     class(ThetaParameterization) :: this
-    real(mcp) Params(:)
+    class(TCalculationAtParamPoint) :: Params
     integer, parameter :: ncache =2
     Class(TTheoryParams), target :: CMB
     Type(CMBParams), save :: LastCMB(ncache)
@@ -130,35 +130,35 @@
         class is (CMBParams)
             do i=1, ncache
                 !want to save two slow positions for some fast-slow methods
-                if (all(Params(1:num_hard) == LastCMB(i)%BaseParams(1:num_hard))) then
+                if (all(Params%P(1:num_hard) == LastCMB(i)%BaseParams(1:num_hard))) then
                     CP2 => CMB !needed to make next line work for some odd reason CMB=LastCMB(i) does not work
                     CP2 = LastCMB(i)
                     call this%TCosmologyParameterization%ParamArrayToTheoryParams(Params, CMB)
-                    call SetFast(Params,CMB)
+                    call SetFast(Params%P,CMB)
                     return
                 end if
             end do
             call this%TCosmologyParameterization%ParamArrayToTheoryParams(Params, CMB)
 
             error = 0   !JD to prevent stops when using bbn_consistency or m_sterile
-            DA = Params(3)/100
+            DA = Params%P(3)/100
             try_b = this%H0_min
-            call SetForH(Params,CMB,try_b, .true.,error)  !JD for bbn related errors
+            call SetForH(Params%P,CMB,try_b, .true.,error)  !JD for bbn related errors
             if(error/=0)then
                 cmb%H0=0
                 return
             end if
             D_b = CosmoCalc%CMBToTheta(CMB)
             try_t = this%H0_max
-            call SetForH(Params,CMB,try_t, .false.)
+            call SetForH(Params%P,CMB,try_t, .false.)
             D_t = CosmoCalc%CMBToTheta(CMB)
             if (DA < D_b .or. DA > D_t) then
-                if (Feedback>1) write(*,*) instance, 'Out of range finding H0: ', real(Params(3))
+                if (Feedback>1) write(*,*) instance, 'Out of range finding H0: ', real(Params%P(3))
                 cmb%H0=0 !Reject it
             else
                 lasttry = -1
                 do
-                    call SetForH(Params,CMB,(try_b+try_t)/2, .false.)
+                    call SetForH(Params%P,CMB,(try_b+try_t)/2, .false.)
                     D_try = CosmoCalc%CMBToTheta(CMB)
                     if (D_try < DA) then
                         try_b = (try_b+try_t)/2
@@ -169,7 +169,6 @@
                     lasttry = D_try
                 end do
 
-                !!call InitCAMB(CMB,error)
                 if (CMB%tau==0._mcp) then
                     CMB%zre=0
                 else
@@ -186,11 +185,11 @@
 
     end subroutine TP_ParamArrayToTheoryParams
 
-    subroutine TP_CalcDerivedParams(this, P, Theory, derived)
+    subroutine TP_CalcDerivedParams(this, Params, Theory, derived)
     class(ThetaParameterization) :: this
     real(mcp), allocatable :: derived(:)
     class(TTheoryPredictions), allocatable :: Theory
-    real(mcp) :: P(:)
+    class(TCalculationAtParamPoint) :: Params
     Type(CMBParams) CMB
     real(mcp) :: lograt
     integer ix,i
@@ -202,7 +201,7 @@
     class is (TCosmoTheoryPredictions)
         allocate(Derived(this%num_derived), source=0._mcp)
 
-        call this%ParamArrayToTheoryParams(P,CMB)
+        call this%ParamArrayToTheoryParams(Params,CMB)
 
         derived(1) = CMB%H0
         derived(2) = CMB%omv
@@ -362,19 +361,19 @@
 
     subroutine BK_ParamArrayToTheoryParams(this, Params, CMB)
     class(BackgroundParameterization) :: this
-    real(mcp) Params(:)
+    class(TCalculationAtParamPoint) :: Params
     class(TTheoryParams), target :: CMB
     real(mcp) omegam, h2
 
     select type (CMB)
     class is (CMBParams)
-        omegam = Params(1)
-        CMB%H0 = Params(2)
-        CMB%omk = Params(3)
-        CMB%omnuh2=Params(4)/neutrino_mass_fac*(standard_neutrino_neff/3)**0.75_mcp
-        CMB%w =    Params(5)
-        CMB%wa =    Params(6)
-        CMB%nnu =    Params(7)
+        omegam = Params%P(1)
+        CMB%H0 = Params%P(2)
+        CMB%omk = Params%P(3)
+        CMB%omnuh2=Params%P(4)/neutrino_mass_fac*(standard_neutrino_neff/3)**0.75_mcp
+        CMB%w =    Params%P(5)
+        CMB%wa =    Params%P(6)
+        CMB%nnu =    Params%P(7)
 
         CMB%h=CMB%H0/100
         h2 = CMB%h**2
@@ -398,16 +397,16 @@
     end subroutine BK_ParamArrayToTheoryParams
 
 
-    subroutine BK_CalcDerivedParams(this, P, Theory, derived)
+    subroutine BK_CalcDerivedParams(this, Params, Theory, derived)
     class(BackgroundParameterization) :: this
     real(mcp), allocatable :: derived(:)
     class(TTheoryPredictions), allocatable :: Theory
-    real(mcp) :: P(:)
+    class(TCalculationAtParamPoint) :: Params
     Type(CMBParams) CMB
 
     allocate(Derived(1))
 
-    call this%ParamArrayToTheoryParams(P,CMB)
+    call this%ParamArrayToTheoryParams(Params,CMB)
 
     derived(1) = CMB%omv
 
@@ -447,19 +446,19 @@
 
     subroutine AP_ParamArrayToTheoryParams(this, Params, CMB)
     class(AstroParameterization) :: this
-    real(mcp) Params(:)
+    class(TCalculationAtParamPoint) :: Params
     class(TTheoryParams), target :: CMB
     real(mcp) omegam, h2
     integer error
 
     select type (CMB)
     class is (CMBParams)
-        omegam = Params(1)
-        CMB%omb= Params(2)
-        CMB%H0 = Params(3)
-        CMB%omk = Params(4)
-        CMB%sum_mnu_standard = Params(5)
-        CMB%omnuh2=Params(5)/neutrino_mass_fac*(standard_neutrino_neff/3)**0.75_mcp
+        omegam = Params%P(1)
+        CMB%omb= Params%P(2)
+        CMB%H0 = Params%P(3)
+        CMB%omk = Params%P(4)
+        CMB%sum_mnu_standard = Params%P(5)
+        CMB%omnuh2=Params%P(5)/neutrino_mass_fac*(standard_neutrino_neff/3)**0.75_mcp
 
         CMB%h=CMB%H0/100
         h2 = CMB%h**2
@@ -469,16 +468,16 @@
         CMB%omc= omegam - CMB%omb - CMB%omnu
         CMB%omch2 = CMB%omc*h2
 
-        CMB%w =    Params(6)
-        CMB%wa =   Params(7)
-        CMB%nnu =  Params(8)
+        CMB%w =    Params%P(6)
+        CMB%wa =   Params%P(7)
+        CMB%nnu =  Params%P(8)
         if (CosmoSettings%bbn_consistency) then
             CMB%YHe = BBN_YHe%Value(CMB%ombh2,CMB%nnu - standard_neutrino_neff,error)
         else
-            CMB%YHe = Params(9)
+            CMB%YHe = Params%P(9)
         end if
 
-        CMB%InitPower(1:num_initpower) = Params(index_initpower:index_initpower+num_initpower-1)
+        CMB%InitPower(1:num_initpower) = Params%P(index_initpower:index_initpower+num_initpower-1)
         !CMB%InitPower(As_index) = exp(CMB%InitPower(As_index))
         CMB%InitPower(As_index) = CMB%InitPower(As_index) *10 !input is 10^9 As, cl_norm = 1e-10
 
@@ -499,16 +498,16 @@
     end subroutine AP_ParamArrayToTheoryParams
 
 
-    subroutine AP_CalcDerivedParams(this, P, Theory, derived)
+    subroutine AP_CalcDerivedParams(this, Params, Theory, derived)
     class(AstroParameterization) :: this
     real(mcp), allocatable :: derived(:)
     class(TTheoryPredictions), allocatable :: Theory
-    real(mcp) :: P(:)
+    class(TCalculationAtParamPoint) :: Params
     Type(CMBParams) CMB
 
     allocate(Derived(9))
 
-    call this%ParamArrayToTheoryParams(P,CMB)
+    call this%ParamArrayToTheoryParams(Params,CMB)
 
     if (.not. allocated(Theory)) call MpiStop('Not allocated theory!!!')
     select type (Theory)

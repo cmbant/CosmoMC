@@ -34,8 +34,9 @@
     type(CAMBParams)  P
 
     call this%CAMB_Calculator%CMBToCamb(CMB,P)
-    P%Reion%use_optical_depth = .true.
-    P%OnlyTransfers = .true.
+    select type(Reion=>P%Reion)
+        Reion%use_optical_depth = .true.
+    end select
     if (.not. CosmoSettings%CMB_Lensing) call MpiStop('PICO assumes lensed CMB')
 
     end subroutine PICO_CMBToCAMB
@@ -64,11 +65,10 @@
     end subroutine PICO_GetOutputArray
 
     subroutine PICO_GetNewPowerData(this, CMB, Info, Theory, error)
-    use ModelParams
-    use ModelData
+    use CAMBSettings
     class(PICO_Calculator) :: this
     class(CMBParams) :: CMB
-    class(TTheoryIntermediateCache), pointer :: Info
+    class(TTheoryIntermediateCache), pointer  :: Info
     class(TCosmoTheoryPredictions) :: Theory
     integer error,i,j, lmaxCL,lmx
     type(CAMBParams) P
@@ -85,10 +85,12 @@
         indicesT(3,3) =  CT_B
     end if
 
-    call this%CMBToCAMB(CMB, P)
-    call CAMBParams_Set(P)
-    call this%SetBackgroundTheoryData(CMB,Theory,error)
-
+    select type (Info)
+    class is (CAMBTransferCache)
+        call this%CMBToCAMB(CMB, P)
+        call Info%State%CAMBParams_Set(P)
+        call this%SetBackgroundTheoryData(CMB,Theory,error)
+    end select
     if (p%InitPower%n_runrun(1)/=0 .or. p%InitPower%nt_run(1)/=0 .or. p%InitPower%ant(1)/=0) &
         & call MpiStop('PICO: currently unsupported initial power parameter')
 
@@ -133,10 +135,10 @@
             end if
         end if
     end if
-   ! if (P%WantTransfer) then
-   !     call fpico_request_output("k")
-   !     call fpico_request_output("pk")
-   ! end if
+    ! if (P%WantTransfer) then
+    !     call fpico_request_output("k")
+    !     call fpico_request_output("pk")
+    ! end if
 
     call fpico_compute_result(success)
     if (success == 0) then
@@ -165,7 +167,7 @@
                 associate( CL => Theory%Cls(i,j)%CL)
                     if (CosmoSettings%lmax_computed_cl < lmaxCL) then
                         if (highL_norm ==0) & !normally normalize off TT
-                        & highL_norm = CL(lmx)/this%highL_lensedCL_template(lmx,indicesT(i,j))
+                            & highL_norm = CL(lmx)/this%highL_lensedCL_template(lmx,indicesT(i,j))
                         CL(lmx+1:lmaxCL) =  highL_norm*this%highL_lensedCL_template(lmx+1:lmaxCL,indicesT(i,j))
                     end if
                 end associate
@@ -176,14 +178,17 @@
     end subroutine PICO_GetNewPowerData
 
     subroutine PICO_GetTheoryForImportance(this, CMB, Theory, error)
-    class(PICO_Calculator) :: this
+    class(PICO_Calculator), target :: this
     class(CMBParams) CMB
     class(TCosmoTheoryPredictions) Theory
     integer :: error
+    Type(CAMBTransferCache), pointer :: Info
 
-    call this%GetNewPowerData(CMB, null(), Theory, error)
-    call this%GetNewBackgroundData(CMB,Theory,error)
-    if (error==0) call this%SetDerived(Theory)
+    allocate(info)
+    call this%GetNewPowerData(CMB, Info, Theory, error)
+    call this%GetNewBackgroundData(CMB, Info, Theory,error)
+    if (error==0) call this%SetDerived(Info, Theory)
+    deallocate(info)
 
     end subroutine PICO_GetTheoryForImportance
 
@@ -204,7 +209,7 @@
 
     call this%CAMB_Calculator%ReadParams(Ini)
     this%calcName ='PICO'
-    
+
     !$ write(*,*) '**WARNING**: pico may not work when CosmoMC compiled with -openmp (why??)'
 
     call fpico_init(1_fpint)
