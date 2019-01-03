@@ -1,7 +1,7 @@
 #https://arxiv.org/abs/1710.00845
 
 name = PANTHEON
-data_file = data/Pantheon/lcparam_full_long.txt
+data_file = data/Pantheon/lcparam_full_long_zhel.txt
 pecz = 0
 intrinsicdisp = 0
 twoscriptmfit = F

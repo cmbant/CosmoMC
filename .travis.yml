@@ -9,7 +9,7 @@ branches:
   only:
     - master
     - devel
-    
+
 services:
   - docker
 
@@ -20,10 +20,13 @@ env:
 
 before_install:
   - docker pull cmbant/cosmobox:gcc8
+  - docker pull cmbant/cosmobox:gcc6
 
 install:
   - chmod +x tests/run_tests.sh
       
 script:
   - docker run -v $(pwd):/cosmomc -e TRAVIS_BRANCH -t cmbant/cosmobox:gcc8 /bin/bash -c "/cosmomc/tests/run_tests.sh"
+  - docker run -v $(pwd):/cosmomc -e TRAVIS_BRANCH -t cmbant/cosmobox:gcc6 /bin/bash -c "/cosmomc/tests/run_tests.sh"
+
 
