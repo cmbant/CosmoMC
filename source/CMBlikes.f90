@@ -1044,6 +1044,7 @@
                 !Code here is gfortran 8 regression workaround for
                 !   Cls(i,j)%CL(this%pcl_lmin:this%pcl_lmax) = &
                 !    Theory%Cls(Cls(i,j)%theory_i ,Cls(i,j)%theory_j)%CL(this%pcl_lmin:this%pcl_lmax)
+                !see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=88685
 
                 ix1 = Cls(i,j)%theory_i
                 ix2 = Cls(i,j)%theory_j
