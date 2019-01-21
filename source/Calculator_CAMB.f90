@@ -900,7 +900,7 @@
     if (Ini%HasKey('highL_unlensed_cl_template')) then
         highL_unlensed_cl_template=  Ini%ReadFilename('highL_unlensed_cl_template')
     else
-        highL_unlensed_cl_template = concat(LocalDir,'camb/',highL_unlensed_cl_template)
+        highL_unlensed_cl_template = concat(LocalDir,'camb/fortran/',highL_unlensed_cl_template)
     end if
 
     this%k_eta_max_scalar = Ini%Read_Double('k_eta_max_scalar',-1._mcp)
