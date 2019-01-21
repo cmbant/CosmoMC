@@ -138,8 +138,8 @@ CALCFILES = $(OUTPUT_DIR)/Calculator_CAMB.o
 PARAMETERIZATION = $(OUTPUT_DIR)/CosmologyParameterizations.o
 
 GETDISTFLAGS = $(FFLAGS) $(IFLAG)$(FORUTILSPATH)/$(OUTPUT_DIR)/
-F90FLAGS = $(FFLAGS) $(IFLAG)../camb/$(OUTPUT_DIR) $(IFLAG)$(FORUTILSPATH)/$(OUTPUT_DIR)/ $(INCLUDE)
-LINKFLAGS = -L../camb/$(OUTPUT_DIR) -lcamb_$(RECOMBINATION) -L$(FORUTILSPATH)/$(OUTPUT_DIR) -lforutils $(LAPACKL) $(F90CRLINK) $(CLIKL)
+F90FLAGS = $(FFLAGS) $(IFLAG)../camb/fortran/$(OUTPUT_DIR) $(IFLAG)$(FORUTILSPATH)/$(OUTPUT_DIR)/ $(INCLUDE)
+LINKFLAGS = -L../camb/fortran/$(OUTPUT_DIR) -lcamb -L$(FORUTILSPATH)/$(OUTPUT_DIR) -lforutils $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
 ifneq ($(PICO),)
 ifneq ($(PICO),NO)
@@ -308,7 +308,7 @@ cosmomc_debug: directories camb $(OBJFILES)
 
 
 clean: cleancosmomc
-	cd ../camb; make clean
+	cd ../camb/forutils; make clean
 
 cleancosmomc:
 	rm -f $(OUTPUT_DIR)/*.o $(OUTPUT_DIR)/*.mod ../core
@@ -319,9 +319,8 @@ getdist: directories $(DISTFILES)
 	$(F90C) -o ../getdist $(DISTFILES) $(LAPACKL) $(GETDISTFLAGS)
 
 camb:
-	cd ../camb && \
+	cd ../camb/fortran && \
 	$(MAKE) --file=Makefile_main libcamb OUTPUT_DIR=$(OUTPUT_DIR) \
-	RECOMBINATION=$(RECOMBINATION) EQUATIONS=equations_ppf NONLINEAR=halofit_ppf \
     FORUTILSPATH=$(FORUTILSPATH)
 
 $(highL)/libhigh.a:
