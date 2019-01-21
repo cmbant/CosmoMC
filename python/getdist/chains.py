@@ -417,7 +417,9 @@ class WeightedSamples(object):
         For bias-corrected KDE only need very rough estimate to use in rule of thumb for bandwidth.
 
         In the limit h-> 0 (but still >0) answer should be correct (then just includes MCMC rejection duplicates).
-        In reality correct result for practical h should depends on shape of the correlation function
+        In reality correct result for practical h should depends on shape of the correlation function.
+
+        If self.sampler is 'nested' or 'uncorrelated' return result for uncorrelated samples
 
         :param paramVec: parameter array, or int index of parameter to use
         :param h: fiducial assumed kernel scale.
@@ -426,6 +428,8 @@ class WeightedSamples(object):
         :param min_corr: ignore correlations smaller than this auto-correlation
         :return: A very rough effective sample number for leading term for the MISE of a Gaussian KDE.
         """
+        if getattr(self, "sampler", "") in ["nested", "uncorrelated"]:
+            return self.get_norm() ** 2 / np.dot(self.weights, self.weights)
         d = self._makeParamvec(paramVec)
         # Result does depend on kernel width, but hopefully not strongly around typical values ~ sigma/4
         kernel_std = (scale or self.std(d)) * h
@@ -830,7 +834,8 @@ class Chains(WeightedSamples):
     :ivar paramNames: a :class:`~.paramnames.ParamNames` instance holding the parameter names and labels
     """
 
-    def __init__(self, root=None, jobItem=None, paramNamesFile=None, names=None, labels=None, renames=None, **kwargs):
+    def __init__(self, root=None, jobItem=None, paramNamesFile=None, names=None, labels=None, renames=None,
+                 sampler=None, **kwargs):
         """
 
         :param root: optional root name for files
@@ -839,6 +844,8 @@ class Chains(WeightedSamples):
         :param names: optional list of names for the parameters
         :param labels: optional list of latex labels for the parameters
         :param renames: optional dictionary of parameter aliases
+        :param sampler: string describing the type of samples (default :mcmc); if "nested" or "uncorrelated"
+              the effective number of samples is calculated using uncorrelated approximation
         :param kwargs: extra options for :class:`~.chains.WeightedSamples`'s constructor
 
         """
@@ -858,6 +865,16 @@ class Chains(WeightedSamples):
             self.paramNames.setLabels(labels)
         if renames is not None:
             self.updateRenames(renames)
+        # Sampler that generated the chain -- assume "mcmc"
+        if isinstance(sampler, six.string_types):
+            if sampler.lower() not in ["mcmc", "nested", "uncorrelated"]:
+                raise ValueError("Unknown sampler type %s" % sampler)
+            self.sampler = sampler.lower()
+        elif isinstance(paramNamesFile, six.string_types) and paramNamesFile.endswith("yaml"):
+            from getdist.yaml_format_tools import get_sampler_type
+            self.sampler = get_sampler_type(paramNamesFile)
+        else:
+            self.sampler = "mcmc"
 
     def setParamNames(self, names=None):
         """
@@ -1004,7 +1021,7 @@ class Chains(WeightedSamples):
 
         :param paramVec: The vector of parameter values to add.
         :param name: The name for the new parameter
-        :param kwargs: arguments for paramnames' :func:`~.paramnames.ParamList.addDerived`
+        :param kwargs: arguments for paramnames' :func:`.paramnames.ParamList.addDerived`
         :return: The added parameter's :class:`~.paramnames.ParamInfo` object
         """
         if self.paramNames.parWithName(name):
@@ -1061,6 +1078,7 @@ class Chains(WeightedSamples):
 
             dim = array_dimension(files_or_samples)
             if dim in [1, 2]:
+                self.chains = None
                 self.setSamples(slice_or_none(files_or_samples, ignore_lines),
                                 slice_or_none(weights, ignore_lines),
                                 slice_or_none(loglikes, ignore_lines), self.min_weight_ratio)
@@ -1086,7 +1104,7 @@ class Chains(WeightedSamples):
         c.f. Brooks and Gelman 1997.
 
         :param nparam: The number of parameters (starting at first), by default uses all of them
-        :param chainlist: list of :class:`WeightedSamples`, the samples to use. Defaults to all the separate chains in this instance.
+        :param chainlist: list of :class:`~.chains.WeightedSamples`, the samples to use. Defaults to all the separate chains in this instance.
         :return: array of  var(mean)/mean(var) for orthogonalized parameters
         """
         if chainlist is None:
@@ -1115,7 +1133,7 @@ class Chains(WeightedSamples):
         c.f. Brooks and Gelman 1997.
 
         :param nparam: The number of parameters, by default uses all
-        :param chainlist: list of :class:`WeightedSamples`, the samples to use. Defaults to all the separate chains in this instance.
+        :param chainlist: list of :class:`~.chains.WeightedSamples`, the samples to use. Defaults to all the separate chains in this instance.
         :return: The worst var(mean)/mean(var) for orthogonalized parameters. Should be <<1 for good convergence.
         """
         return np.max(self.getGelmanRubinEigenvalues(nparam, chainlist))
