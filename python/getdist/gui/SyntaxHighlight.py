@@ -1,7 +1,12 @@
 from __future__ import absolute_import
+from .qt_import import pyside_version
 
-from PySide.QtCore import QRegExp
-from PySide.QtGui import QColor, QTextCharFormat, QFont, QSyntaxHighlighter
+if pyside_version == 2:
+    from PySide2.QtCore import QRegExp
+    from PySide2.QtGui import QColor, QTextCharFormat, QFont, QSyntaxHighlighter
+else:
+    from PySide.QtCore import QRegExp
+    from PySide.QtGui import QColor, QTextCharFormat, QFont, QSyntaxHighlighter
 
 
 def txformat(color, style=''):
@@ -18,6 +23,7 @@ def txformat(color, style=''):
         _format.setFontItalic(True)
 
     return _format
+
 
 # Syntax styles that can be shared by all languages
 STYLES = {

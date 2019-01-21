@@ -125,6 +125,7 @@ def loadCobayaSamples(info, collections, name_tag=None,
         raise ValueError("The given collections don't have the same columns.")
     from getdist.yaml_format_tools import _p_label, _p_renames, _weight, _minuslogpost
     from getdist.yaml_format_tools import get_info_params, get_range, is_derived_param
+    from getdist.yaml_format_tools import get_sampler_type
     # Check consistency with info
     info_params = get_info_params(info)
     assert set(columns[2:]) == set(info_params.keys()), (
@@ -142,7 +143,8 @@ def loadCobayaSamples(info, collections, name_tag=None,
     samples = [c[c.data.columns[2:]].values for c in collections]
     weights = [c[_weight].values for c in collections]
     loglikes = [-c[_minuslogpost].values for c in collections]
-    return MCSamples(samples=samples, weights=weights, loglikes=loglikes,
+    sampler = get_sampler_type(info)
+    return MCSamples(samples=samples, weights=weights, loglikes=loglikes, sampler=sampler,
                      names=names, labels=labels, ranges=ranges, renames=renames,
                      ignore_rows=ignore_rows, name_tag=name_tag, ini=ini,
                      settings=settings)
@@ -246,6 +248,9 @@ class MCSamples(Chains):
             if settings is None: settings = {}
             settings['ignore_rows'] = kwargs['ignore_rows']
         self.ignore_rows = float(kwargs.get('ignore_rows', 0))
+        # Do not remove burn-in for nested sampler samples
+        if self.sampler == "nested" and not np.isclose(self.ignore_rows, 0):
+            raise ValueError("Should not remove burn-in from Nested Sampler samples.")
         self.subplot_size_inch = 4.0
         self.subplot_size_inch2 = self.subplot_size_inch
         self.subplot_size_inch3 = 6.0
@@ -1126,7 +1131,7 @@ class MCSamples(Chains):
         """
         Get optimized kernel density bandwidth (in units of the range of the bins)
         Based on optimal Improved Sheather-Jones bandwidth for basic Parzen kernel, then scaled if higher-order method being used.
-        For details see the `notes <http://cosmologist.info/notes/GetDist.pdf>`_.
+        For details see the `notes <https://cosmologist.info/notes/GetDist.pdf>`_.
 
         :param bins: numpy array of binned weights for the samples
         :param par: A :class:`~.paramnames.ParamInfo` instance for the parameter to analyse
@@ -1168,7 +1173,7 @@ class MCSamples(Chains):
                            mult_bias_correction_order=None, min_corr=0.2, N_eff=None):
         """
         Get optimized kernel density bandwidth matrix in parameter units, using Improved Sheather Jones method in sheared parameters.
-        For details see the `notes <http://cosmologist.info/notes/GetDist.pdf>`_.
+        For details see the `notes <https://cosmologist.info/notes/GetDist.pdf>`_.
 
         :param bins: 2D numpy array of binned weights
         :param parx: A :class:`~.paramnames.ParamInfo` instance for the x parameter
@@ -1357,7 +1362,7 @@ class MCSamples(Chains):
         :param j: a name or index of the parameter
         :param writeDataToFile: True if should write to text file.
         :param get_density: return a :class:`~.densities.Density1D` instance only, does not write out or calculate mean likelihoods for plots
-        :param paramConfid: optional cached :class:`ParamConfidenceData` instance
+        :param paramConfid: optional cached :class:`~.chains.ParamConfidenceData` instance
         :param meanlikes: include mean likelihoods
         :param kwargs: optional settings to override instance settings of the same name (see `analysis_settings`):
 
@@ -1887,7 +1892,7 @@ class MCSamples(Chains):
         Returns a :class:`~.densities.DensityND` instance with marginalized ND density.
 
         :param xs: indices or names of x_i parameters
-        :param kwargs: keyword arguments for the :func:`getNDDensityGridData` function
+        :param kwargs: keyword arguments for the :meth:`~.mcsamples.MCSamples.getRawNDDensityGridData` function
         :param normalized: if False, is normalized so the maximum is 1, if True, density is normalized
         :return: :class:`~.densities.DensityND` instance
         """

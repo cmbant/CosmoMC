@@ -18,6 +18,21 @@ import shlex
 
 autoclass_content = 'both'
 
+nitpicky = True
+
+
+# Prevent spurious errors for every field ivar (not sure why..)
+def on_missing_reference(app, env, node, contnode):
+    if node['reftype'] == 'obj':
+        return contnode
+    else:
+        return None
+
+
+def setup(app):
+    app.connect('missing-reference', on_missing_reference)
+
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -36,10 +51,10 @@ extensions = [
     'sphinx.ext.autodoc', 'sphinx.ext.intersphinx', 'sphinx.ext.viewcode', 'sphinx.ext.autosummary', 'plot_directive'
 ]
 
-intersphinx_mapping = {'python': ('http://docs.python.org/2', None),
-                       'numpy': ('http://docs.scipy.org/doc/numpy/', None),
-                       'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
-                       'matplotlib': ('http://matplotlib.sourceforge.net/', None)}
+intersphinx_mapping = {'python': ('https://docs.python.org/2', None),
+                       'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+                       'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
+                       'matplotlib': ('https://matplotlib.org/', None)}
 
 # plot_formats = [('png', 80)]
 plot_html_show_formats = False
@@ -61,10 +76,11 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'GetDist'
-copyright = u'2015, Antony Lewis'
+copyright = u'Antony Lewis'
 author = u'Antony Lewis'
 
 import getdist
+
 version = getdist.__version__
 release = getdist.__version__
 
@@ -90,7 +106,6 @@ pygments_style = 'sphinx'
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
-
 
 # -- Options for HTML output ----------------------------------------------
 
@@ -192,25 +207,25 @@ htmlhelp_basename = 'GetDistDoc'
 # -- Options for LaTeX output ---------------------------------------------
 
 latex_elements = {
-# The paper size ('letterpaper' or 'a4paper').
-# 'papersize': 'letterpaper',
+    # The paper size ('letterpaper' or 'a4paper').
+    # 'papersize': 'letterpaper',
 
-# The font size ('10pt', '11pt' or '12pt').
-# 'pointsize': '10pt',
+    # The font size ('10pt', '11pt' or '12pt').
+    # 'pointsize': '10pt',
 
-# Additional stuff for the LaTeX preamble.
-# 'preamble': '',
+    # Additional stuff for the LaTeX preamble.
+    # 'preamble': '',
 
-# Latex figure (float) alignment
-# 'figure_align': 'htbp',
+    # Latex figure (float) alignment
+    # 'figure_align': 'htbp',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  (master_doc, 'GetDist.tex', u'GetDist Documentation',
-   author, 'manual'),
+    (master_doc, 'GetDist.tex', u'GetDist Documentation',
+     author, 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -253,9 +268,9 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  (master_doc, 'GetDist', u'GetDist Documentation',
-   author, 'GetDist', 'Sample analysis and plotting.',
-   'Miscellaneous'),
+    (master_doc, 'GetDist', u'GetDist Documentation',
+     author, 'GetDist', 'Sample analysis and plotting.',
+     'Miscellaneous'),
 ]
 
 # Documents to append as an appendix to all manuals.
