@@ -21,16 +21,15 @@ fi
 make
 
 mpirun -np 1 --allow-run-as-root ./cosmomc test.ini
+rc=$?
 
 if ["$GCCTAG" != "devel"]
 then
 
 mpirun -np 1 --allow-run-as-root ./cosmomc test_planck.ini
-
-fi
-
 rc=$?
 
+fi
 
 exit $rc
 
