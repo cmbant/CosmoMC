@@ -1,7 +1,7 @@
 
 cd /cosmomc
 
-if [[ $GCCTAG != "devel"]]
+if ["$GCCTAG" != "devel"]
 then
 
 wget http://irsa.ipac.caltech.edu/data/Planck/release_2/software/COM_Likelihood_Code-v2.0.R2.00.tar.bz2
@@ -22,7 +22,7 @@ make
 
 mpirun -np 1 --allow-run-as-root ./cosmomc test.ini
 
-if [[ $GCCTAG != "devel"]]
+if ["$GCCTAG" != "devel"]
 then
 
 mpirun -np 1 --allow-run-as-root ./cosmomc test_planck.ini
