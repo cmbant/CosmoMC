@@ -548,7 +548,7 @@
         BIGLSQ=ZERO
         KNEW=0
         DO K=1,NPT
-            IF (K .EQ. KOPT) return
+            IF (K .EQ. KOPT) continue
             HDIAG=ZERO
             DO JJ=1,NPTM
                 HDIAG=HDIAG+ZMAT(K,JJ)**2
