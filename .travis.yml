@@ -10,6 +10,9 @@ matrix:
     - name: "GCC6"
       env:
         - GCCTAG="gcc6"
+    - name: "GCC7"
+      env:
+        - GCCTAG="gcc7"
     - name: "GCC8"
       env:
         - GCCTAG="gcc8"
