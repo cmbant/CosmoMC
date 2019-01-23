@@ -9,10 +9,10 @@ matrix:
   include:
     - name: "GCC6"
       env:
-        - GCCTAG="6"
+        - GCCTAG="gcc6"
     - name: "GCC8"
       env:
-        - GCCTAG="8"
+        - GCCTAG="gcc8"
     - name: "GCC-trunk"
       env:
         - GCCTAG="devel"
