@@ -206,10 +206,6 @@ contains
         this%want_type = .false.
         this%want_type(this%used_measurement_types) = .true.
 
-        if (this%use_weyl .and. any(this%want_type(measurement_gammat:measurement_wtheta))) then
-            call MPIstop('currently wl_use_weyl option can only be used with weak lensing data')
-        end if
-
         call this%loadParamNames(Ini%ReadRelativeFileName('nuisance_params',NotFoundFail=.true.))
 
         allocate(this%data_selection(size(measurement_names),maxbin,maxbin,2))
@@ -474,7 +470,7 @@ contains
         Class(TCosmoTheoryPredictions), target :: Theory
         real(mcp), intent(out) :: corrs(:,:,:,:)
         real(mcp), intent(in) :: DataParams(:)
-        type(TCosmoTheoryPK), pointer :: PK
+        type(TCosmoTheoryPK), pointer :: PK, WPK
         real(mcp) h, omm
         real(mcp), allocatable :: chis(:), dchis(:), Hs(:), D_growth(:)
         real(mcp) zshift
@@ -494,7 +490,7 @@ contains
         real(mcp) lens_photoz_errors(this%num_gal_bins)
 
         real(mcp) :: tmparr(size(this%ls_cl))
-        real(mcp) :: kharr(this%num_z_p),zarr(this%num_z_p), powers(this%num_z_p), tmp(this%num_z_p)
+        real(mcp) :: kharr(this%num_z_p),zarr(this%num_z_p), powers(this%num_z_p), wpowers(this%num_z_p), tmp(this%num_z_p), wtmp(this%num_z_p)
         real(mcp) :: time
 
         time= TimerTime()
@@ -511,17 +507,11 @@ contains
         i = i + this%num_gal_bins
         source_photoz_errors = DataParams(i+1:i+this%num_z_bins)
         if (this%use_non_linear) then
-            if (this%use_weyl) then
-                PK => Theory%NL_MPK_WEYL
-            else
-                PK => Theory%NL_MPK
-            end if
+            PK  => Theory%NL_MPK
+            if ( this%use_weyl ) WPK => Theory%NL_MPK_WEYL
         else
-            if (this%use_weyl) then
-                PK => Theory%MPK_WEYL
-            else
-                PK => Theory%MPK
-            end if
+            PK  => Theory%MPK
+            if ( this%use_weyl ) WPK => Theory%MPK_WEYL
         end if
 
         h = CMB%H0/100
@@ -605,8 +595,7 @@ contains
         cl_cross=0
 
         fac = dchis/chis**2
-        if (.not. this%use_weyl) fac = fac / h**3
-        !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(j,kh, type_ix, tp, f1, f2, cltmp, ii, ix, kharr, zarr, powers, tmp)
+        !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(j,kh, type_ix, tp, f1, f2, cltmp, ii, ix, kharr, zarr, powers, wpowers, tmp, wtmp)
         do i=1, size(this%ls_cl)
             ix =0
             do j = 1, this%num_z_p
@@ -617,15 +606,22 @@ contains
                     kharr(ix) = kh
                 end if
             end do
-            call PK%PowerAtArr(kharr, zarr, ix, powers)
+            call PK%PowerAtArr (kharr, zarr, ix, powers )
+            if ( this%use_weyl ) call WPK%PowerAtArr(kharr, zarr, ix, wpowers)
             ix=0
             do j = 1, this%num_z_p
                 kh = (this%ls_cl(i) + 0.5) / chis(j)/h
                 if (kh >= khmin .and. kh <= khmax) then
                     ix = ix+1
-                    tmp(j) = fac(j) * powers(ix)
+                    tmp(j)  = fac(j)*powers(ix)/h**3
+                    if ( this%use_weyl ) then
+                        wtmp(j) = fac(j)*wpowers(ix)
+                    else
+                        wtmp(j) = tmp(j)
+                    end if
                 else
-                    tmp(j) = 0
+                    tmp(j)  = 0
+                    wtmp(j) = 0
                 end if
             end do
             do type_ix = 1, this%nmeasurement_types
@@ -637,7 +633,7 @@ contains
                     if (tp==measurement_xip) then
                         cltmp = 0
                         do ii = 1, this%num_z_p
-                            cltmp = cltmp + tmp(ii)*qs(ii,f1)*qs(ii,f2)
+                            cltmp = cltmp + wtmp(ii)*qs(ii,f1)*qs(ii,f2)
                         end do
                         cl_kappa(i,f1,f2) = cltmp
                     else if (tp==measurement_wtheta) then
@@ -649,7 +645,7 @@ contains
                     else if (tp==measurement_gammat) then
                         cltmp = 0
                         do ii = 1, this%num_z_p
-                            cltmp = cltmp + tmp(ii)*(qgal(ii,f1)*qs(ii,f2))
+                            cltmp = cltmp + sqrt(tmp(ii)*wtmp(ii))*(qgal(ii,f1)*qs(ii,f2))
                         end do
                         cl_cross(i,f1,f2)=cltmp
                     end if
