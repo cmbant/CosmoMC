@@ -49,6 +49,7 @@ module wl
         logical :: use_weyl !Wether to get lensing directly from the Weyl potential
 
         real(mcp), private, allocatable :: data_vector(:) !derived based on cuts
+        real(mcp), private, allocatable :: corr_theory(:,:,:,:)
         real(mcp), private, allocatable :: ls_bessel(:)
         integer, private, allocatable :: ls_cl(:)
         real(mcp), private, allocatable :: j0s(:,:), j2s(:,:), j4s(:,:)
@@ -60,6 +61,7 @@ module wl
 
         procedure :: LogLike => WL_LnLike
         procedure :: ReadIni => WL_ReadIni
+        procedure :: WriteLikelihoodData => WL_WriteLikelihoodData
         procedure, private :: make_vector
         procedure, private :: calc_theory
         procedure, private :: cl2corr
@@ -304,6 +306,59 @@ contains
 
     end subroutine WL_ReadIni
 
+    subroutine WL_WriteLikelihoodData(this,Theory,DataParams, root)
+
+        implicit none
+
+        class(WLLikelihood) :: this
+        class(TTheoryPredictions) :: Theory
+        real(mcp), intent(in) :: DataParams(:)
+        character(LEN=*), intent(in) :: root
+        real(mcp), allocatable :: corr_theory(:,:,:,:)
+        type(TTextFile) F
+        integer :: i, j, k, tp, type_ix
+
+        F%IntegerFormat = '(*(I6))'
+        ! create the output file:
+        call F%CreateFile( trim(root)//'_'//trim(this%getTag())//'.theory' )
+        ! write the header with the comment:
+        call F%WriteInLine('#   theta')
+        do type_ix = 1, this%nmeasurement_types
+            tp = this%measurement_types(type_ix)
+            do j = 1, this%num_type(type_ix)
+                call F%WriteInLine( '   '//trim(measurement_names(tp))&
+                    &//trim(integer_to_string( this%bin_pairs(1,j,type_ix) ))&
+                    &//trim(integer_to_string( this%bin_pairs(2,j,type_ix) )) )
+            end do
+        end do
+        call F%NewLine()
+        ! write the theory prediciton:
+        do i=1, this%num_theta_bins
+            call F%WriteInLine(this%theta_bins(i))
+            do type_ix = 1, this%nmeasurement_types
+                tp = this%measurement_types(type_ix)
+                do j = 1, this%num_type(type_ix)
+                    call F%WriteInLine( this%corr_theory(i, this%bin_pairs(1,j,type_ix), this%bin_pairs(2,j,type_ix), tp ) )
+                end do
+            end do
+            call F%NewLine()
+        end do
+        ! close file:
+        call F%Close()
+
+    contains
+
+        ! helper to convert number to string:
+        function integer_to_string( number )
+            implicit none
+            integer, intent(in) :: number               !< Input integer number
+            character(10)       :: integer_to_string    !< Output string with the number
+            write( integer_to_string, '(i10)' ) number
+            integer_to_string = TRIM(ADJUSTL( integer_to_string ))
+        end function integer_to_string
+
+    end subroutine WL_WriteLikelihoodData
+
     function WL_LnLike(this, CMB, Theory, DataParams)
         use MatrixUtils
         Class(WLLikelihood) :: this
@@ -312,11 +367,11 @@ contains
         real(mcp) :: DataParams(:)
         real(mcp) WL_LnLike
         real(mcp) vec(this%num_used)
-        real(mcp), allocatable :: corr_theory(:,:,:,:)
 
-        allocate(corr_theory, source = this%corr_data*0)
-        call this%calc_theory(CMB,Theory, corr_theory, DataParams)
-        call this%make_vector(corr_theory, vec)
+        if (allocated(this%corr_theory) ) deallocate(this%corr_theory)
+        allocate(this%corr_theory, source = this%corr_data*0)
+        call this%calc_theory(CMB,Theory, this%corr_theory, DataParams)
+        call this%make_vector(this%corr_theory, vec)
 
         vec = vec - this%data_vector
         WL_LnLike = Matrix_QuadForm(this%invcov,vec) / 2
