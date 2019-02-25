@@ -4,7 +4,7 @@ cd /cosmomc
 
 wget https://cdn.cosmologist.info/cosmobox/plc-2.1_py3.tar.bz2
 tar xvfj *.tar.bz2
-cd plc*
+cd plc-2.1_py3
 ./waf configure --install_all_deps
 ./waf install
 source ./bin/clik_profile.sh
