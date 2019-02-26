@@ -471,7 +471,7 @@
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp), intent(out) :: corrs(:,:,:,:)
     real(mcp), intent(in) :: DataParams(:)
-    type(TCosmoTheoryPK), pointer :: PK, WPK
+    type(TCosmoTheoryPK), pointer :: PK, WPK, MWPK
     real(mcp) h, omm
     real(mcp), allocatable :: chis(:), dchis(:), Hs(:), D_growth(:)
     real(mcp) zshift
@@ -491,7 +491,7 @@
     real(mcp) lens_photoz_errors(this%num_gal_bins)
 
     real(mcp) :: tmparr(size(this%ls_cl))
-    real(mcp) :: kharr(this%num_z_p),zarr(this%num_z_p), powers(this%num_z_p), wpowers(this%num_z_p), tmp(this%num_z_p), wtmp(this%num_z_p)
+    real(mcp) :: kharr(this%num_z_p),zarr(this%num_z_p), powers(this%num_z_p), wpowers(this%num_z_p), mwpowers(this%num_z_p), tmp(this%num_z_p), wtmp(this%num_z_p), mwtmp(this%num_z_p)
     real(mcp) :: time
 
     time= TimerTime()
@@ -509,10 +509,16 @@
     source_photoz_errors = DataParams(i+1:i+this%num_z_bins)
     if (this%use_non_linear) then
         PK  => Theory%NL_MPK
-        if ( this%use_weyl ) WPK => Theory%NL_MPK_WEYL
+        if ( this%use_weyl ) then
+            WPK  => Theory%NL_MPK_WEYL
+            MWPK => Theory%NL_MPK_WEYL_CROSS
+        end if
     else
         PK  => Theory%MPK
-        if ( this%use_weyl ) WPK => Theory%MPK_WEYL
+        if ( this%use_weyl ) then
+            WPK  => Theory%MPK_WEYL
+            MWPK => Theory%MPK_WEYL_CROSS
+        end if
     end if
 
     h = CMB%H0/100
@@ -596,7 +602,7 @@
     cl_cross=0
 
     fac = dchis/chis**2
-    !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(j,kh, type_ix, tp, f1, f2, cltmp, ii, ix, kharr, zarr, powers, wpowers, tmp, wtmp)
+    !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(j,kh, type_ix, tp, f1, f2, cltmp, ii, ix, kharr, zarr, powers, wpowers, mwpowers, tmp, wtmp, mwtmp)
     do i=1, size(this%ls_cl)
         ix =0
         do j = 1, this%num_z_p
@@ -608,7 +614,10 @@
             end if
         end do
         call PK%PowerAtArr (kharr, zarr, ix, powers )
-        if ( this%use_weyl ) call WPK%PowerAtArr(kharr, zarr, ix, wpowers)
+        if ( this%use_weyl ) then
+            call WPK%PowerAtArr(kharr, zarr, ix, wpowers)
+            call MWPK%PowerAtArr(kharr, zarr, ix, mwpowers)
+        end if
         ix=0
         do j = 1, this%num_z_p
             kh = (this%ls_cl(i) + 0.5) / chis(j)/h
@@ -616,13 +625,16 @@
                 ix = ix+1
                 tmp(j)  = fac(j)*powers(ix)/h**3
                 if ( this%use_weyl ) then
-                    wtmp(j) = fac(j)*wpowers(ix)
+                    wtmp(j)  = fac(j)*wpowers(ix)
+                    mwtmp(j) = -fac(j)*mwpowers(ix)
                 else
-                    wtmp(j) = tmp(j)
+                    wtmp(j)  = tmp(j)
+                    mwtmp(j) = tmp(j)
                 end if
             else
-                tmp(j)  = 0
-                wtmp(j) = 0
+                tmp(j)   = 0
+                wtmp(j)  = 0
+                mwtmp(j) = 0
             end if
         end do
         do type_ix = 1, this%nmeasurement_types
@@ -640,13 +652,13 @@
                 else if (tp==measurement_wtheta) then
                     cltmp = 0
                     do ii = 1, this%num_z_p
-                        cltmp = cltmp +  tmp(ii)*(qgal(ii,f1)*qgal(ii,f2))
+                        cltmp = cltmp + tmp(ii)*(qgal(ii,f1)*qgal(ii,f2))
                     end do
                     cl_w(i,f1,f2)=cltmp
                 else if (tp==measurement_gammat) then
                     cltmp = 0
                     do ii = 1, this%num_z_p
-                        cltmp = cltmp + sqrt(tmp(ii)*wtmp(ii))*(qgal(ii,f1)*qs(ii,f2))
+                        cltmp = cltmp + mwtmp(ii)*(qgal(ii,f1)*qs(ii,f2))
                     end do
                     cl_cross(i,f1,f2)=cltmp
                 end if

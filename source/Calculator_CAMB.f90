@@ -494,6 +494,7 @@
 
 
     if (CosmoSettings%use_Weylpower) then
+        ! Weyl potential:
         call Transfer_GetUnsplinedPower(M, PK,transfer_Weyl,transfer_Weyl,hubble_units=.false.)
         PK = Log(PK)
         if (any(ieee_is_nan(PK))) then
@@ -502,6 +503,11 @@
         end if
         allocate(Theory%MPK_WEYL)
         call Theory%MPK_WEYL%InitExtrap(k,z,PK,CosmoSettings%extrap_kmax)
+        ! Weyl density cross correlation:
+        call Transfer_GetUnsplinedPower(M, PK,transfer_Weyl,transfer_power_var,hubble_units=.false.)
+        allocate(Theory%MPK_WEYL_CROSS)
+        Theory%MPK_WEYL_CROSS%islog = .False.
+        call Theory%MPK_WEYL_CROSS%InitExtrap(k,z,PK,CosmoSettings%extrap_kmax)
     end if
 
     if (CosmoSettings%use_SigmaR) then
@@ -574,6 +580,14 @@
         allocate(Theory%NL_MPK_WEYL)
         PK = Theory%MPK_WEYL%z + 2*log(Ratios)
         call Theory%NL_MPK_WEYL%InitExtrap(Theory%MPK%x,Theory%MPK%y,PK,CosmoSettings%extrap_kmax)
+    end if
+
+    if (allocated(Theory%MPK_WEYL_CROSS)) then
+        !Assume Weyl scales the same way under non-linear correction
+        allocate(Theory%NL_MPK_WEYL_CROSS)
+        PK = Theory%MPK_WEYL_CROSS%z*Ratios**2
+        Theory%NL_MPK_WEYL_CROSS%islog = .False.
+        call Theory%NL_MPK_WEYL_CROSS%InitExtrap(Theory%MPK%x,Theory%MPK%y,PK,CosmoSettings%extrap_kmax)
     end if
 
     end subroutine CAMBCalc_GetNLandRatios
