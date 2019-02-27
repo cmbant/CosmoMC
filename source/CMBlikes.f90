@@ -1189,7 +1189,7 @@
 
     call this%GetTheoryMapCls(Theory, TheoryCls, DataParams)
 
-    !$OMP PARALLEL DO DEFAULT(SHARED),PRIVATE(i,j,C,vecp), reduction(+:chisq)
+    !$OMP PARALLEL DO DEFAULT(SHARED),PRIVATE(i,j), FIRSTPRIVATE(C,vecp), reduction(+:chisq)
     do bin = this%bin_min, this%bin_max
         if (this%binned .or. bin_test) then
             if (this%like_approx == like_approx_fullsky_exact) call mpiStop('CMBLikes: exact like cannot be binned!')
