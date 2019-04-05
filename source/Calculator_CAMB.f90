@@ -379,7 +379,11 @@
                         if (CosmoSettings%CMB_Lensing) then
                             CL(2:lmx) = cons*Cl_lensed(2:lmx,1, indicesT(i,j))
                         else
-                            if (indicesS(i,j)/=0) CL(2:lmx) = cons*Cl_Scalar(2:lmx,1, indicesS(i,j))
+                            if (indicesS(i,j)/=0) then
+                                CL(2:lmx) = cons*Cl_Scalar(2:lmx,1, indicesS(i,j))
+                            else
+                                CL=0
+                            end if
                         end if
                         if (CosmoSettings%lmax_computed_cl < lmaxCL) then
                             if (highL_norm ==0) & !normally normalize off TT
