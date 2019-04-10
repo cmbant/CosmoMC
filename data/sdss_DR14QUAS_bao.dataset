@@ -1,0 +1,15 @@
+#Results from arXiv:1904.03430
+name = DR14QUAS
+
+zeff =2.35
+
+is_squared = F
+alpha_npoints = 18
+alpha_npoints_plel = 21
+
+prob_dist = sdss_DR14QUAS_bao.dat
+
+Hrd_fid = 35063
+DA_rd_fid = 11.746
+
+measurement_type = dilation
