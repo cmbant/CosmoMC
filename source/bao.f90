@@ -330,7 +330,7 @@
    
     is_square = Ini%Read_Logical('is_square',.true.)
     alpha_npoints_perp = Ini%Read_Int('alpha_npoints')
-    if (is_square == .true.) then
+    if (is_square .eqv. .true.) then
         alpha_npoints_plel = alpha_npoints_perp 
     else 
         alpha_npoints_plel = Ini%Read_Int('alpha_npoints_plel')
