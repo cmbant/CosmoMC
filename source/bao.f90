@@ -326,14 +326,15 @@
     integer ios,ii,jj
     Type(TTExtFile) F
     integer :: alpha_npoints_plel, alpha_npoints_perp
-    logical is_squared
+    logical is_square
    
-    is_square = Ini%Read_Logical('is_squared',.true.)
+    is_square = Ini%Read_Logical('is_square',.true.)
     alpha_npoints_perp = Ini%Read_Int('alpha_npoints')
-    if (is_squared == .true.) then
+    if (is_square == .true.) then
         alpha_npoints_plel = alpha_npoints_perp 
     else 
         alpha_npoints_plel = Ini%Read_Int('alpha_npoints_plel')
+    end if
 
     allocate(this%alpha_perp_file(alpha_npoints_perp),this%alpha_plel_file(alpha_npoints_plel))
     allocate(this%prob_file(alpha_npoints_perp,alpha_npoints_plel))

@@ -3,7 +3,7 @@ name = DR12QUAS
 
 zeff =2.40
 
-is_squared = F
+is_square = F
 alpha_npoints = 30
 alpha_npoints_plel = 10
 
