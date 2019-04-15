@@ -14,6 +14,7 @@
     !             correction at most)
     !Oct 2016: add support for dataset files no measurement_type, instead
     !              specified for each point in data file
+    !PL Apr 2019: added Lyman alpha BAO from eBOSS DR12 and DR14
 
     module bao
     use MatrixUtils
@@ -52,7 +53,7 @@
         real(mcp), allocatable, dimension(:) :: alpha_perp_file,alpha_plel_file
         real(mcp), allocatable ::  prob_file(:,:)
         real(mcp) dalpha_perp, dalpha_plel
-        integer alpha_npoints
+        integer alpha_npoints_perp, alpha_npoints_plel
     contains
     procedure :: LogLike => BAO_DR1x_loglike
     procedure :: InitProbDist => BAO_DR1x_InitProbDist
@@ -95,6 +96,14 @@
         else if (Datasets%Name(i)=='DR12CMASS') then
             allocate(DR1xLikelihood::this)
         else if (Datasets%Name(i)=='DR12LOWZ') then
+            allocate(DR1xLikelihood::this)
+        else if (Datasets%Name(i)=='DR12LYA') then
+            allocate(DR1xLikelihood::this)
+        else if (Datasets%Name(i)=='DR12QUAS') then
+            allocate(DR1xLikelihood::this)
+        else if (Datasets%Name(i)=='DR14LYA') then
+            allocate(DR1xLikelihood::this)
+        else if (Datasets%Name(i)=='DR14QUAS') then
             allocate(DR1xLikelihood::this)
         else
             allocate(TBAOLikelihood::this)
@@ -308,7 +317,7 @@
     end function BAO_LnLike
 
 
-    !!!DR11/DR12 CMASS/LOWZ
+    !!!DR11/DR12 CMASS/LOWZ/LYA
 
     subroutine BAO_DR1x_InitProbDist(this, Ini)
     class(DR1xLikelihood) this
@@ -316,15 +325,23 @@
     real(mcp) :: tmp0,tmp1,tmp2
     integer ios,ii,jj
     Type(TTExtFile) F
-    integer :: alpha_npoints
+    integer :: alpha_npoints_plel, alpha_npoints_perp
+    logical is_square
 
-    alpha_npoints = Ini%Read_Int('alpha_npoints')
-    allocate(this%alpha_perp_file(alpha_npoints),this%alpha_plel_file(alpha_npoints))
-    allocate(this%prob_file(alpha_npoints,alpha_npoints))
+    is_square = Ini%Read_Logical('is_square',.true.)
+    alpha_npoints_perp = Ini%Read_Int('alpha_npoints')
+    if (is_square .eqv. .true.) then
+        alpha_npoints_plel = alpha_npoints_perp
+    else
+        alpha_npoints_plel = Ini%Read_Int('alpha_npoints_plel')
+    end if
+
+    allocate(this%alpha_perp_file(alpha_npoints_perp),this%alpha_plel_file(alpha_npoints_plel))
+    allocate(this%prob_file(alpha_npoints_perp,alpha_npoints_plel))
 
     call F%Open(Ini%ReadRelativeFileName('prob_dist'))
-    do ii=1, alpha_npoints
-        do jj=1, alpha_npoints
+    do ii=1, alpha_npoints_perp
+        do jj=1, alpha_npoints_plel
             read (F%unit,*,iostat=ios) tmp0,tmp1,tmp2
             if (ios /= 0) call MpiStop('Error reading BAO file')
             this%alpha_perp_file(ii)   = tmp0
@@ -339,7 +356,8 @@
     !Normalize distribution (so that the peak value is 1.0)
 
     this%prob_file=this%prob_file/ maxval(this%prob_file)
-    this%alpha_npoints = alpha_npoints
+    this%alpha_npoints_perp = alpha_npoints_perp
+    this%alpha_npoints_plel = alpha_npoints_plel
 
     end subroutine BAO_DR1x_InitProbDist
 
@@ -354,11 +372,11 @@
 
     z = this%bao_z(1)
     rsdrag_theory = this%get_rs_drag(Theory)
-    alpha_perp=(this%Calculator%AngularDiameterDistance(z)/rsdrag_theory)/(this%DA_rd_fid)!CMASS/LOWZ
-    alpha_plel=(this%Hrd_fid)/((this%Calculator%Hofz_Hunit(z))*rsdrag_theory)!CMASS/LOWZ
-    if ((alpha_perp < this%alpha_perp_file(1)).or.(alpha_perp > this%alpha_perp_file(this%alpha_npoints-1)).or. &
-        &   (alpha_plel < this%alpha_plel_file(1)).or.(alpha_plel > this%alpha_plel_file(this%alpha_npoints-1))) then
-    BAO_DR1x_loglike = logZero
+    alpha_perp=(this%Calculator%AngularDiameterDistance(z)/rsdrag_theory)/(this%DA_rd_fid)!CMASS/LOWZ/LYA
+    alpha_plel=(this%Hrd_fid)/((this%Calculator%Hofz_Hunit(z))*rsdrag_theory)!CMASS/LOWZ/LYA
+    if ((alpha_perp < this%alpha_perp_file(1)).or.(alpha_perp > this%alpha_perp_file(this%alpha_npoints_perp-1)).or. &
+        &   (alpha_plel < this%alpha_plel_file(1)).or.(alpha_plel > this%alpha_plel_file(this%alpha_npoints_plel-1))) then
+        BAO_DR1x_loglike = logZero
     else
         ii=1+floor((alpha_perp-this%alpha_perp_file(1))/this%dalpha_perp)
         jj=1+floor((alpha_plel-this%alpha_plel_file(1))/this%dalpha_plel)

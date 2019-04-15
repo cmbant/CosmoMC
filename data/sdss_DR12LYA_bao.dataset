@@ -1,0 +1,12 @@
+#Results from arXiv:1702.00176
+name = DR12LYA
+
+zeff =2.33
+
+alpha_npoints = 21
+prob_dist = sdss_DR12LYA_bao.dat
+
+Hrd_fid = 34811
+DA_rd_fid = 11.757
+
+measurement_type = dilation

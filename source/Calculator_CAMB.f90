@@ -404,7 +404,11 @@
                         if (CosmoSettings%CMB_Lensing) then
                             CL(2:lmx) = cons*State%CLData%Cl_lensed(2:lmx, indicesT(i,j))
                         else
-                            if (indicesS(i,j)/=0) CL(2:lmx) = cons*State%CLData%Cl_Scalar(2:lmx, indicesS(i,j))
+                            if (indicesS(i,j)/=0) then
+                                CL(2:lmx) = cons*State%CLData%Cl_Scalar(2:lmx, indicesS(i,j))
+                            else
+                                CL=0
+                            end if
                         end if
                         if (CosmoSettings%lmax_computed_cl < lmaxCL) then
                             if (highL_norm ==0) & !normally normalize off TT
@@ -527,6 +531,11 @@
         end if
         allocate(Theory%MPK_WEYL)
         call Theory%MPK_WEYL%InitExtrap(k,z,PK,CosmoSettings%extrap_kmax)
+        ! Weyl density cross correlation:
+        call Transfer_GetUnsplinedPower(State,State%MT, PK,transfer_Weyl,transfer_power_var,hubble_units=.false.)
+        allocate(Theory%MPK_WEYL_CROSS)
+        Theory%MPK_WEYL_CROSS%islog = .False.
+        call Theory%MPK_WEYL_CROSS%InitExtrap(k,z,PK,CosmoSettings%extrap_kmax)
     end if
 
     if (CosmoSettings%use_SigmaR) then
@@ -600,6 +609,14 @@
         allocate(Theory%NL_MPK_WEYL)
         PK = Theory%MPK_WEYL%z + 2*log(Ratios)
         call Theory%NL_MPK_WEYL%InitExtrap(Theory%MPK%x,Theory%MPK%y,PK,CosmoSettings%extrap_kmax)
+    end if
+
+    if (allocated(Theory%MPK_WEYL_CROSS)) then
+        !Assume Weyl scales the same way under non-linear correction
+        allocate(Theory%NL_MPK_WEYL_CROSS)
+        PK = Theory%MPK_WEYL_CROSS%z*Ratios**2
+        Theory%NL_MPK_WEYL_CROSS%islog = .False.
+        call Theory%NL_MPK_WEYL_CROSS%InitExtrap(Theory%MPK%x,Theory%MPK%y,PK,CosmoSettings%extrap_kmax)
     end if
 
     end subroutine CAMBCalc_GetNLandRatios
