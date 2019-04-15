@@ -327,12 +327,12 @@
     Type(TTExtFile) F
     integer :: alpha_npoints_plel, alpha_npoints_perp
     logical is_square
-   
+
     is_square = Ini%Read_Logical('is_square',.true.)
     alpha_npoints_perp = Ini%Read_Int('alpha_npoints')
     if (is_square .eqv. .true.) then
-        alpha_npoints_plel = alpha_npoints_perp 
-    else 
+        alpha_npoints_plel = alpha_npoints_perp
+    else
         alpha_npoints_plel = Ini%Read_Int('alpha_npoints_plel')
     end if
 
@@ -376,7 +376,7 @@
     alpha_plel=(this%Hrd_fid)/((this%Calculator%Hofz_Hunit(z))*rsdrag_theory)!CMASS/LOWZ/LYA
     if ((alpha_perp < this%alpha_perp_file(1)).or.(alpha_perp > this%alpha_perp_file(this%alpha_npoints_perp-1)).or. &
         &   (alpha_plel < this%alpha_plel_file(1)).or.(alpha_plel > this%alpha_plel_file(this%alpha_npoints_plel-1))) then
-    BAO_DR1x_loglike = logZero
+        BAO_DR1x_loglike = logZero
     else
         ii=1+floor((alpha_perp-this%alpha_perp_file(1))/this%dalpha_perp)
         jj=1+floor((alpha_plel-this%alpha_plel_file(1))/this%dalpha_plel)
