@@ -1188,7 +1188,7 @@
     chisq =0
 
     call this%GetTheoryMapCls(Theory, TheoryCls, DataParams)
-
+    !FIRSTPRIVATE is a workaround for ifort issues on some machines
     !$OMP PARALLEL DO DEFAULT(SHARED),PRIVATE(i,j), FIRSTPRIVATE(C,vecp), reduction(+:chisq)
     do bin = this%bin_min, this%bin_max
         if (this%binned .or. bin_test) then
