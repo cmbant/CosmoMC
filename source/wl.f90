@@ -571,7 +571,7 @@
         end do
     end do
     !$OMP END PARALLEL DO
-    !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(fac, i)
+    !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(i), FIRSTPRIVATE(fac)
     do b = 1, this%num_z_bins
         fac = dchis*n_chi(:,b)
         do i=1, this%num_z_p
@@ -602,7 +602,7 @@
     cl_cross=0
 
     fac = dchis/chis**2
-    !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(j,kh, type_ix, tp, f1, f2, cltmp, ii, ix, kharr, zarr, powers, wpowers, mwpowers, tmp, wtmp, mwtmp)
+    !$OMP PARALLEL DO DEFAULT(SHARED), PRIVATE(j,kh, type_ix, tp, f1, f2, cltmp, ii, ix), FIRSTPRIVATE(kharr, zarr, powers, wpowers, mwpowers, tmp, wtmp, mwtmp )
     do i=1, size(this%ls_cl)
         ix =0
         do j = 1, this%num_z_p
