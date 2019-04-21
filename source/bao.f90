@@ -95,15 +95,9 @@
             allocate(DR1xLikelihood::this)
         else if (Datasets%Name(i)=='DR12CMASS') then
             allocate(DR1xLikelihood::this)
-        else if (Datasets%Name(i)=='DR12LOWZ') then
-            allocate(DR1xLikelihood::this)
         else if (Datasets%Name(i)=='DR12LYA') then
             allocate(DR1xLikelihood::this)
-        else if (Datasets%Name(i)=='DR12QUAS') then
-            allocate(DR1xLikelihood::this)
         else if (Datasets%Name(i)=='DR14LYA') then
-            allocate(DR1xLikelihood::this)
-        else if (Datasets%Name(i)=='DR14QUAS') then
             allocate(DR1xLikelihood::this)
         else
             allocate(TBAOLikelihood::this)
