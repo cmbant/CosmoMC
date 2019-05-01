@@ -52,7 +52,6 @@
     Type, extends(TBAOLikelihood) :: DR1xLikelihood
         real(mcp), allocatable, dimension(:) :: alpha_perp_file,alpha_plel_file
         real(mcp), allocatable ::  prob_file(:,:)
-        real(mcp) dalpha_perp, dalpha_plel
         integer alpha_npoints_perp, alpha_npoints_plel
     contains
     procedure :: LogLike => BAO_DR1x_loglike
@@ -345,8 +344,6 @@
     end do
     call F%Close()
 
-    this%dalpha_perp=this%alpha_perp_file(2)-this%alpha_perp_file(1)
-    this%dalpha_plel=this%alpha_plel_file(2)-this%alpha_plel_file(1)
     !Normalize distribution (so that the peak value is 1.0)
 
     this%prob_file=this%prob_file/ maxval(this%prob_file)
@@ -361,7 +358,7 @@
     Class(TCosmoTheoryPredictions), target :: Theory
     real(mcp) :: DataParams(:)
     real (mcp) z, BAO_DR1x_loglike, alpha_perp, alpha_plel, prob
-    integer ii,jj
+    integer i, j, ii,jj
     real(mcp) rsdrag_theory
 
     z = this%bao_z(1)
@@ -372,8 +369,18 @@
         &   (alpha_plel < this%alpha_plel_file(1)).or.(alpha_plel > this%alpha_plel_file(this%alpha_npoints_plel-1))) then
         BAO_DR1x_loglike = logZero
     else
-        ii=1+floor((alpha_perp-this%alpha_perp_file(1))/this%dalpha_perp)
-        jj=1+floor((alpha_plel-this%alpha_plel_file(1))/this%dalpha_plel)
+        do i=1,this%alpha_npoints_perp
+            if (alpha_perp - this%alpha_perp_file(i) .le. 0) then
+                ii = i-1
+                exit
+            end if
+        end do
+        do j=1,this%alpha_npoints_plel
+            if (alpha_plel - this%alpha_plel_file(j) .le. 0) then
+                jj = j-1
+                exit
+            end if
+        end do
         prob=(1./((this%alpha_perp_file(ii+1)-this%alpha_perp_file(ii))*(this%alpha_plel_file(jj+1)-this%alpha_plel_file(jj))))*  &
             &       (this%prob_file(ii,jj)*(this%alpha_perp_file(ii+1)-alpha_perp)*(this%alpha_plel_file(jj+1)-alpha_plel) &
             &       -this%prob_file(ii+1,jj)*(this%alpha_perp_file(ii)-alpha_perp)*(this%alpha_plel_file(jj+1)-alpha_plel) &
