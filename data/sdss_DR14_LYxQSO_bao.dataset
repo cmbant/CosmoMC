@@ -1,0 +1,15 @@
+#Results from arXiv:1904.03430 quasar-lyman-alpha forest cross-correlation
+name = DR14LYA
+
+zeff =2.35
+
+is_square = F
+alpha_npoints = 21
+alpha_npoints_plel = 18
+
+prob_dist = sdss_DR14_LYxQSO_bao.dat
+
+Hrd_fid = 35063
+DA_rd_fid = 11.746
+
+measurement_type = dilation
