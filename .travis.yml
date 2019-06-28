@@ -25,7 +25,7 @@ matrix:
         - GCCTAG="gcc8"
     - name: "GCC9"
       env:
-        - GCCTAG="9"
+        - GCCTAG="gcc9"
     - name: "GCC-trunk"
       env:
         - GCCTAG="devel"
