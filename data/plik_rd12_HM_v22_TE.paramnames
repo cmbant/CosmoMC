@@ -1,0 +1,15 @@
+galfTE100	A^{{\rm dust}TE}_{100}
+galfTE100143	A^{{\rm dust}TE}_{100\times 143}
+galfTE100217	A^{{\rm dust}TE}_{100\times 217}
+galfTE143	A^{{\rm dust}TE}_{143}
+galfTE143217	A^{{\rm dust}TE}_{143\times 217}
+galfTE217	A^{{\rm dust}TE}_{217}
+galfTEindex	index^{{\rm dust}TE}
+cal0            c_{100}      
+cal2            c_{217}      
+calEE0          c_{EE100}      
+calEE1          c_{EE143}      
+calEE2          c_{EE217}      
+calPol          y_{\rm calPol}
+calPlanck       y_{\rm cal}
+
