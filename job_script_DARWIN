@@ -18,7 +18,7 @@ cd ##ROOTDIR##
 . /etc/profile.d/modules.sh                # Leave this line (enables the module command)
 module purge                               # Removes all modules still loaded
 module load rhel7/default-peta4            # REQUIRED - loads the basic environment
-module load intel/bundles/complib/2018.1    #2017.4 seems to have compiler bugs
+module load intel/bundles/complib/2019.3    #2017.4 seems to have compiler bugs
 
 #cfitsio is only needed for WMAP
 #module load cfitsio
@@ -30,7 +30,7 @@ module load intel/bundles/complib/2018.1    #2017.4 seems to have compiler bugs
 
 export OMP_NUM_THREADS=##OMP##
 export I_MPI_PIN=##ONERUN##
-
+export I_MPI_HYDRA_RMK=slurm
 
 JOBID=$SLURM_JOB_ID
 
@@ -52,7 +52,7 @@ fi
 ### command to use for each run in the batch
 ### Can set coresPerNode to 32 as physical nodes, but system allows for multible jobs on one node
 ### and using OMP_NUM_THREADS=4, 4 chains, 16 in total probably more efficient
-##RUN: time mpirun --ppn ##MPIPERNODE## -np ##NUMMPI## ##PROGRAM## ##INI## > ./scripts/##INIBASE##.log 2>&1 ##
+##RUN: time srun --mpi=pmi2 ##PROGRAM## ##INI## > ./scripts/##INIBASE##.log 2>&1 ##
 ### defaults for this script
 ##DEFAULT_qsub: qsub ##
 ##DEFAULT_coresPerNode: 16 ##

@@ -3,18 +3,20 @@ make ReleaseMPI
 
 cd /cosmomc
 #wget http://irsa.ipac.caltech.edu/data/Planck/release_2/software/COM_Likelihood_Code-v2.0.R2.00.tar.bz2
-wget https://cdn.cosmologist.info/cosmobox/plc-2.1_py3.tar.bz2
+wget https://cdn.cosmologist.info/cosmobox/plc-3.0.tar.bz2
 tar xvfj *.tar.bz2
-mv plc-2.1_py3 plc-2.0
-cd plc-2.0
+cd plc-3.0
 ./waf configure --install_all_deps
 ./waf install
 source ./bin/clik_profile.sh
 cd ..
-wget http://irsa.ipac.caltech.edu/data/Planck/release_2/software/COM_Likelihood_Data-baseline_R2.00.tar.gz
-tar xvfz COM_Likelihood_Data-baseline_R2.00.tar.gz
-ln -s $(pwd)/plc_2.0 ./data/clik
-rm -f COM_Likelihood_Data-baseline_R2.00.tar.gz
+#wget http://irsa.ipac.caltech.edu/data/Planck/release_2/software/COM_Likelihood_Data-baseline_R2.00.tar.gz
+wget https://cdn.cosmologist.info/cosmobox/test2019_kaml/baseline.tar.gz
+#tar xvfz COM_Likelihood_Data-baseline_R2.00.tar.gz
+tar xvfz baseline.tar.gz
+ln -s $(pwd)/baseline/plc_3.0 ./data/clik
+#rm -f COM_Likelihood_Data-baseline_R2.00.tar.gz
+rm -f baseline.tar.gz
 
 make
 
