@@ -14,7 +14,7 @@ cd ..
 wget https://cdn.cosmologist.info/cosmobox/test2019_kaml/baseline.tar.gz
 #tar xvfz COM_Likelihood_Data-baseline_R2.00.tar.gz
 tar xvfz baseline.tar.gz
-ln -s $(pwd)/baseline/plc_3.0 ./data/clik
+ln -s $(pwd)/baseline/plc_3.0 ./data/clik_14.0
 #rm -f COM_Likelihood_Data-baseline_R2.00.tar.gz
 rm -f baseline.tar.gz
 
