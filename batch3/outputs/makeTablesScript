@@ -1,0 +1,47 @@
+
+python python/makeTables.py main tables/baseline_params_table_2018_68pc --limit 1 --converge 0.1 --musthave_data plikHM  lowl lowE --header_tex batch3/outputs/tableHeader.tex --skip_group nonbbn --skip_data Riess18 JLA CookeDH Aver15 reion BK14 BK15 &
+python python/makeTables.py main tables/baseline_params_table_2018_95pc --limit 2 --converge 0.1 --musthave_data plikHM  lowl lowE --header_tex batch3/outputs/tableHeader.tex --skip_group nonbbn --skip_data Riess18 JLA CookeDH Aver15 reion BK14 BK15 &
+python python/makeTables.py main tables/baseline_params_table_2018_99pc --limit 3 --converge 0.1 --musthave_data plikHM  lowl lowE --header_tex batch3/outputs/tableHeader.tex --skip_group nonbbn --skip_data Riess18 JLA CookeDH Aver15 reion BK14 BK15
+
+
+python python/makeTables.py main tables/result_table_2018_68pc --limit 1 --converge 0.1 --header_tex batch3/outputs/tableHeader.tex &
+python python/makeTables.py main tables/result_table_2018_95pc --limit 2 --converge 0.1 --header_tex batch3/outputs/tableHeader.tex &
+python python/makeTables.py main tables/result_table_2018_99pc --limit 3 --converge 0.1 --header_tex batch3/outputs/tableHeader.tex
+
+python python/makeTables.py main tables/CamSpec_table_2018_68pc --limit 1 --converge 0.1 --data CamSpecHM  --header_tex batch3/outputs/tableHeader.tex &
+python python/makeTables.py main tables/CamSpec_table_2018_95pc --limit 2 --converge 0.1 --data CamSpecHM  --header_tex batch3/outputs/tableHeader.tex &
+python python/makeTables.py main tables/CamSpec_table_2018_99pc --limit 3 --converge 0.1 --data CamSpecHM  --header_tex batch3/outputs/tableHeader.tex
+
+python python/makeTables.py main tables/compare_plikHM_68pc --limit 1 --converge 0.1  --changes_replacing plikHM CamSpecHM --header_tex batch3/outputs/tableHeader.tex &
+python python/makeTables.py main tables/compare_plikHM_95pc --limit 2 --converge 0.1  --changes_replacing plikHM CamSpecHM --header_tex batch3/outputs/tableHeader.tex &
+python python/makeTables.py main tables/compare_plikHM_99pc --limit 3 --converge 0.1  --changes_replacing plikHM CamSpecHM --header_tex batch3/outputs/tableHeader.tex
+
+
+python python/makeTables.py main tables/compare_model_68pc --limit 1 --converge 0.1  --changes_from_paramtag base --header_tex batch3/outputs/tableHeader.tex &
+python python/makeTables.py main tables/compare_model_95pc --limit 2 --converge 0.1  --changes_from_paramtag base --header_tex batch3/outputs/tableHeader.tex &
+python python/makeTables.py main tables/compare_model_99pc --limit 3 --converge 0.1  --changes_from_paramtag base --header_tex batch3/outputs/tableHeader.tex
+
+python python/makeTables.py main tables/compare_plikTTlowllowE_68pc --limit 1 --converge 0.1 --changes_from_datatag plikHM_TT_lowl_lowE --header_tex batch3/outputs/tableHeader.tex &
+python python/makeTables.py main tables/compare_plikTTlowllowE_95pc --limit 2 --converge 0.1 --changes_from_datatag plikHM_TT_lowl_lowE --header_tex batch3/outputs/tableHeader.tex &
+python python/makeTables.py main tables/compare_plikTTlowllowE_99pc --limit 3 --converge 0.1 --changes_from_datatag plikHM_TT_lowl_lowE --header_tex batch3/outputs/tableHeader.tex
+
+python python/makeTables.py main tables/compare_TTTEEE_TT_68pc --limit 1 --converge 0.1 --changes_replacing TT TTTEEE --header_tex batch3/outputs/tableHeader.tex &
+python python/makeTables.py main tables/compare_TTTEEE_TT_95pc --limit 2 --converge 0.1 --changes_replacing TT TTTEEE --header_tex batch3/outputs/tableHeader.tex &
+python python/makeTables.py main tables/compare_TTTEEE_TT_99pc --limit 3 --converge 0.1 --changes_replacing TT TTTEEE --header_tex batch3/outputs/tableHeader.tex
+
+python python/makeTables.py main tables/pol_shift_sigma_table --limit 1 --changes_replacing TTTEEE TT --shift_sigma_subset --data TT TTTEEE
+
+#python python/makeTables.py main tables/LCDM_compare.tex --nobestfit --limit 1 --compare plikHM_TT_lowl_lowE plikHM_TE_lowE plikHM_TTTEEE_lowl_lowE plikHM_TTTEEE_lowl_lowE_lensing plikHM_TTTEEE_lowl_lowE_lensing_post_BAO --paramtag='base' --forpaper --titles "\\shortTT;\\shortall;\\shortall+\\lensing;\\shortall+\\lensing+BAO" --blockEndParams "thetarseq;ns" --paramList batch3/outputs/cosmology.paramnames
+python python/makeTables.py main tables/LCDM_compare.tex --nobestfit --limit 1 --compare plikHM_TT_lowl_lowE plikHM_TE_lowE plikHM_EE_lowE plikHM_TTTEEE_lowl_lowE plikHM_TTTEEE_lowl_lowE_lensing plikHM_TTTEEE_lowl_lowE_lensing_post_BAO --paramtag='base' --forpaper --titles "\\shortTT;TE+\lowE;EE+\lowE;\\shortall;\\shortall+\\lensing;\\shortall+\\lensing+BAO" --blockEndParams "thetarseq;ns" --paramList batch3/outputs/cosmology.paramnames --paramNameFile clik_Hunits.paramnames
+python python/makeTables.py main tables/LCDM_compare_camspec.tex --nobestfit --limit 1 --compare CamSpecHM_TT_lowl_lowE CamSpecHM_TE_lowE CamSpecHM_EE_lowE CamSpecHM_TTTEEE_lowl_lowE CamSpecHM_TTTEEE_lowl_lowE_lensing CamSpecHM_TTTEEE_lowl_lowE_lensing_post_BAO --paramtag='base' --forpaper --titles "\\shortTT;TE+\lowE;EE+\lowE;\\shortall;\\shortall+\\lensing;\\shortall+\\lensing+BAO" --blockEndParams "thetarseq;ns" --paramList batch3/outputs/cosmology.paramnames --paramNameFile clik_Hunits.paramnames
+
+python python/makeParamCompare.py main --chain_name_params omegak mnu nnu yhe nrun r w  --params omegak mnu nnu yhe nrun r02 w --compare plikHM_TT_lowl_lowE plikHM_TTTEEE_lowl_lowE plikHM_TTTEEE_lowl_lowE_lensing plikHM_TTTEEE_lowl_lowE_lensing_BAO --single_extparam --latex_filename tables/grid_1paramext --nobestfits
+python python/makeParamCompare.py main --chain_name_params omegak mnu nnu yhe nrun r w  --params omegak mnu nnu yhe nrun r02 w --compare CamSpecHM_TT_lowl_lowE CamSpecHM_TTTEEE_lowl_lowE CamSpecHM_TTTEEE_lowl_lowE_lensing CamSpecHM_TTTEEE_lowl_lowE_lensing_BAO --single_extparam --latex_filename tables/grid_camspec_1paramext --nobestfits
+python python/makeParamCompare.py main --chain_name_params omegak mnu nnu yhe nrun r w  --params omegak mnu nnu yhe nrun r02 w --compare CamSpecHM_TT_lowl_lowE CleanedCamSpecHM_TT_lowl_lowE CamSpecHM_TTTEEE_lowl_lowE CamSpecHM_TTTEEE_lowl_lowE_lensing CamSpecHM_TTTEEE_lowl_lowE_lensing_BAO --single_extparam --latex_filename tables/grid_cleancamspec_1paramext --nobestfits
+
+#python python/makeTables.py main tables/LCDM_compare_camspec.tex --nobestfit --limit 1 --compare CamSpecHM_TT_lowl_lowE CamSpecHM_TE_lowE CamSpecHM_EE_lowE CamSpecHM_TTTEEE_lowl_lowE --paramtag='base' --forpaper --titles "\\shortTT;TE+\lowE;EE+\lowE;\\shortall" --blockEndParams "thetarseq;ns" --paramList batch3/outputs/cosmology.paramnames --paramNameFile clik_Hunits.paramnames
+python python/makeTables.py main tables/camspec_compare_limit68 --limit 1 --height 10in --width 14in --compare CamSpecHM_TT_lowl_lowE CamSpecHM_TE_lowE CamSpecHM_EE_lowE CamSpecHM_TTTEEE_lowl_lowE --paramList batch3/outputs/cosmology.paramnames
+
+python python/makeTables.py main tables/plikCamSpec_combined_68pc --limit 1 --changes_replacing plikHM CamSpecHM --systematic_average --converge 0.1 --header_tex batch3/outputs/tableHeader.tex &
+python python/makeTables.py main tables/plikCamSpec_combined_95pc --limit 2 --changes_replacing plikHM CamSpecHM --systematic_average --converge 0.1 --header_tex batch3/outputs/tableHeader.tex &
+python python/makeTables.py main tables/plikCamSpec_combined_99pc --limit 3 --changes_replacing plikHM CamSpecHM --systematic_average --converge 0.1 --header_tex batch3/outputs/tableHeader.tex

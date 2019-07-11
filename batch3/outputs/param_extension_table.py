@@ -23,4 +23,4 @@ for i, par in enumerate(pars):
 
     line += r' & ' + ' & '.join(latex[1])
     lines.append(line)
-print heading + '\\cr\n\\cr\n' + '\\cr\n'.join(lines) + '\\cr\n'
+print(heading + '\\cr\n\\cr\n' + '\\cr\n'.join(lines) + '\\cr\n')

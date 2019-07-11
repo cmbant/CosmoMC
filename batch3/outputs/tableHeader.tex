@@ -1,0 +1,160 @@
+\title{\textit{Planck} 2018 Results: Cosmological Parameter Tables}
+
+
+%\titlerunning{Planck Cosmological Parameter Tables}
+\maketitle
+\begin{abstract}
+These tables summarize the results of \textit{Planck} 2018 parameter estimation exploration results.
+They are based on \textit{Planck} HFI data and \textit{Planck} lensing, as well as additional non-CMB data as detailed in the main parameter papers.
+\end{abstract}
+
+\section{Introduction}
+The tables are arranged in groups, firstly by cosmological model, and then by data combination. The name tags match those of the full chains also provided on the PLA. The names all start with {\tt base} to denote the baseline model, followed by the parameter tags of any additional parameters that are also varied (as defined in the parameter paper). Data combination tags are as follows (see the parameters paper for full description and references):
+
+\begin{tabular} { l   l  }
+Data tag & Data used\\
+\hline
+{\tt plikHM}         & Baseline high-$\ell$ \textit{Planck} power spectra ({\tt plik} cross-half-mission, $30\le \ell\le 2508$). \\
+{\tt CamSpecHM}      & {\tt CamSpec} high-$\ell$ \textit{Planck} power spectra. \\
+{\tt CleanedCamSpecHM}   & Foreground-cleaned {\tt CamSpec} high-$\ell$ \textit{Planck} power spectra. \\
+{\tt lowl }          & Low-$\ell$ \textit{Planck} temperature ({\tt Commander}, $2\le \ell \le 29$). \\
+{\tt lowE}           & Low-$\ell$  HFI $EE$ polarization only ({\tt SimAll}, $2\le \ell \le 29$). \\
+{\tt lensing}        & \textit{Planck} lensing power spectrum reconstruction. When used without other CMB likelihoods, it is marginalized over the theory CMB spectra given. \\
+{\tt BAO}            & Baryon oscillation data from BOSS DR12, MGS, and 6DF. \\
+{\tt Pantheon18}     & Supernova data from the Pantheon sample, with updated main distance file with heliocentric redshifts. \\
+{\tt JLA}            & Supernova data from the SDSS-II/SNLS3 Joint Light-curve Analysis. \\
+{\tt Riess18}        & Hubble parameter measurement from SHOES (Riess et al.\ 2018a, $H_0=73.45\pm 1.66$). \\
+{\tt BK15}           & Bicep-Keck (+Planck/WMAP) 2015 analysis (arXiv:1810.05216). \\
+{\tt zre6p5}         & A hard prior, $z_{\rm re} > 6.5$. \\
+{\tt reion}          & A hard prior, $z_{\rm re} > 6.5$, combined with a Gaussian prior, $z_{\rm re} = 7\pm 1$. \\
+{\tt lenspriors}     & Standard base parameters with $n_{\rm s} = 0.96\pm 0.02$, $\Omega_{\rm b}h^2 =  0.0222\pm 0.0005$, $100>H_0>40$, $\tau=0.055$. \\
+{\tt DESpriors}      & DES cosmological parameter priors (flat on $0.1<\Omega_{\rm m}<0.9$, $0.03<\Omega_{\rm b}<0.07$, $55<H_0<91$, $0.5<10^9A_{\rm s}<5$, $Y_{\rm P}=0.245341$ and, \\
+                     & if varied, $0.05{\rm eV}<\sum m_\nu<1{\rm eV}$). \\
+{\tt CookeDH}        & A Gaussian prior $\Omega_{\rm b}h^2 =  0.0222\pm 0.0005$ (conservative, motivated by Cooke et al.\ 2017). \\
+{\tt Cooke17}        & A Gaussian prior on D/H (Cooke et al.\ 2017), mean and error adjusted to approximately agree with {\tt CookeDH} for $N_{\rm eff}=3.046$. \\
+{\tt Aver15}         & A Gaussian constraint on $Y_{\rm P}^{\rm BBN}=0.2449\pm 0.0040$ (Aver et al.\ 2015). \\
+{\tt theta}          & A Gaussian prior $100\theta_{\rm MC}=1.0409\pm 0.0006$ (acoustic scale from \textit{Planck} CMB without LCDM assumption). \\
+{\tt WMAP}           & The full WMAP (temperature and polarization) 9-year data. \\
+{\tt DES}            & DES 1yr, cosmic shear+galaxy auto+cross. \\
+{\tt DESlens}        & DES 1yr, cosmic shear only. \\
+{\tt DESwt}          & DES 1yr, galaxy auto+cross only. \\
+\hline
+\end{tabular}
+\vskip 1cm
+The high-$\ell$ \textit{Planck} likelihoods have {\tt TT}, {\tt TE}, {\tt EE} variants from each spectrum alone, plus the {\tt TTTEEE} joint constraint.
+Note that unless {\tt mnu} is specified in the file name, the neutrino mass sum is fixed to $\sum_\nu m_\nu = 0.06 {\rm eV}$ (including for DES chains). Non-linear corrections are
+modelled with HMCode in all cases (including when using DESpriors).
+
+Data likelihoods are either included when running the chains, or by importance sampling. Data combinations that are added by importance sampling appear
+at the end of the list, following the {\tt post{\textunderscore}} tag. Note that the best fits are merely examples of parameter combinations that fit the data well; due to parameter degeneracies there may be other combinations of parameters that fit the data nearly equally well.
+
+Beneath each table is the $\chi^2_{\rm eff}=-2\log({\rm likelihood})$ for each best-fit model, and also the contributions coming from each separate part of the likelihood. Mean minus log likelihoods are also given, as $\bar{\chi}^2_{\rm eff}$.
+The tables also give the $\chi^2_{\rm eff}$ of the various component parts of the likelihood, where quoted values are the best-fit and mean, standard deviation (in the case of $1\,\sigma$ tables), or effective degrees of freedom ($\nu$, defined by $\sigma^2/2$). Normalization of likelihoods is arbitrary, i.e., a constant can be added to log likelihoods without affecting any results. Only some likelihoods normalize so that the number is immediately interpretable as similar to a $\chi^2$ for some number of data points.
+
+The $R-1$ value is also given, which measures the convergence of the sampling chains, with small values being better converged. The sampling uncertainty on quoted mean values are typically of order $R-1$ in units of the standard deviation.
+
+Parameter constraints were calculated from Monte Carlo chains from {\tt CosmoMC} using {\tt GetDist} (getdist.readthedocs.org).
+
+Parameters and derived parameters, along with the name tags used in the chain files,
+are briefly described in the tables below.
+
+Additional nuisance parameters for each likelihood are described in more detail in the
+respective papers.
+
+\begin{tabular} {| l | l | c | l |}
+\hline
+Parameter & Tag & baseline & Definition \\
+%heading
+\hline
+\hline
+$\Omega_{\rm b}h^2     $ &  omegabh2    &\dots &Baryon density today\\
+$\Omega_{\rm c}h^2     $ &  omegach2    &\dots &Cold dark matter density today\\
+$100\theta_{\rm MC}    $ &  theta       &\dots &100$\times$ approximation to $r_{\rm s}/D_{\rm M}$ ({\tt CosmoMC})\\
+$\tau                  $ &  tau         &\dots &Thomson scattering optical depth due to reionization \\
+$\Omega_K              $ &  omegak      & 0 &$\Omega_{\rm tot} = 1 - \Omega_K$ \\
+$\Sigma m_\nu          $ &  mnu         & 0.06 &Sum of active neutrino masses in {\rm eV} \\
+$m^{\rm eff}_{\nu,{\rm sterile}}   $ &  meffsterile & 0  & Effective mass in sterile neutrinos in {\rm eV} \\
+$w_0                   $ &  w           & $-1$ &Dark energy equation of state, $w(a) = w_0 + (1-a) w_a$ \\
+$w_a                   $ &  wa          & 0    &As above (perturbations modelled using PPF) \\
+$N_{\rm eff}           $ &  nnu         & 3.046 &Total effective number of massive and massless neutrinos (see text) \\
+$Y_{\rm P}             $ &  yhe         & BBN  &Fraction of baryonic mass in helium (only if varied independently of BBN)\\
+$\alpha_{-1}           $ &  alpha1      & 0 &Fully correlated isocurvature amplitude parameter\\
+$A_{\rm L}             $ &  Alens       & 1   &Amplitude of the lensing power relative to the physical value\\
+$A_{\rm L}^{\phi\phi}  $ &  Aphiphi     & 1   &Amplitude of the lensing reconstruction power relative to the physical value\\
+$A_{\rm L}^{\rm fid}   $ &  Alensf      &\dots &Amplitude of the lensing power relative to a fixed fiducial spectrum\\
+$n_{\rm s}             $ &  ns          &\dots &Scalar spectrum power-law index ($k_0 = 0.05{\rm Mpc}^{-1}$)\\
+$n_{\rm t}             $ &  nt          & Inflation  &Tensor spectrum power-law index ($k_0 = 0.05{\rm Mpc}^{-1}$)\\
+${\rm d}\ln n_{\rm s}/{\rm d}\ln k    $ &  nrun        & 0   &Running of the spectral index \\
+$\log[10^{10}A_{\rm s}] $ &  logA       &\dots &Log power of the primordial curvature perturbations ($k_0 = 0.05{\rm Mpc}^{-1}$)\\
+$r_{0.05}              $ &  r           & 0  & Tensor power spectrum amplitude ($k_0 = 0.05{\rm Mpc}^{-1}$)\\
+\hline
+$H_0                   $ &  H0          &\dots &Current expansion rate in $\rm{km}\, \rm{s}^{-1}{\rm Mpc}^{-1}$\\
+$\Omega_{\rm m}        $ &  omegam      &\dots & Matter density (incl. massive neutrinos) today divided by the critical density\\
+$\Omega_\Lambda        $ &  omegal      &\dots & Dark energy density divided by the critical density today\\
+$\Omega_{\rm m}h^2     $ &  omegamh2    &\dots & Total matter density today (incl. massive neutrinos)\\
+$\Omega_{\rm m}h^3     $ &  omegamh3    &\dots & $h\times $total matter density today\\
+$\sigma_8              $ &  sigma8      &\dots &RMS matter fluctuations today in linear theory\\
+$S_8                   $ &  S8      &\dots &$\sigma_8 (\Omega_{\rm m}/0.3)^{0.5}$\\
+$\sigma_8 \Omega_{\rm m}^{0.5}$ &  s8omegamp5      &\dots &$\sigma_8 \Omega_{\rm m}^{0.5}$ constrained by low-redshift lensing\\
+$\sigma_8 \Omega_{\rm m}^{0.25}$ &  s8omegamp25      &\dots &$\sigma_8 \Omega_{\rm m}^{0.25}$ constrained by CMB lensing\\
+$\sigma_8/h^{0.5}                  $ &  s8h5      &\dots &$\sigma_8/h^{0.5}$\\
+$\sigma_8/h^{0.5}                  $ &  rdragh    &\dots &$r_{\rm drag} h$ in Mpc\\
+$\langle d^2\rangle^{1/2}$ & rmsdeflect &\dots & RMS CMB lensing deflection angle in arcmin (approx.\ using $2\le L \le 2000$)\\
+$z_{\mathrm{re}}       $ &  zrei        &\dots &Redshift at which Universe is half reionized\\
+$10^9 A_{\rm s}        $ &  A           &\dots & Power of the primordial curvature perturbations ($k_0 = 0.05{\rm Mpc}^{-1}$)\\
+$10^9 A_{\rm s} e^{-2\tau} $ &  clamp   &\dots & Parameter determining the small-scale CMB power\\
+$Y_{\rm P}             $ &  yheused     & bbn &Fraction of baryonic mass in helium\\
+$Y_{\rm P}^{\rm BBN}   $ &  YpBBN       & bbn & Nucleon fraction in helium\\
+$10^5$D/H                &  DHBBN       & bbn & $10^5$ deuterium-helium ratio from {\tt Parthenope} BBN prediction (pre-Marcucci rates)\\
+$\rm{Age}/{\rm Gyr}    $ &  age         &\dots & Time since the start of the hot big bang\\
+\hline
+\end{tabular}
+
+\newpage
+\begin{tabular} {| l | l | c | l |}
+\hline
+Parameter & Tag & baseline & Definitions \\
+%heading
+\hline
+\hline
+$z_*                   $ &  zstar       &\dots & Redshift for which the optical depth equals unity\\
+$r_*=r_{\rm s}(z_{\rm *}) $ &  rstar    &\dots & Comoving size of the sound horizon at $z = z_{\rm *}$\\
+$100\theta_*           $ &  thetastar   &\dots &100$\times$ Angular size of the sound horizon at last scattering\\
+$D_{\rm M}/{\rm Gpc}(z_*)   $ & DAstar  &\dots & Comoving angular diameter distance to last scattering \\
+$z_{\rm drag}          $ &  zdrag       &\dots &Redshift at which baryon-drag optical depth equals unity\\
+$r_{\rm drag}=r_{\rm s}(z_{\rm drag}) $& rdrag &\dots &Comoving size of the sound horizon at $z = z_{\rm drag}$\\
+$k_{\rm D}             $ & kd           &\dots &Characteristic damping comoving wavenumber (${\rm Mpc}^{-1}$)\\
+$100\theta_{\rm D}     $ & thetad       &\dots &100$\times$ angular extent of photon diffusion at last scattering \\
+$z_{\rm eq}            $ & zeq          &\dots &Redshift of matter-radiation equality (massless neutrinos)\\
+$k_{\rm eq}            $ & keq          &\dots & $[a(z_{\rm eq}) H(z_{\rm eq}]^{-1}$\\
+$100\theta_{\rm eq}    $ & thetaeq  &\dots &100$\times$ angular size of the comoving Horizon at matter-radiation equality\\
+$100\theta_{s,\rm eq}  $ & thetarseq  &\dots &100$\times$ angular size of the comoving sound Horizon at matter-radiation equality\\
+\hline
+$D_{40}     $&  D40    &\dots &$\ell(\ell+1)C_\ell^{TT}/2\pi$ at $\ell=40$ in $\mu {\rm K}^2$\\
+$D_{220}    $&  D200    &\dots &$\ell(\ell+1)C_\ell^{TT}/2\pi$ at $\ell=220$ in $\mu {\rm K}^2$\\
+$D_{810}    $&  D810    &\dots &$\ell(\ell+1)C_\ell^{TT}/2\pi$ at $\ell=810$ in $\mu {\rm K}^2$\\
+$D_{1420}   $&  D1420    &\dots &$\ell(\ell+1)C_\ell^{TT}/2\pi$ at $\ell=1420$ in $\mu {\rm K}^2$\\
+$D_{2000}   $&  D2000    &\dots &$\ell(\ell+1)C_\ell^{TT}/2\pi$ at $\ell=2000$ in $\mu {\rm K}^2$\\
+\hline
+$n_{s,0.002}$&  ns02    &\dots &Scalar spectral index at $k=0.002{\rm Mpc}^{-1}$\\
+$r_{0.002}  $&  r02    & 0 & Tensor/scalar ratio at $k=0.002{\rm Mpc}^{-1}$\\
+$r_{0.01}   $&  rBB    & 0 & Tensor/scalar ratio at $k=0.01{\rm Mpc}^{-1}$ (roughly BB peak)\\
+$r_{10  }   $&  r10    & 0 & Tensor-scalar temperature $C_\ell$ amplitude at $\ell=10$\\
+$A_{\rm t}  $&  AT    & 0 & $10^9 A_{\rm t}$ ($k_0 = 0.05{\rm Mpc}^{-1}$)\\
+$10^9 A_{\rm t} e^{-2\tau} $ &  ctlamp & 0 & Parameter determining $\ell\simeq 100$ tensor $C_\ell$ amplitude \\
+\hline
+$ H(z)            $ &  Hubble$\{100z\}$  &\dots & Hubble parameter at redshift $z$ ($\rm km\, s^{-1} Mpc^{-1}$)\\
+$ D_{\rm M}(z)    $ &  DM$\{100z\}$  &\dots & Comoving angular diameter distance to redshift $z$ in {\rm Mpc}\\
+$ f\sigma_8(z)                 $ &  fsigma8z$\{100z\}$    &\dots &Growth parameter $f\sigma_8$ at redshift $z$\\
+$ \sigma_8(z)               $ &  sigma8z$\{100z\}$    &\dots & $\sigma_8$ at redshift $z$\\
+\hline
+$ f^{143}_{2000}     $ &  f2000\_143    &\dots & Total temperature foreground power at $\ell=2000$ in $143{\rm GHz}$ $C_\ell$\\
+$ f^{143\times 217}_{2000}     $ &  f2000\_x    &\dots & Total temperature foreground power at $\ell=2000$ in $217{\rm GHz}\times 143{\rm GHz}$ $C_\ell$\\
+$ f^{217}_{2000}     $ &  f2000\_217    &\dots & Total temperature foreground power at $\ell=2000$ in $217{\rm GHz}$ $C_\ell$\\
+\hline
+$ \chi^2_{x}              $ &  chi2\_$x$  &\dots & $-2\log({\rm likelihood})$ for likelihood $x$; (most are normalized like a $\chi^2$).\\
+\hline
+\end{tabular}
+
+\newpage
+

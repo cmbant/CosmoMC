@@ -3,18 +3,17 @@ from __future__ import print_function
 import pylab as plt
 import sys
 
-sys.path.insert(0, r'c:\work\dist\git\camb\pycamb')
+sys.path.insert(0, r'c:\work\dist\git\camb')
 import camb
 from cosmomc_to_camb import get_camb_params
 import planckStyle as s
 import numpy as np
 from planck import SN
-from getdist.types import BestFit
 import os
 
 g = s.getSinglePlotter()
 
-like = SN.SN_likelihood(os.path.join(os.path.dirname(__file__), r'../../data/Pantheon/full_long.dataset'))
+like = SN.SN_likelihood(os.path.join(os.path.dirname(__file__), r'../../data/Pantheon/full_long18.dataset'))
 JLA = SN.SN_likelihood(os.path.join(os.path.dirname(__file__), r'../../data/jla.dataset'), marginalize=False)
 
 common = []
@@ -43,7 +42,7 @@ invvars = 1.0 / like.pre_vars
 wtval = np.sum(invvars)
 
 offset = 5 * np.log10(1e-5)
-lumdists = 5 * np.log10((1 + like.zcmb) ** 2 * results.angular_diameter_distance(like.zcmb))
+lumdists = 5 * np.log10((1 + like.zcmb) * (1+like.zhel) * results.angular_diameter_distance(like.zcmb))
 
 redshifts = np.logspace(-2, 1, 1000)
 d = results.angular_diameter_distance(redshifts)
