@@ -77,6 +77,7 @@ class GetDistPlotSettings(object):
     :ivar tick_prune: None, 'upper' or 'lower' to prune ticks
     :ivar tight_gap_fraction: fraction of plot width for closest tick to the edge
     :ivar tight_layout: use tight_layout to lay out and remove white space
+    :ivar title_limit_fontsize: font size to use for limits in plot titles
     :ivar x_label_rotation: The rotation for the x label in degrees.
     """
 
@@ -147,6 +148,8 @@ class GetDistPlotSettings(object):
 
         self.auto_ticks = False
         self.thin_long_subplot_ticks = True
+
+        self.title_limit_fontsize = None
 
     def setWithSubplotSize(self, size_inch=3.5, size_mm=None):
         """
@@ -831,7 +834,7 @@ class GetDistPlotter(object):
             xmin, xmax = self._check_param_ranges(root, name, xmin, xmax)
         return xmin, xmax
 
-    def add_1d(self, root, param, plotno=0, normalized=False, ax=None, **kwargs):
+    def add_1d(self, root, param, plotno=0, normalized=False, ax=None, title_limit=None, **kwargs):
         """
         Low-level function to add a 1D marginalized density line to a plot
 
@@ -840,6 +843,7 @@ class GetDistPlotter(object):
         :param plotno: The index of the line being added to the plot
         :param normalized: True if areas under lines should match, False if normalized to unit maximum
         :param ax: optional :class:`~matplotlib:matplotlib.axes.Axes` instance to add to (defaults to current plot)
+        :param title_limit:if not None, a maginalized limit (1,2..) to print as the title of the plot
         :param kwargs: arguments for :func:`~matplotlib:matplotlib.pyplot.plot`
         :return: min, max for the plotted density
         """
@@ -861,6 +865,13 @@ class GetDistPlotter(object):
         if self.settings.plot_meanlikes:
             kwargs['lw'] = self.settings.lw_likes
             ax.plot(density.x, density.likes, **kwargs)
+        if title_limit:
+            if isinstance(root, MixtureND):
+                raise ValueError('limit_title not currently supported for MixtureND')
+            samples = self.sampleAnalyser.samplesForRoot(root)
+            _, texs = samples.getLatex([param], title_limit)
+            ax.set_title('$' + texs[0] + '$',
+                         fontsize=self.settings.title_limit_fontsize)
 
         return density.bounds()
 
@@ -1357,7 +1368,7 @@ class GetDistPlotter(object):
         ax = ax or plt.gca()
         ax.set_ylabel(param.latexLabel(), fontsize=self.settings.lab_fontsize)
 
-    def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False,
+    def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False, title_limit=None,
                 no_ylabel=False, no_ytick=False, no_zero=False, normalized=False, param_renames={}, **kwargs):
         """
         Make a single 1D plot with marginalized density lines.
@@ -1367,6 +1378,7 @@ class GetDistPlotter(object):
         :param marker: If set, places a marker at given coordinate.
         :param marker_color: If set, sets the marker color.
         :param label_right: If True, label the y axis on the right rather than the left
+        :param title_limit:if not None, a maginalized limit (1,2..) of the first root to print as the title of the plot
         :param no_ylabel: If True excludes the label on the y axis
         :param no_ytick: If True show no y ticks
         :param no_zero: If true does not show tick label at zero on y axis
@@ -1408,7 +1420,8 @@ class GetDistPlotter(object):
         for i, root in enumerate(roots):
             root_param = self._check_param(root, param, param_renames)
             if not root_param: continue
-            bounds = self.add_1d(root, root_param, i, normalized=normalized, **line_args[i])
+            bounds = self.add_1d(root, root_param, i, normalized=normalized, title_limit=title_limit and not i,
+                                 **line_args[i])
             xmin, xmax = self._updateLimit(bounds, (xmin, xmax))
             if bounds is not None and not plotparam:
                 plotparam = root_param
@@ -1694,8 +1707,8 @@ class GetDistPlotter(object):
             return legend_labels
 
     def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, label_order=None, nx=None,
-                 paramList=None, roots_per_param=False, share_y=None, markers=None, xlims=None, param_renames={},
-                 **kwargs):
+                 paramList=None, roots_per_param=False, share_y=None, markers=None, title_limit=None,
+                 xlims=None, param_renames={}, **kwargs):
         """
         Make an array of 1D marginalized density subplots
 
@@ -1710,7 +1723,8 @@ class GetDistPlotter(object):
                       plots param[i] using roots[i] (where roots[i] is the list of sample root names to use for plotting parameter i).
                       This is useful for example for  plotting one-parameter extensions of a baseline model, each with various data combinations.
         :param share_y: True for subplots to share a common y axis with no horizontal space between subplots
-        :param markers: optional dict giving vertical markers index by parameter, or a list of marker values for each parameter plotted
+        :param markers: optional dict giving vertical marker values indexed by parameter, or a list of marker values for each parameter plotted
+        :param title_limit:if not None, a maginalized limit (1,2..) of the first root to print as the title of the plots
         :param xlims: list of [min,max] limits for the range of each parameter plot
         :param param_renames: optional dictionary holding mapping between input names and equivalent names used in the samples.
         :param kwargs: optional keyword arguments for :func:`~GetDistPlotter.plot_1d`
@@ -1749,7 +1763,7 @@ class GetDistPlotter(object):
                 elif i < len(markers):
                     marker = markers[i]
             self.plot_1d(plot_roots, param, no_ylabel=share_y and i % self.plot_col > 0, marker=marker,
-                         param_renames=param_renames, **kwargs)
+                         param_renames=param_renames, title_limit=title_limit, **kwargs)
             if xlims is not None: ax.set_xlim(xlims[i][0], xlims[i][1])
             if share_y: self._spaceTicks(ax.xaxis, expand=xlims is None,
                                          bounds=self._get_param_bounds(plot_roots, param.name))
@@ -1904,8 +1918,8 @@ class GetDistPlotter(object):
 
     def triangle_plot(self, roots, params=None, legend_labels=None, plot_3d_with_param=None, filled=False, shaded=False,
                       contour_args=None, contour_colors=None, contour_ls=None, contour_lws=None, line_args=None,
-                      label_order=None, legend_ncol=None, legend_loc=None, upper_roots=None, upper_kwargs={},
-                      diag1d_kwargs={}, param_limits={}, **kwargs):
+                      label_order=None, legend_ncol=None, legend_loc=None, upper_roots=None, title_limit=None,
+                      upper_kwargs={}, diag1d_kwargs={}, markers=None, marker_args={}, param_limits={}, **kwargs):
         """
         Make a trianglular array of 1D and 2D plots.
 
@@ -1927,8 +1941,10 @@ class GetDistPlotter(object):
         :param legend_ncol: The number of columns for the legend
         :param legend_loc: The location for the legend
         :param upper_roots: set to fill the upper triangle with subplots using this list of sample root names
+        :param title_limit:if not None, a maginalized limit (1,2..) to print as the title of the first root on the diagonal 1D plots
         :param upper_kwargs: dict for same-named arguments for use when making upper-triangle 2D plots (contour_colors, etc). Set show_1d=False to not add to the diagonal.
         :param diag1d_kwargs: list of dict for arguments when making 1D plots on grid diagonal
+        :param markers: optional dict giving marker values indexed by parameter, or a list of marker values for each parameter plotted  
         :param param_limits: a dictionary holding a mapping from parameter names to axis limits for that parameter
         :param kwargs: optional keyword arguments for :func:`~GetDistPlotter.plot_2d` or :func:`~GetDistPlotter.plot_3d` (lower triangle only)
 
@@ -2007,10 +2023,16 @@ class GetDistPlotter(object):
                     line_args.append(arg)
 
         for i, param in enumerate(params):
+            marker = None
+            if markers is not None:
+                if isinstance(markers, dict):
+                    marker = markers.get(param.name, None)
+                elif i < len(markers):
+                    marker = markers[i]
             ax = self._subplot(i, i)
             self._inner_ticks(ax, False)
-            self.plot_1d(roots1d, param, do_xlabel=i == plot_col - 1,
-                         no_label_no_numbers=self.settings.no_triangle_axis_labels,
+            self.plot_1d(roots1d, param, marker=marker, do_xlabel=i == plot_col - 1,
+                         no_label_no_numbers=self.settings.no_triangle_axis_labels, title_limit=title_limit,
                          label_right=True, no_zero=True, no_ylabel=True, no_ytick=True, line_args=line_args,
                          lims=param_limits.get(param.name, None), **diag1d_kwargs)
             if self.settings.no_triangle_axis_labels:
@@ -2018,9 +2040,21 @@ class GetDistPlotter(object):
             lims[i] = ax.get_xlim()
             ticks[i] = ax.get_xticks()
         for i, param in enumerate(params):
+            marker = None
+            if markers is not None:
+                if isinstance(markers, dict):
+                    marker = markers.get(param.name, None)
+                elif i < len(markers):
+                    marker = markers[i]
             for i2 in range(i + 1, len(params)):
                 param2 = params[i2]
                 pair = [param, param2]
+                marker2 = None
+                if markers is not None:
+                    if isinstance(markers, dict):
+                        marker2 = markers.get(param2.name, None)
+                    elif i2 < len(markers):
+                        marker2 = markers[i2]
                 ax = self._subplot(i, i2, pars=[param, param2])
                 if plot_3d_with_param is not None:
                     self.plot_3d(roots, pair + [col_param], color_bar=False, line_offset=1, add_legend_proxy=False,
@@ -2030,6 +2064,8 @@ class GetDistPlotter(object):
                     self.plot_2d(roots, param_pair=pair, do_xlabel=i2 == plot_col - 1, do_ylabel=i == 0,
                                  no_label_no_numbers=self.settings.no_triangle_axis_labels, shaded=shaded,
                                  add_legend_proxy=i == 0 and i2 == 1, contour_args=contour_args, **kwargs)
+                if marker is not None: self.add_x_marker(marker, **marker_args)
+                if marker2 is not None: self.add_y_marker(marker2, **marker_args)
                 ax.set_xticks(ticks[i])
                 ax.set_yticks(ticks[i2])
                 ax.set_xlim(lims[i])
@@ -2050,6 +2086,8 @@ class GetDistPlotter(object):
                                      add_legend_proxy=i == 0 and i2 == 1,
                                      proxy_root_exclude=[root for root in upper_roots if root in roots],
                                      contour_args=upper_contour_args)
+                    if marker is not None: self.add_y_marker(marker, **marker_args)
+                    if marker2 is not None: self.add_x_marker(marker2, **marker_args)
                     ax.set_xticks(ticks[i2])
                     ax.set_yticks(ticks[i])
                     ax.set_xlim(lims[i2])
@@ -2106,8 +2144,8 @@ class GetDistPlotter(object):
                 Uses the same set of roots for every plot in the rectangle; set either roots or yroots.
         :param plot_roots: Allows you to specify (via list of list of list of roots) the set of roots for each individual subplot
         :param plot_texts: a 2D array (or list of lists) of a text label to put in each subplot (use a None entry to skip one)
-        :param xmarkers: list of markers for the x axis
-        :param ymarkers: list of markers for the y axis
+        :param xmarkers: optional dict giving vertical marker values indexed by parameter, or a list of marker values for each x parameter plotted
+        :param ymarkers: optional dict giving horizontal marker values indexed by parameter, or a list of marker values for each y parameter plotted
         :param marker_args: arguments for :func:`~GetDistPlotter.add_x_marker` and :func:`~GetDistPlotter.add_y_marker`
         :param param_limits: a dictionary holding a mapping from parameter names to axis limits for that parameter
         :param legend_labels: list of labels for the legend
@@ -2141,16 +2179,30 @@ class GetDistPlotter(object):
             elif roots:
                 yroots = [roots for _ in yparams]
             axarray = []
+            xmarker = None
+            if xmarkers is not None:
+                if isinstance(xmarkers, dict):
+                    xmarker = xmarkers.get(xparam, None)
+                elif i < len(markers):
+                    xmarker = xmarkers[x]
+
             for y, (yparam, subplot_roots) in enumerate(zip(yparams, yroots)):
                 if x > 0: sharey = yshares[y]
                 ax = self._subplot(x, y, pars=[xparam, yparam], sharex=sharex, sharey=sharey)
                 if y == 0:
                     sharex = ax
                     xshares.append(ax)
+                ymarker = None
+                if ymarkers is not None:
+                    if isinstance(ymarkers, dict):
+                        ymarker = ymarkers.get(yparam, None)
+                    elif i < len(markers):
+                        ymarker = ymarkers[y]
+
                 res = self.plot_2d(subplot_roots, param_pair=[xparam, yparam], do_xlabel=y == len(yparams) - 1,
                                    do_ylabel=x == 0, add_legend_proxy=x == 0 and y == 0, **kwargs)
-                if ymarkers is not None and ymarkers[y] is not None: self.add_y_marker(ymarkers[y], **marker_args)
-                if xmarkers is not None and xmarkers[x] is not None: self.add_x_marker(xmarkers[x], **marker_args)
+                if xmarker is not None: self.add_x_marker(xmarker, **marker_args)
+                if ymarker is not None: self.add_y_marker(ymarker, **marker_args)
                 limits[xparam], limits[yparam] = self._updateLimits(res, limits.get(xparam), limits.get(yparam))
                 if y != len(yparams) - 1: plt.setp(ax.get_xticklabels(), visible=False)
                 if x != 0: plt.setp(ax.get_yticklabels(), visible=False)

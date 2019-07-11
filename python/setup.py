@@ -33,23 +33,24 @@ setup(name='GetDist',
       long_description=get_long_description(),
       author='Antony Lewis',
       url="https://github.com/cmbant/getdist",
+      zip_safe=False,
       packages=['getdist', 'getdist.gui', 'paramgrid', 'getdist_tests'],
       scripts=['GetDist.py', 'GetDistGUI.py'],
       test_suite='getdist_tests',
       package_data={'getdist': ['analysis_defaults.ini', 'distparam_template.ini']},
-      requires=[
+      install_requires=[
+          'packaging',
           'numpy',
           'matplotlib',
           'six',
           "scipy (>=0.11.0)"],
-      # PySide is needed for the GUI
+      # PySide or pyside2 is needed for the GUI
       #  optional (for faster file read)
       # 'pandas (>=0.14.0)'
       classifiers=[
           "Programming Language :: Python :: 2",
           'Programming Language :: Python :: 2.7',
           'Programming Language :: Python :: 3',
-          'Programming Language :: Python :: 3.4',
           'Programming Language :: Python :: 3.5',
           'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: 3.7',
