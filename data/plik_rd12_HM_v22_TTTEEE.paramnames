@@ -1,0 +1,48 @@
+acib217       A^{CIB}_{217}     # CIB amplitude at 217 GHz. 
+ncib          n^{CIB}           # spectral index of the CIB
+xi            \xi^{tSZ-CIB}     # TSZ-CIB template amplitude (positive is negative)
+asz143        A^{tSZ}_{143}     # Thermal SZ amplitude at 143 GH
+aps100        A^{PS}_{100}      # Point source amplitude at 100 GHz
+aps143		 A^{PS}_{143}   # Point source amplitude at 143 GHz
+aps143217     A^{PS}_{143\times217}  # Point source amplitude at 143x217 GHz
+aps217        A^{PS}_{217}      # Point source amplitude at 217 GHz
+aksz          A^{kSZ}  
+kgal100      A^{{\rm dust}TT}_{100}
+kgal143      A^{{\rm dust}TT}_{143}
+kgal143217   A^{{\rm dust}TT}_{143\times217}
+kgal217      A^{{\rm dust}TT}_{217}
+galfEE100	A^{{\rm dust}EE}_{100}
+galfEE100143	A^{{\rm dust}EE}_{100\times143}
+galfEE100217	A^{{\rm dust}EE}_{100\times217}
+galfEE143	A^{{\rm dust}EE}_{143}
+galfEE143217	A^{{\rm dust}EE}_{143\times217}
+galfEE217	A^{{\rm dust}EE}_{217}
+galfEEindex	index^{{\rm dust}EE}
+galfTE100	A^{{\rm dust}TE}_{100}
+galfTE100143	A^{{\rm dust}TE}_{100\times143}
+galfTE100217	A^{{\rm dust}TE}_{100\times217}
+galfTE143	A^{{\rm dust}TE}_{143}
+galfTE143217	A^{{\rm dust}TE}_{143\times217}
+galfTE217	A^{{\rm dust}TE}_{217}
+galfTEindex	index^{{\rm dust}TE}
+Acnoisee2e100	A^{{\rm cnoise}EE}_{100}
+Acnoisee2e143	A^{{\rm cnoise}EE}_{143}
+Acnoisee2e217	A^{{\rm cnoise}EE}_{217}
+Asbpx100TT	A^{{\rm subpix}TT}_{100}	  # Subpix noise multiplicative factor at 100 GHz TT
+Asbpx143TT	A^{{\rm subpix}TT}_{143}	  # Subpix noise multiplicative factor at 143 GHz TT
+Asbpx143217TT	A^{{\rm subpix}TT}_{143\times217} # Subpix noise multiplicative factor at 143x217 GHz TT
+Asbpx217TT	A^{{\rm subpix}TT}_{217}	  # Subpix noise multiplicative factor at 217 GHz TT
+Asbpx100EE	A^{{\rm subpix}EE}_{100}	  # Subpix noise multiplicative factor at 100 GHz EE
+Asbpx100143EE	A^{{\rm subpix}EE}_{100\times143} # Subpix noise multiplicative factor at 100x143 GHz EE
+Asbpx100217EE	A^{{\rm subpix}EE}_{100\times217} # Subpix noise multiplicative factor at 100x217 GHz EE
+Asbpx143EE	A^{{\rm subpix}EE}_{143}	  # Subpix noise multiplicative factor at 143 GHz EE
+Asbpx143217EE	A^{{\rm subpix}EE}_{143\times217} # Subpix noise multiplicative factor at 143x217 GHz EE
+Asbpx217EE	A^{{\rm subpix}EE}_{217}	  # Subpix noise multiplicative factor at 217 GHz EE
+cal0            c_{100}
+cal2            c_{217}
+calEE0          c_{EE100}
+calEE1          c_{EE143}
+calEE2          c_{EE217}
+calPol          y_{\rm calPol}
+calPlanck       y_{\rm cal}
+

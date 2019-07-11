@@ -1,0 +1,22 @@
+galfEE100	A^{{\rm dust}EE}_{100}
+galfEE100143	A^{{\rm dust}EE}_{100\times 143}
+galfEE100217	A^{{\rm dust}EE}_{100\times 217}
+galfEE143	A^{{\rm dust}EE}_{143}
+galfEE143217	A^{{\rm dust}EE}_{143\times 217}
+galfEE217	A^{{\rm dust}EE}_{217}
+galfEEindex	index^{{\rm dust}EE}
+Acnoisee2e100	A^{{\rm cnoise}EE}_{100}
+Acnoisee2e143	A^{{\rm cnoise}EE}_{143}
+Acnoisee2e217	A^{{\rm cnoise}EE}_{217}
+Asbpx100EE	A^{{\rm subpix}EE}_{100}	  # Subpix noise multiplicative factor at 100 GHz EE
+Asbpx100143EE	A^{{\rm subpix}EE}_{100\times143} # Subpix noise multiplicative factor at 100x143 GHz EE
+Asbpx100217EE	A^{{\rm subpix}EE}_{100\times217} # Subpix noise multiplicative factor at 100x217 GHz EE
+Asbpx143EE	A^{{\rm subpix}EE}_{143}	  # Subpix noise multiplicative factor at 143 GHz EE
+Asbpx143217EE	A^{{\rm subpix}EE}_{143\times217} # Subpix noise multiplicative factor at 143x217 GHz EE
+Asbpx217EE	A^{{\rm subpix}EE}_{217}	  # Subpix noise multiplicative factor at 217 GHz EE
+calEE0          c_{EE100}
+calEE1          c_{EE143}
+calEE2          c_{EE217}
+calPol          y_{\rm calPol}  
+calPlanck       y_{\rm cal}
+

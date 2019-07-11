@@ -5,25 +5,25 @@ git:
 
 sudo: required
 
+dist: xenial
+
+services:
+  - docker
+
 matrix:
   include:
     - name: "GCC6"
       env:
         - GCCTAG="gcc6"
-    - name: "GCC7"
-      env:
-        - GCCTAG="gcc7"
     - name: "GCC8"
       env:
         - GCCTAG="gcc8"
+    - name: "GCC9"
+      env:
+        - GCCTAG="gcc9"
     - name: "GCC-trunk"
       env:
         - GCCTAG="devel"
-
-
-services:
-  - docker
-
 
 env:
   global:

@@ -1,0 +1,22 @@
+acib217		A^{CIB}_{217}			  # CIB amplitude at 217 GHz
+ncib		n^{CIB}				  # Spectral index of the CIB
+xi		\xi^{tSZ-CIB}			  # TSZ-CIB template amplitude (positive is negative)
+asz143		A^{tSZ}_{143}			  # Thermal SZ amplitude at 143 GH
+aps100		A^{PS}_{100}			  # Point source amplitude at 100 GHz
+aps143		A^{PS}_{143}  	  		  # Point source amplitude at 143 GHz
+aps143217	A^{PS}_{143\times 217}		  # Point source amplitude at 143x217 GHz
+aps217		A^{PS}_{217}      		  # Point source amplitude at 217 GHz
+aksz		A^{kSZ}				  # Kinetic SZ amplitude at 143 GH
+kgal100		A^{{\rm dust}TT}_{100}		  # Dust amplitude at 100 GHz 
+kgal143		A^{{\rm dust}TT}_{143}		  # Dust amplitude at 143 GHz 
+kgal143217	A^{{\rm dust}TT}_{143\times 217}  # Dust amplitude at 143x217 GHz 
+kgal217		A^{{\rm dust}TT}_{217}	    	  # Dust amplitude at 217 GHz 
+Asbpx100TT	A^{{\rm sbpx}TT}_{100}            # Subpix noise multiplicative factor at 100 GHz
+Asbpx143TT	A^{{\rm sbpx}TT}_{143}            # Subpix noise multiplicative factor at 143 GHz
+Asbpx143217TT	A^{{\rm sbpx}TT}_{143\times 217}  # Subpix noise multiplicative factor at 143x217 GHz
+Asbpx217TT	A^{{\rm sbpx}TT}_{217}            # Subpix noise multiplicative factor at 217 GHz
+cal0		c_{100}				  # Relative power spectrum calibration factor 100/143 
+cal2		c_{217}      			  # Relative power spectrum calibration factor 217/143 
+calPlanck	y_{\rm cal}			  # Total Planck calibration (relative to 1) at map level, scales all channels 
+
+

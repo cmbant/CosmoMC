@@ -1,0 +1,15 @@
+#Results from arXiv:1708.02225 quasar-lyman-alpha cross-correlation combined with lyman-alpha forest auto-correlation
+name = DR12LYA
+
+zeff =2.40
+
+is_square = F
+alpha_npoints = 30
+alpha_npoints_plel = 10
+
+prob_dist = sdss_DR12_LYAUTO_LYxQSO_bao.dat
+
+Hrd_fid = 35822
+DA_rd_fid = 11.697
+
+measurement_type = dilation
