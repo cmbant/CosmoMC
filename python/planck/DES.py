@@ -9,7 +9,7 @@ import copy
 try:
     import camb
 except ImportError:
-    sys.path.insert(0, r'c://work/dist/git/camb/pycamb')
+    sys.path.insert(0, r'c://work/dist/git/camb')
     import camb
 
 from camb import model, correlations

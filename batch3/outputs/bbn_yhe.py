@@ -3,8 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 
-sys.path.insert(0, '../../camb/pycamb')
-sys.path.insert(0, r'c:\work\dist\git\camb\pycamb')
+sys.path.insert(0, r'c:\work\dist\git\camb')
 from camb.bbn import BBN_table_interpolator
 
 BBNstandard = BBN_table_interpolator('PArthENoPE_880.2_standard.dat')

@@ -12,7 +12,7 @@ import signal
 from io import BytesIO
 import six
 from collections import OrderedDict
-from .qt_import import pyside_version
+from getdist.gui.qt_import import pyside_version
 
 import getdist
 from getdist import plots, IniFile
@@ -91,8 +91,10 @@ class ParamListWidget(QListWidget):
         self.setDropIndicatorShown(True)
         self.setDragDropMode(QAbstractItemView.InternalMove)
         self.owner = owner
-        list_model = self.model()
-        list_model.layoutChanged.connect(owner._updateParameters)
+
+    def dropEvent(self, event):
+        super(ParamListWidget, self).dropEvent(event)
+        self.owner._updateParameters()
 
 
 class MainWindow(QMainWindow):
@@ -302,9 +304,12 @@ class MainWindow(QMainWindow):
                      SIGNAL("activated(const QString&)"),
                      self.openDirectory)
 
-        self.pushButtonSelect = QPushButton(QIcon(":/images/file_add.png"),
-                                            "", self.selectWidget)
-        self.pushButtonSelect.setToolTip("Choose root directory")
+        if pyside_version == 1:
+            self.pushButtonSelect = QPushButton(QIcon(":/images/file_add.png"), "", self.selectWidget)
+        else:
+            self.pushButtonSelect = QPushButton(u"+", self.selectWidget)
+
+        self.pushButtonSelect.setToolTip("Open chain file root directory")
         self.connect(self.pushButtonSelect, SIGNAL("clicked()"),
                      self.selectRootDirName)
         shortcut = QShortcut(QKeySequence(self.tr("Ctrl+O")), self)
@@ -316,8 +321,11 @@ class MainWindow(QMainWindow):
                      SIGNAL("itemChanged(QListWidgetItem *)"),
                      self.updateListRoots)
 
-        self.pushButtonRemove = QPushButton(QIcon(":/images/file_remove.png"),
-                                            "", self.selectWidget)
+        if pyside_version == 1:
+            self.pushButtonRemove = QPushButton(QIcon(":/images/file_remove.png"), "", self.selectWidget)
+        else:
+            self.pushButtonRemove = QPushButton(u"\u00d7", self.selectWidget)
+
         self.pushButtonRemove.setToolTip("Remove a chain root")
         self.connect(self.pushButtonRemove, SIGNAL("clicked()"),
                      self.removeRoot)
@@ -716,7 +724,7 @@ class MainWindow(QMainWindow):
                 'legend_frame', 'figure_legend_frame', 'figure_legend_ncol', 'legend_rect_border',
                 'legend_frac_subplot_margin', 'legend_frac_subplot_line', 'num_plot_contours',
                 'solid_contour_palefactor', 'alpha_filled_add', 'alpha_factor_contour_lines', 'axis_marker_color',
-                'axis_marker_ls', 'axis_marker_lw', 'auto_ticks', 'thin_long_subplot_ticks']
+                'axis_marker_ls', 'axis_marker_lw', 'auto_ticks', 'thin_long_subplot_ticks', 'title_limit']
         pars.sort()
         ini = IniFile()
         for par in pars:

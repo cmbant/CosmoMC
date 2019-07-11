@@ -50,7 +50,7 @@ WMAP = 'WMAP'
 BAO = 'BAO'
 HST = 'Riess18'
 JLA = 'JLA'
-Pantheon = 'Pantheon'
+Pantheon = 'Pantheon18'
 BAORSD = 'BAORSD'
 
 lowEdata = 'simall_EE.ini'
@@ -58,6 +58,7 @@ lowEdata = 'simall_EE.ini'
 BAOdata = 'BAO.ini'
 RSDdata = 'BAODR12_RSD.ini'
 HSTdata = 'HST_Riess2018.ini'
+PantheonData = Pantheon + '.ini'
 
 theta_prior = {'prior[theta]': '1.0409 0.0006'}
 
@@ -104,7 +105,7 @@ class importanceFilterLensing:
 
 class importanceFilterSN:
     def wantImportance(self, jobItem):
-        return 'JLA' not in jobItem.data_set.names and 'Pantheon' not in jobItem.data_set.names
+        return 'JLA' not in jobItem.data_set.names and Pantheon not in jobItem.data_set.names
 
 
 class reion_importance(batchjob.importanceSetting):
@@ -143,21 +144,21 @@ class importanceFilterNnu:
 
 post_lensing = [[lensing], ['lensing.ini'], importanceFilterLensing()]
 post_lensingBAO = [[BAO, lensing], [BAOdata, 'lensing.ini'], importanceFilterNotOmegak()]
-post_lensingPantheon = [[lensing, Pantheon], ['lensing.ini', 'Pantheon.ini'], importanceFilterSN()]
+post_lensingPantheon = [[lensing, Pantheon], ['lensing.ini', PantheonData], importanceFilterSN()]
 post_lensingJLA = [[lensing, JLA], ['lensing.ini', 'JLA_marge.ini'], importanceFilterNotOmegak()]
 
 post_BAO = [[BAO], [BAOdata], importanceFilterNotOmegak()]
 post_HST = [[HST], [HSTdata], importanceFilterNotOmegak()]
 post_BAOJLA = [[BAO, JLA], [BAOdata, 'JLA_marge.ini'], importanceFilterNotOmegak()]
-post_BAOPantheon = [[BAO, Pantheon], [BAOdata, 'Pantheon.ini'], importanceFilterNotOmegak()]
+post_BAOPantheon = [[BAO, Pantheon], [BAOdata, PantheonData], importanceFilterNotOmegak()]
 post_BAOHST = [[BAO, HST], [BAOdata, HSTdata], importanceFilterNotOmegak()]
 
 post_BAOHSTJLA = [[BAO, JLA, HST], [BAOdata, 'JLA_marge.ini', HSTdata], importanceFilterNotOmegak()]
-post_BAOHSTPantheon = [[BAO, Pantheon, HST], [BAOdata, 'Pantheon.ini', HSTdata], importanceFilterNotOmegak()]
-post_BAOlensingPantheon = [[BAO, lensing, Pantheon], [BAOdata, 'lensing.ini', 'Pantheon.ini'],
+post_BAOHSTPantheon = [[BAO, Pantheon, HST], [BAOdata, PantheonData, HSTdata], importanceFilterNotOmegak()]
+post_BAOlensingPantheon = [[BAO, lensing, Pantheon], [BAOdata, 'lensing.ini', PantheonData],
                            importanceFilterNotOmegak()]
 
-post_Pantheon = [[Pantheon], ['Pantheon.ini'], importanceFilterNotOmegak()]
+post_Pantheon = [[Pantheon], [PantheonData], importanceFilterNotOmegak()]
 
 post_CookeBBN = ['Cooke17']
 post_Aver15 = [['Aver15'], ['Aver15BBN.ini'], importanceFilterNnu()]
@@ -459,7 +460,7 @@ gWMAP.datasets = [WMAP9]
 gWMAP.importanceRuns = [post_BAO]
 groups.append(gWMAP)
 
-for bk in ['BK14']:
+for bk in ['BK15']:
     gbkp = batchjob.jobGroup(bk)
     gbkp.datasets = []
     for d in copy.deepcopy(planck_highL_sets):
@@ -578,9 +579,9 @@ noCMB = {'lmin_store_all_cmb': 0, 'lmin_computed_cl': 0, 'param[ns]': 0.96, 'par
 gBBN = batchjob.jobGroup('BBN')
 BBN = batchjob.dataSet([BAO, 'Cooke17'], [BAOdata, 'Cooke17BBN', noCMB])
 gBBN.datasets = [BBN]
-gBBN.datasets += [BBN.copy().add('Pantheon')]
+gBBN.datasets += [BBN.copy().add(Pantheon)]
 gBBN.datasets += [BBN.copy().add('JLA')]
-gBBN.datasets += [BBN.copy().add('Pantheon').add('theta', theta_prior)]
+gBBN.datasets += [BBN.copy().add(Pantheon).add('theta', theta_prior)]
 gBBN.datasets += [BBN.copy().add('theta', theta_prior)]
 gBBN.params = [[], ['mnu']]
 gBBN.extra_opts = {'sampling_method': 1}
@@ -597,9 +598,9 @@ BBN3 = batchjob.dataSet([BAO, 'Cooke17Adel', 'Aver15'],
 gBBN.datasets = []
 for BBN in [BBN1, BBN2, BBN3]:
     gBBN.datasets += [BBN]
-    gBBN.datasets += [BBN.copy().add('Pantheon')]
+    gBBN.datasets += [BBN.copy().add(Pantheon)]
     gBBN.datasets += [BBN.copy().add('theta', theta_prior)]
-    gBBN.datasets += [BBN.copy().add('Pantheon').add('theta', theta_prior)]
+    gBBN.datasets += [BBN.copy().add(Pantheon).add('theta', theta_prior)]
 gBBN.params = [['nnu'], ['nnu', 'mnu']]
 gBBN.extra_opts = {'sampling_method': 1}
 groups.append(gBBN)
@@ -618,6 +619,7 @@ covrenames = []
 for planck in planck_vars:
     covrenames.append([planck, 'planck'])
 
+covrenames.append(['Pantheon18', 'Pantheon'])
 covrenames.append(['CamSpecHM', 'plikHM'])
 covrenames.append(['lensing_lenspriors', 'lensonly'])
 covrenames.append(['lensing', 'lensonly'])

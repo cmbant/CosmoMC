@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import planckStyle as s
 
 g = s.getSinglePlotter()
@@ -28,12 +30,12 @@ items += [comb('Apr6', 'lenspriors', r"CompSep mask $8\le L \le 400$")]
 items += [comb('', 'DESpriors', r'DES priors', blockstart=True)]
 items += [comb('', 'DESpriors_CookeDH', r"$'$$'$ + ($\Omega_{\rm b}h^2=0.0222\pm 0.0005$)")]
 items += [comb('bfcl', 'lenspriors', r'Best-fit $C^{\rm CMB}_\ell$')]
-items += [comb('agr2bfcl', 'lenspriors', r"$'$$'$ (MV agressive $8\le L \le 2048$)")]
+items += [comb('agr2bfcl', 'lenspriors', r"$'$$'$ (MV aggressive $8\le L \le 2048$)")]
 items += [comb('takahashi', 'lenspriors', r"Takahashi {\HALOFIT}")]
-items += [comb('agr2takahashi', 'lenspriors', r"$'$$'$ (MV agressive $8\le L \le 2048$)")]
+items += [comb('agr2takahashi', 'lenspriors', r"$'$$'$ (MV aggressive $8\le L \le 2048$)")]
 items += [comb('linear', 'lenspriors', r'Linear theory')]
 items += [comb('acc', 'lenspriors', r'Higher accuracy')]
-items += [comb('agr2acc', 'lenspriors', r"$'$$'$ (MV agressive $8\le L \le 2048$)")]
+items += [comb('agr2acc', 'lenspriors', r"$'$$'$ (MV aggressive $8\le L \le 2048$)")]
 
 lines = []
 heading = ''
@@ -73,4 +75,4 @@ for i, item in enumerate(items):
         if i == 0: heading += '& $' + '$ & $'.join(latex[0]) + '$'
         line += r' & $' + '$ & $'.join(latex[1]) + '$'
     lines.append(line)
-print heading + '\\\\\n\\hline\n' + '\\\\\n'.join(lines) + '\\\\\n'
+print(heading + '\\\\\n\\hline\n' + '\\\\\n'.join(lines) + '\\\\\n')

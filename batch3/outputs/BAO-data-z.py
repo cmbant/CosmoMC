@@ -4,13 +4,16 @@ from paramgrid import batchjob
 from pylab import *
 from scipy.interpolate import UnivariateSpline
 
-sys.path.insert(0, r'C:\Work\Dist\git\camb\pycamb')
+# Uses CAMB 1.0+
+sys.path.insert(0, r'C:\Work\Dist\git\camb')
 from cosmomc_to_camb import get_camb_params
 import camb
 
 redshifts = [0.01, 0.05, 0.106, 0.15, 0.2, 0.25, 0.3, 0.34, 0.38, 0.42, 0.46, 0.51, 0.56, 0.61, 0.65, 0.72, 0.85, 1.,
              1.2, 1.5, 2., 2.33, 2.5,
              3.]
+
+updated2019 = True
 
 plot_DV = False  # if false plot D_V or D_M depending on measurement
 
@@ -44,7 +47,7 @@ for i, dat in enumerate(datasets):
             raise Exception('error')
         datapoints[i] *= rescale
         dataerrs[i] *= rescale
-    print dataredshifts[i], datapoints[i], dataerrs[i]
+    print(dataredshifts[i], datapoints[i], dataerrs[i])
 
 
 def GetBackgroundFuncs(samples):
@@ -52,11 +55,11 @@ def GetBackgroundFuncs(samples):
     DMs = np.zeros((len(ixs), len(redshifts)))
     Hs = np.zeros(DMs.shape)
     rsDV = np.zeros(DMs.shape)
-    camb.set_z_outputs(redshifts)
     for i, ix in enumerate(ixs):
         print(i, ix)
         dic = samples.getParamSampleDict(ix)
         pars = get_camb_params(dic)
+        pars.z_outputs = redshifts
         results = camb.get_background(pars)
         bao = results.get_background_outputs()
         rsDV[i, :] = 1 / bao[:, 0]
@@ -96,21 +99,38 @@ if True:  # H(z) plot
     Herrs2 = Herrinterp(redplot)
     s.plotBands(redplot, Hmeans2, Herrs2)
 
-    # Bautista https://arxiv.org/abs/1702.00176
-    z = 2.33
-    sdssredshifts = [z]
-    sdssdata = [c / (9.07 * rdrag) / (1 + z)]
-    sdsserr = [c / (9.07 * rdrag) * 0.31 / 9.07 / (1 + z)]
-    print('Ly-alpha H:', sdssdata, sdsserr)
-    err = errorbar(sdssredshifts, sdssdata, sdsserr, fmt='.', color='orange', marker='x',
-                   markersize=3)
-    err[-1][0].set_linestyle('--')
-    text(2.33, 63, r'BOSS Ly-$\alpha$', color='orange', horizontalalignment='center')
-    # arXiv: du Mas des Bourboux 1708.02225
-    z = 2.4
-    sdssredshifts = [z]
-    sdssdata = [c / (8.94 * rdrag) / (1 + z)]
-    sdsserr = [c / (8.94 * rdrag) * 0.22 / 8.94 / (1 + z)]
+    if updated2019:
+        # Aganthe https://arxiv.org/abs/1904.03400
+        z = 2.34
+        sdssdata = [c / (8.86 * rdrag) / (1 + z)]
+        sdsserr = [c / (8.86 * rdrag) * 0.29 / 8.86 / (1 + z)]
+        print('Ly-alpha H:', sdssdata, sdsserr)
+        sdssredshifts = [z-0.007]
+        err = errorbar(sdssredshifts, sdssdata, sdsserr, fmt='.', color='orange', marker='x',
+                       markersize=3)
+        err[-1][0].set_linestyle('--')
+        text(2.33, 63, r'DR14 Ly-$\alpha$', color='orange', horizontalalignment='center')
+        # joint with cross-correlation https://arxiv.org/abs/1904.03430
+        z = 2.34
+        sdssdata = [c / (9.0 * rdrag) / (1 + z)]
+        sdsserr = [c / (9.0 * rdrag) * 0.22 / 9.0 / (1 + z)]
+        sdssredshifts = [z + 0.007]
+    else:
+        # Bautista https://arxiv.org/abs/1702.00176
+        z = 2.33
+        sdssredshifts = [z]
+        sdssdata = [c / (9.07 * rdrag) / (1 + z)]
+        sdsserr = [c / (9.07 * rdrag) * 0.31 / 9.07 / (1 + z)]
+        print('Ly-alpha H:', sdssdata, sdsserr)
+        err = errorbar(sdssredshifts, sdssdata, sdsserr, fmt='.', color='orange', marker='x',
+                       markersize=3)
+        err[-1][0].set_linestyle('--')
+        text(2.33, 63, r'BOSS Ly-$\alpha$', color='orange', horizontalalignment='center')
+        # arXiv: du Mas des Bourboux 1708.02225
+        z = 2.4
+        sdssredshifts = [z]
+        sdssdata = [c / (8.94 * rdrag) / (1 + z)]
+        sdsserr = [c / (8.94 * rdrag) * 0.22 / 8.94 / (1 + z)]
     print('Ly-alpha H joint:', sdssdata, sdsserr)
     errorbar(sdssredshifts, sdssdata, sdsserr, fmt='.', color='gold', marker='x',
              markersize=3)
@@ -144,20 +164,20 @@ if True:  # H(z) plot
                  markersize=3)
         text(0.1, 56, 'SDSS MGS', color='m', horizontalalignment='left')
 
-    if True:
+    if updated2019:
+        H0red = [0.0075]
+        H0red = [0]
+        H0data = [74.03]
+        H0err = [1.42]
+        errorbar(H0red, H0data, H0err, fmt='.', color='blue', marker='.', markersize=3)
+        text(0.06, 74, 'Riess et al. (2019)', color='blue', horizontalalignment='left')
+    else:
         H0red = [0.0075]
         H0red = [0]
         H0data = [73.45]
         H0err = [1.66]
         errorbar(H0red, H0data, H0err, fmt='.', color='blue', marker='.', markersize=3)
         text(0.06, 73, 'Riess et al. (2018)', color='blue', horizontalalignment='left')
-    else:
-        H0red = [0.04]
-        # scale z=0 quoted value to 0.04 assuming Planck scaling
-        H0data = [73. * Hinterp(0.04) / Hinterp(0.)]  # Hinterp includes 1+z factor
-        H0err = [1.75 * Hinterp(0.04) / Hinterp(0.)]
-        errorbar(H0red, H0data, H0err, fmt='.', color='blue', marker='.', markersize=3)
-        text(0.1, 71, 'Riess 2016', color='blue', horizontalalignment='left')
 
     if False:
         # DR14 quasar http://arxiv.org/pdf/1801.03043
@@ -173,18 +193,18 @@ if True:  # H(z) plot
         # to non-Gaussian tails. Hence plotting 1 bin probably fairly visual comparison with Planck.
         rdfid = 147.78
         H0red = np.array([1.52])
-        if False: #Gil-Marin
+        if False:  # Gil-Marin
             H0data = np.array([162]) * rdfid / rdrag / (1 + H0red)
             H0err = np.array([12]) * rdfid / rdrag / (1 + H0red)
             text(1.2, 58, 'DR14 quasars', color='darkgreen', horizontalalignment='left')
-        else: #Zarouk 1801.03062
+        else:  # Zarouk 1801.03062
             H0data = np.array([159]) * rdfid / rdrag / (1 + H0red)
-            H0err = np.atleast_2d([13,12]).T * rdfid / rdrag / (1 + H0red)
+            H0err = np.atleast_2d([13, 12]).T * rdfid / rdrag / (1 + H0red)
             text(1.2, 57, 'DR14 quasars', color='darkgreen', horizontalalignment='left')
         errorbar(H0red, H0data, H0err, fmt='.', color='darkgreen', marker='o', markersize=3)
 
     xlim([-0.015, 2.7])
-    #axvline(0,color='k',lw=0.5, zorder=-10)
+    # axvline(0,color='k',lw=0.5, zorder=-10)
     ylim([55, 77])
     yticks(np.arange(54, 76.1, 2))
     xlabel('$z$')
@@ -203,12 +223,12 @@ planckvals = np.interp(dataredshifts, redshifts, rsDVmeans)
 datapoints /= planckvals
 dataerrs /= planckvals
 
-print planckvals
-print datapoints
-print dataerrs
+print(planckvals)
+print(datapoints)
+print(dataerrs)
 
 s.plotBands(redshifts, 1, rsDVerrs / rsDVmeans)
-#plt.plot(redshifts, 1+DMerrinterp(redshifts)/DMinterp(redshifts), color='r', lw=0.5)
+# plt.plot(redshifts, 1+DMerrinterp(redshifts)/DMinterp(redshifts), color='r', lw=0.5)
 
 offsets = [0.93, 1.08, 0.94]
 for i, (form, col, name, offset) in enumerate(
@@ -222,8 +242,8 @@ rs_fid_wig = 148.6
 wigredshifts = [0.44, 0.6, 0.73]
 wigdata = np.array([1716., 2221., 2516.]) / rs_fid_wig
 wigerr = np.array([83., 101., 86.]) / rs_fid_wig
-print 'wig:', wigdata
-print 'wig err:', wigerr
+print('wig:', wigdata)
+print('wig err:', wigerr)
 planckvals = np.interp(wigredshifts, redshifts, rsDVmeans)
 errorbar(wigredshifts, wigdata / planckvals, wigerr / planckvals, fmt='.', color='#006FED', marker='o', markersize=1.5)
 text(0.72, 1.08, 'WiggleZ', color='#006FED', horizontalalignment='center')
@@ -262,14 +282,22 @@ if plot_DV:
     planckvals = np.interp([redshift], redshifts, rsDVmeans)
     print('Ly-alpha:', data, err, planckvals)
 else:
-    # DM https: // arxiv.org / abs / 1708.02225, Bourboux
-    data = np.array([36.6])
-    err = np.array([1.2])
-    planckvals = [DMinterp(redshift) / rdrag]
+    if updated2019:
+        # Ly-alpha and cross-correlation: https://arxiv.org/abs/1904.03430 (quoted to different precision in the two papers)
+        redshift = 2.34
+        data = np.array([36.981])
+        err = np.atleast_2d([1.18,1.26])
+    else:
+        # DM https: // arxiv.org / abs / 1708.02225, Bourboux
+        data = np.array([36.6])
+        err = np.array([1.2])
+    planckvals = DMinterp(redshift) / rdrag
     print('Ly-alpha:', data, err, planckvals)
-errorbar([redshift], data / planckvals, err / planckvals, fmt='.', color='orange', marker='H', markersize=3)
-text(2.23, 0.97, r'BOSS Ly-$\alpha$ ($D_M$)', color='orange', horizontalalignment='center')
-
+    errorbar([redshift], data / planckvals, err / planckvals, fmt='.', color='orange', marker='H', markersize=3)
+if updated2019:
+    text(2.00, 0.973, r'DR14 Ly-$\alpha$/'+'\n\\quad quasars ($D_M$)', color='orange', horizontalalignment='left', fontsize=7.5)
+else:
+    text(2.23, 0.97, r'BOSS Ly-$\alpha$ ($D_M$)', color='orange', horizontalalignment='center')
 
 # DES, convert from DM using PLanck H
 # https://arxiv.org/abs/1712.06209
@@ -303,17 +331,16 @@ errorbar(sdssredshifts, sdssdata / planckvals, sdsserr / planckvals, fmt='.', co
          markersize=4)
 text(0.81, 0.91, r'DR14 LRG', color='darkcyan', horizontalalignment='center')
 
-#6Df arXiv:1803.01746
+# 6Df arXiv:1803.01746
 sdssredshifts = [0.122]
 sdssdata = [539 / 147.5]
 sdsserr = [17 / 147.5]
 planckvals = np.interp(sdssredshifts, redshifts, rsDVmeans)
 print('6DF:', sdssdata, sdsserr, planckvals)
-err=errorbar(sdssredshifts, sdssdata / planckvals, sdsserr / planckvals, fmt='.', color='m', marker='o',mfc='C2',mec='C2',
-         markersize=2, lw=1)
+err = errorbar(sdssredshifts, sdssdata / planckvals, sdsserr / planckvals, fmt='.', color='m', marker='o', mfc='C2',
+               mec='C2',
+               markersize=2, lw=1)
 err[-1][0].set_linestyle('--')
-
-
 
 xlim([0.01, 2.7])
 ylim([0.88, 1.11])

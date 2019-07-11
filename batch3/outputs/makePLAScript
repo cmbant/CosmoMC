@@ -1,0 +1,7 @@
+python python/copyGridFiles.py main $SCRATCH/PLA2018/COM_CosmoParams_base-plikHM-TTTEEE-lowl-lowE_R3.00.zip --converge 0.1 --dist --chains --musthave_data plikHM TTTEEE lowl lowE --paramtag base --remove_burn_fraction 0.3 --skip_data DES DESlens DESwt Riess18 JLA &
+python python/copyGridFiles.py main $SCRATCH/PLA2018/COM_CosmoParams_base-plikHM_R3.01.zip --converge 0.1 --dist --chains --musthave_data plikHM --paramtag base --remove_burn_fraction 0.3 --skip_data zre6p5  &
+python python/copyGridFiles.py main $SCRATCH/PLA2018/COM_CosmoParams_base-plikHM-zre6p5_R3.01.zip --converge 0.1 --dist --chains --musthave_data plikHM zre6p5 --paramtag base --remove_burn_fraction 0.3  &
+python python/copyGridFiles.py main $SCRATCH/PLA2018/COM_CosmoParams_lensonly_R3.01.zip --converge 0.1 --dist --chains --musthave_data lensing --data lenspriors DESpriors --paramtag base base_mnu --skip_data plikHM CamSpecHM CleanedCamSpecHM JLA --remove_burn_fraction 0.3  &
+python python/copyGridFiles.py main $SCRATCH/PLA2018/COM_CosmoParams_fullGrid_R3.01.zip --converge 0.1 --dist --chains --remove_burn_fraction 0.3 &
+
+wait
