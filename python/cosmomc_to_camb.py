@@ -13,7 +13,7 @@ except ImportError as e:
     print('error importing CAMB, run setup.py install first', e)
 
 
-def get_camb_params(p, num_massive_neutrinos=1, neutrino_hierarchy='degenerate', inpars=None):
+def get_camb_params(p, num_massive_neutrinos=1, neutrino_hierarchy='degenerate', inpars=None, halofit_version = 'mead'):
     pars = inpars or camb.CAMBparams()
     if p.get('wa', 0) or p.get('alpha1', 0) or p.get('Alens', 1) != 1 or p.get('Aphiphi', 1) != 1:
         raise Exception('Parameter not currrently supported by Cosmomc-> camb converter')
@@ -26,5 +26,6 @@ def get_camb_params(p, num_massive_neutrinos=1, neutrino_hierarchy='degenerate',
     pars.InitPower.set_params(ns=p['ns'], r=p.get('r', 0), As=p['A'] * 1e-9, nrun=p.get('nrun', 0),
                               nrunrun=p.get('nrunrun', 0))
     pars.set_dark_energy(w=p.get('w', -1))
+    pars.NonLinearModel.set_params(halofit_version = halofit_version)
     pars.set_for_lmax(2500, lens_potential_accuracy=1)
     return pars

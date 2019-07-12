@@ -11,7 +11,7 @@ from getdist import IniFile, ParamNames
 from scipy.linalg import sqrtm
 
 try:
-    sys.path.insert(0, 'c://work/dist/git/camb/pycamb')
+    sys.path.insert(0, 'c://work/dist/git/camb/')
     from camb.mathutils import chi_squared as fast_chi_squared
 
     del sys.path[0]
