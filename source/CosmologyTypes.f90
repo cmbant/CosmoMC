@@ -190,8 +190,10 @@
     if (this%neutrino_hierarchy == neutrino_hierarchy_degenerate) then
         call Ini%Read('num_massive_neutrinos',this%num_massive_neutrinos)
         if (this%num_massive_neutrinos <1) call MpiStop('num_massive_neutrinos must be set set')
-    else if (Ini%Read_Int('num_massive_neutrinos',0)>0) then
-        write(*,*) 'NOTE: num_massive_neutrinos ignored, using specified hierarchy'
+    else if (Ini%HasKey('num_massive_neutrinos') then
+        if (Ini%Read_Int('num_massive_neutrinos',0)>0) then
+            write(*,*) 'NOTE: num_massive_neutrinos ignored, using specified hierarchy'
+        end if
     end if
     call Ini%Read('lmax_computed_cl',this%lmax_computed_cl)
     call Ini%Read('lmin_computed_cl',this%lmin_computed_cl)
