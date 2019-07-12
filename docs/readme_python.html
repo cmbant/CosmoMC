@@ -7,7 +7,7 @@
 
 <H2>Python scripts for plotting, analysing and grids of runs</H3>
 
-See the ./python directory for scripts, which require Python 2.7+ or 3.4+. To configure your system to
+See the ./python directory for CosmoMC python scripts and an installation of <a href="http://getdist.readthedocs.org">GetDist</a> (which can also be installed separately). To configure your system to
 work with the script libraries add CosmoMC's python path to your environment variables, e.g. in ~/.bashrc (or ~/bash_profile, etc):
 <pre>
 export PYTHONPATH=COSMOMC..PATH/python:$PYTHONPATH
@@ -32,7 +32,7 @@ see the <A HREF="http://getdist.readthedocs.org/en/latest/">GetDist documentatio
 The getdist.plots module (directly, or via planckStyle) is used to make plots from chain results using your own custom scripts.
 <P>
 The sample scripts (under batch3/outputs for 2018 results, or batch2/outputs for 2015 results) make use of <b>planckStyle</b>. This can be interchanged with <b>getdist.plots</b> if you do not want
-to use the Planck style (or some extra functions used in the batch2/output samples). Both implement the functions
+to use the Planck style (or some extra functions used in the batch3/output samples). Both implement the functions
 <UL>
 <LI><b>getSinglePlotter</b>, to get a plotter object suitable for single plot figures
 <LI><b>getPlotter</b>, to get a plotter object suitable for making plots that scale with the number of subplots
@@ -135,7 +135,7 @@ import getdist
 
 samples = getdist.loadMCSamples(r'./PLA/base/plikHM_TTTEEE_lowl_lowE_lensing/base_plikHM_TTTEEE_lowl_lowE_lensing', settings={'ignore_rows':0.3})
 </pre>
-Or from a grid or list of directories you can find chains automatically e.g. 
+Or from a grid or list of directories you can find chains automatically e.g.
 <pre>
 import planckStyle as s
 g = s.getSinglePlotter(chain_dir=['./PLA', './mychains/xxx/'])
@@ -155,7 +155,7 @@ rsH = p.Hubble051 * p.rdrag / rd_fid
 samples.addDerived(rsH, name='rsH', label=r'H(0.51) (r_{\mathrm{drag}}/r_{\mathrm{drag}}^{\rm fid})\, [{\rm km} \,{\rm s}^{-1}{\rm Mpc}^{-1}]')
 </pre>
 </blockquote>
-After doing this, you can use 'rsH' as you would any of the original parameter names in the chain. If your new parameter has a hard boundary, set the 
+After doing this, you can use 'rsH' as you would any of the original parameter names in the chain. If your new parameter has a hard boundary, set the
 <b>range</b> parameter for addDerived with the [min, max] bounds.
 
 <h3>Analysing samples directly</h3>

@@ -15,22 +15,19 @@ The Planck likelihood code (PLC/clik) and parameter chains are available from th
 The Planck lensing and Bicep-Keck-Planck likelihoods are included with the cosmomc installation and do not need to be installed separately.
 <P>
 <H3>Using the Planck likelihood with CosmoMC</H3>
-<p>
-The Planck 2018 likelihoods (except for lensing) are not published yet. These instructions refer to the 2015 likelihoods.
-</p>
 
-Note you need to use ifort 14 or higher to build CosmoMC, or gfortran (gcc) 6 latest (easily available for testing in <A HREF="http://cosmologist.info/CosmoBox/">virtual environments</A>) so make sure you have that configured before you start.
+Note you need to use Intel fortran (ifort) 14 or higher to build CosmoMC, or gfortran (gcc) 6 latest (easily available for testing in <A HREF="http://cosmologist.info/CosmoBox/">virtual environments</A>) so make sure you have that configured before you start.
 <UL>
 <LI>Download and install the Planck likelihood code and baseline data files to somewhere convenient from
 <UL>
-<LI><A HREF="http://pla.esac.esa.int/pla/#cosmology">Planck Legacy Archive</a> (see also <A HREF="http://wiki.cosmos.esa.int/planckpla2015/index.php/CMB_spectrum_%26_Likelihood_Code">description</A>)
-    <LI><A HREF="http://irsa.ipac.caltech.edu/data/Planck/release_2/software/">US site</A>
+<LI><A HREF="http://pla.esac.esa.int/pla/#cosmology">Planck Legacy Archive</a> (see also <A HREF="http://wiki.cosmos.esa.int/planckpla2018/index.php/CMB_spectrum_%26_Likelihood_Code">description</A>)
+   <!-- <LI><A HREF="http://irsa.ipac.caltech.edu/data/Planck/release_2/software/">US site</A>-->
 </UL>
 
 <LI>Extract and install the likelihood by doing:
-<pre>tar xvfj COM_Likelihood_Code-v2.*.tar.bz2</pre>
-<LI><pre>cd plc-2.0</pre>
-<LI><pre>./waf configure --lapack_mkl=${MKLROOT} --install_all_deps</pre>
+<pre>tar xvfj COM_Likelihood_Code-v3.*.tar.bz2</pre>
+<LI><pre>cd plc-3.0</pre>
+<LI><pre>./waf configure --install_all_deps</pre>
   (you may need to change the options on this line depending on your installation; --install_all_deps may not be needed; see the plc_2.0 readme.md for details)
 <LI><pre>./waf install</pre>
 <LI>Run ./bin/clik_profile.sh and edit your ~/.bashrc file (or equivalent) to include it in future sessions, or from command line:
@@ -47,12 +44,17 @@ export PYTHONPATH=COSMOMC..PATH/python:$PYTHONPATH
 <LI>Then change to your COSMOMC..PATH root directory and make a symbolic link to your data file installation
 <pre>
 cd COSMOMC...PATH
+ln -s DATA...PATH/plc_3.0 ./data/clik_14.0
+</pre>
+(CosmoMC will look for files in ./data/clik_14.0/hi_l, ./data/clik_14.0/lowl_l, etc etc.). For 2015 likelihoods you would download the 2015 files and
+<pre>
+cd COSMOMC...PATH
 ln -s DATA...PATH/plc_2.0 ./data/clik
 </pre>
-(CosmoMC will look for files in ./data/clik/hi_l, ./data/clik/lowl_l, etc etc.).
+
 <LI>You can now build cosmomc by running "make" as described further in the <A HREF="readme.html">ReadMe</A>, and it should detect and link to your PLC (clik) installation.
 </UL>
-A set of .ini files are supplied in ./batch2 which set up standards for Planck runs. You can try
+A set of .ini files are supplied in ./batch3 which set up standards for Planck 2018 runs. You can try
 <pre>mpirun -np 1 ./cosmomc test_planck.ini</pre>
 to see if things are being loaded and calculate a test likelihood OK.
 <P>
