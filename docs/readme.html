@@ -58,6 +58,11 @@ for an introduction and descriptions, and up-to-date <a href="http://arxiv.org/a
 <P>
 On a multi-processor machine you can start to get good results in a few of hours. On single processors
 you'll need to set aside rather longer. You can also run on a cluster.
+</P>
+<p>
+You may also want to consider the new <a href="https://cobaya.readthedocs.io/en/latest/">Cobaya</a> sampler, 
+which is based on Python and also allows use of other samplers or cosmology codes.
+</p>
 
 <p>By default CosmoMC uses a simple Metropolis algorithm or an optimized fast-slow sampling method (which works for likelihood with many fast nuisance parameters like Planck).
 The program takes as inputs estimates of central values and posterior uncertainties of the various parameters. The proposal density can use information about parameter correlations from a supplied covariance matrix: use one if possible as it will significantly improve performance. Covariance matrices are supplied for common sets of default base parameters. If you compile and run with <A HREF="https://en.wikipedia.org/wiki/Message_Passing_Interface">MPI</A> (to run across nodes in a cluster), there is an option to dynamically
@@ -84,7 +89,7 @@ To run compile and run CosmoMC you will need a Fortran 2008 compiler. Various op
 <LI>A pre-configured virtual development environment, available from <A HREF="http://cosmologist.info/CosmoBox">CosmoBox</A>. <br>
 <i>This is good for consistent development and debugging, and ensures required libraries are also available. There are both desktop virtual machine (and Docker) images, and an Amazon AWS image that can be used for running clusters in the cloud.</i>
 </UL>
-If you just want to analyse chains and run plots, you only need python 2.7+ or 3.4+ (see <A HREF="#Analysing">plotting</A> below).
+If you just want to analyse chains and run plots, you only need python 2.7+ or 3.5+ (see <A HREF="#Analysing">plotting</A> below).
 <P>
 You then need to download and install the program:
 <ul>
