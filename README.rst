@@ -8,6 +8,7 @@ Description and installation
 =============================
 
 For full details see the `ReadMe <http://cosmologist.info/cosmomc/readme.html>`_.
+This branch has the code used for the Planck 2018 parameter analysis.
 
 Algorithm details
 ==================
@@ -28,18 +29,7 @@ The master branch contains latest changes to the main release version.
 .. image:: https://secure.travis-ci.org/cmbant/CosmoMC.png?branch=master
   :target: https://secure.travis-ci.org/cmbant/CosmoMC/builds
 
-The devel branch is a development version, using the latest CAMB 1.x master branch which integrates 
-CAMB and CAMB sources (though CAMB sources functions are not available via CosmoMC yet).
-Includes run-time changing of dark energy model between fluid and PPF modes (easily extended).
-Shared general function now taken from the `forutils <https://github.com/cmbant/forutils>`_ library.
-
-.. image:: https://secure.travis-ci.org/cmbant/CosmoMC.png?branch=devel
-  :target: https://secure.travis-ci.org/cmbant/CosmoMC/builds
-
-Both branches now have a travis unit test to check they work with the Planck 2015 data. The test
-does a test install of CosmoMC and the Planck likelihood code and checks the likelihood is as expected.
-See tests/run_tests.sh for the setup and test code. There are small changes in the absolute likelihood value between branches
-due to small changes in the CAMB version (e.g. implied optical depth changes very slightly due to changes in time sampling).
+This branch has an old CAMB version as used by the Planck 2018 parameter analysis.
 
 =============
 

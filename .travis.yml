@@ -7,12 +7,6 @@ git:
 
 dist: xenial
 
-branches:
-  only:
-    - master
-    - devel
-    = planck2018
-
 services:
   - docker
 
@@ -39,7 +33,6 @@ before_install:
   - docker pull cmbant/cosmobox:$GCCTAG
 
 install:
-  - git clone --depth=1 https://github.com/cmbant/forutils.git forutils
   - chmod +x tests/run_tests.sh
       
 script:
