@@ -11,6 +11,7 @@ branches:
   only:
     - master
     - devel
+    = planck2018
 
 services:
   - docker
