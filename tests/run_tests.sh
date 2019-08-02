@@ -2,12 +2,9 @@ cd /cosmomc/forutils
 make ReleaseMPI
 
 cd /cosmomc
-#wget http://irsa.ipac.caltech.edu/data/Planck/release_2/software/COM_Likelihood_Code-v2.0.R2.00.tar.bz2
-wget https://pla.esac.esa.int/pla/aio/product-action?COSMOLOGY.FILE_ID=COM_Likelihood_Code-v3.0_R3.00.tar.gz
+wget https://pla.esac.esa.int/pla/aio/product-action?COSMOLOGY.FILE_ID=COM_Likelihood_Code-v3.0_R3.01.tar.gz
 tar xvf *.tar.gz
-cd code/plc_3.0
-tar xvfj *.tar.bz2
-cd plc-3.0
+cd code/plc_3.0/plc-3.01
 ./waf configure --install_all_deps
 ./waf install
 source ./bin/clik_profile.sh
