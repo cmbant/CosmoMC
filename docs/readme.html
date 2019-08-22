@@ -93,9 +93,9 @@ If you just want to analyse chains and run plots, you only need python 2.7+ or 3
 <P>
 You then need to download and install the program:
 <ul>
-<li>Register for the <a href="http://cosmologist.info/cosmomc/submit.html">download</a>, and install by cloning from git using 
+<li>Register for the <a href="http://cosmologist.info/cosmomc/submit.html">download</a>, and install by cloning from git using
 <blockquote>
-git clone --recursive https://github.com/cmbant/CosmoMC.git  
+git clone --recursive https://github.com/cmbant/CosmoMC.git
 </blockquote>
 <li>Change to the CosmoMC directory and run "make"
 <br>
@@ -106,6 +106,11 @@ The Makefiles used by "make" should detect ifort and gfortran, but if necessary 
 <p>
 Note that the latest version of CosmoMC is not the same as used for the Planck 2018 final analysis. See the github planck2018 branch for the exact CAMB and other settings used for that.
 </p>
+<p><i>
+Some people have reported problems using Intel MPI 2019, earlier versions should be OK.
+</i>
+</p>
+
 
 By default the build uses MPI. Using MPI simplifies running several chains and proposal optimization. MPI can be used with OpenMP for parallelization of each chain. Generally you want to use OpenMP to use all the shared-memory processors on each node of a cluster, and MPI to run multiple chains on different nodes (the program can also just be run on a single CPU).
 <p>

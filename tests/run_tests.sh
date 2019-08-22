@@ -1,6 +1,6 @@
 
 cd /cosmomc
-wget http://pla.esac.esa.int/pla/aio/product-action?COSMOLOGY.FILE_ID=COM_Likelihood_Code-v3.0_R3.01.tar.gz
+wget https://pla.esac.esa.int/pla/aio/product-action?COSMOLOGY.FILE_ID=COM_Likelihood_Code-v3.0_R3.01.tar.gz
 tar xvf *.tar.gz
 cd code/plc_3.0/plc-3.01
 ./waf configure --install_all_deps

@@ -25,9 +25,8 @@ camspec: ./source/*.*90 ./camb/fortran/*.*90
 clean:
 	cd ./source && make clean
 
-all: cosmomc getdist
+all: cosmomc
 
 delete:
 	rm -f cosmomc
 	rm -f cosmomc_debug
-	rm -f getdist

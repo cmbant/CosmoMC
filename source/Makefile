@@ -138,7 +138,6 @@ CALCFILES = $(OUTPUT_DIR)/Calculator_CAMB.o
 #Can use params_H if you prefer more generic parameters
 PARAMETERIZATION = $(OUTPUT_DIR)/CosmologyParameterizations.o
 
-GETDISTFLAGS = $(FFLAGS) $(IFLAG)$(FORUTILSPATH)/$(OUTPUT_DIR)/
 F90FLAGS = $(FFLAGS) $(IFLAG)../camb/fortran/$(OUTPUT_DIR) $(IFLAG)$(FORUTILSPATH)/$(OUTPUT_DIR)/ $(INCLUDE)
 LINKFLAGS = -L../camb/fortran/$(OUTPUT_DIR) -lcamb -L$(FORUTILSPATH)/$(OUTPUT_DIR) -lforutils $(LAPACKL) $(F90CRLINK) $(CLIKL)
 
@@ -149,10 +148,6 @@ LINKFLAGS +=  $(shell python -c "import pypico; print pypico.get_link()")
 F90FLAGS += -DPICO $(shell python -c "import pypico; print pypico.get_include()")
 endif
 endif
-
-
-DISTFILES = $(OUTPUT_DIR)/ObjectParamNames.o  \
-    $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/samples.o $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/GetDist.o
 
 
 ifneq ($(PRECISION),)
@@ -217,7 +212,6 @@ $(OUTPUT_DIR)/settings.o:  $(OUTPUT_DIR)/ObjectParamNames.o
 $(OUTPUT_DIR)/propose.o: $(OUTPUT_DIR)/settings.o $(OUTPUT_DIR)/GeneralTypes.o
 $(OUTPUT_DIR)/IO.o: $(OUTPUT_DIR)/settings.o
 $(OUTPUT_DIR)/samples.o: $(OUTPUT_DIR)/settings.o
-$(OUTPUT_DIR)/GetDist.o: $(OUTPUT_DIR)/IO.o $(OUTPUT_DIR)/samples.o
 
 $(OUTPUT_DIR)/CalcLike_Cosmology.o: $(OUTPUT_DIR)/calclike.o
 
@@ -316,8 +310,6 @@ cleancosmomc:
 	rm -rf Release*
 	rm -rf Debug*
 
-getdist: directories $(DISTFILES)
-	$(F90C) -o ../getdist $(DISTFILES) $(LAPACKL) $(GETDISTFLAGS)
 
 camb:
 	cd ../camb/fortran && \
