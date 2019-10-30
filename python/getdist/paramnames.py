@@ -21,7 +21,8 @@ def makeList(roots):
 
 
 def escapeLatex(text):
-    if text: import matplotlib
+    if text:
+        import matplotlib
     if text and matplotlib.rcParams['text.usetex']:
         return text.replace('_', '{\\textunderscore}')
     else:
@@ -91,6 +92,12 @@ class ParamInfo(object):
         if line is not None:
             self.setFromString(line)
 
+    def nameEquals(self, name):
+        if isinstance(name, ParamInfo):
+            return name.name == name
+        else:
+            return name == name
+
     def setFromString(self, line):
         items = line.split(None, 1)
         name = items[0]
@@ -155,11 +162,16 @@ class ParamList(object):
         :param names: a list of name strings to use
         """
         self.names = []
-        if default: self.setDefault(default)
-        if names is not None: self.setWithNames(names)
-        if fileName is not None: self.loadFromFile(fileName)
-        if setParamNameFile is not None: self.setLabelsFromParamNames(setParamNameFile)
-        if labels is not None: self.setLabels(labels)
+        if default:
+            self.setDefault(default)
+        if names is not None:
+            self.setWithNames(names)
+        if fileName is not None:
+            self.loadFromFile(fileName)
+        if setParamNameFile is not None:
+            self.setLabelsFromParamNames(setParamNameFile)
+        if labels is not None:
+            self.setLabels(labels)
 
     def setDefault(self, n):
         self.names = [ParamInfo(name='param' + str(i + 1), label='p_{' + str(i + 1) + '}') for i in range(n)]
@@ -181,6 +193,12 @@ class ParamList(object):
         Gets a list of parameter name strings
         """
         return [name.name for name in self.names]
+
+    def labels(self):
+        """
+        Gets a list of parameter labels
+        """
+        return [name.label for name in self.names]
 
     def listString(self):
         return " ".join(self.list())
@@ -212,7 +230,8 @@ class ParamList(object):
                               makeList(renames.get(par.name, [])))
             if known_names.intersection(given_names):
                 return par
-        if error: raise Exception("parameter name not found: " + name)
+        if error:
+            raise Exception("parameter name not found: " + name)
         return None
 
     def numberOfName(self, name):
@@ -223,7 +242,8 @@ class ParamList(object):
         :return: index of the parameter, or -1 if not found
         """
         for i, par in enumerate(self.names):
-            if par.name == name: return i
+            if par.name == name:
+                return i
         return -1
 
     def parsWithNames(self, names, error=False, renames={}):
@@ -272,7 +292,7 @@ class ParamList(object):
             p = ParamNames(fname)
         for par in p.names:
             param = self.parWithName(par.name)
-            if not param is None:
+            if param is not None:
                 param.label = par.label
                 if set_derived: param.isDerived = par.isDerived
 
@@ -378,10 +398,9 @@ class ParamNames(ParamList):
             with open(fileName) as f:
                 self.names = [ParamInfo(line) for line in [s.strip() for s in f] if line != '']
         elif extension.lower() in ('.yaml', '.yml'):
-            from getdist.yaml_format_tools import yaml_load_file, get_info_params
-            from getdist.yaml_format_tools import is_sampled_param, is_derived_param
-            from getdist.yaml_format_tools import _p_label, _p_renames
-
+            from getdist.yaml_tools import yaml_load_file
+            from getdist.cobaya_interface import get_info_params, is_sampled_param
+            from getdist.cobaya_interface import is_derived_param, _p_label, _p_renames
             info_params = get_info_params(yaml_load_file(fileName))
             # first sampled, then derived
             self.names = [ParamInfo(name=param, label=(info or {}).get(_p_label, param),

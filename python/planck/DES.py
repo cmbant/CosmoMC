@@ -454,8 +454,8 @@ class DES_like(object):
 
     def get_theory_for_params(self, paramdic, camb_pars=None, camb_results=None):
         if camb_pars is None:
-            from cosmomc_to_camb import get_camb_params
-            camb_pars = get_camb_params(paramdic)
+            from camb import set_params_cosmomc
+            camb_pars = set_params_cosmomc(paramdic)
         if camb_results is not None:
             results, PKdelta, PKWeyl = camb_results
         else:
@@ -488,7 +488,7 @@ class DES_like(object):
         D_growth = PKdelta.P(zs, 0.001)
         D_growth = np.sqrt(D_growth / PKdelta.P(0, 0.001))
         h2 = (pars.H0 / 100) ** 2
-        omm = pars.omegab + pars.omegac + pars.omegan
+        omm = pars.omegab + pars.omegac + pars.omeganu
         c = 299792458.
 
         def get_wq():

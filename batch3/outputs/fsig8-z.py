@@ -7,7 +7,7 @@ import os
 import tempfile
 import pickle
 
-sys.path.insert(0, 'C:\Work\Dist\git\camb\pycamb')
+sys.path.insert(0, 'C:\Work\Dist\git\camb')
 from cosmomc_to_camb import get_camb_params
 import camb
 
@@ -43,7 +43,7 @@ for i, dat in enumerate(datasets):
             raise Exception('error')
         datapoints[i] *= rescale
         dataerrs[i] *= rescale
-    print dataredshifts[i], datapoints[i], dataerrs[i]
+    print(dataredshifts[i], datapoints[i], dataerrs[i])
 
 DR12 = np.loadtxt(batchjob.getCodeRootPath() + 'data/DR12/final_consensus_results_dM_Hz_fsig.dat',
                   usecols=[0, 1])
