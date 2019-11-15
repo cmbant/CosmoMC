@@ -22,6 +22,7 @@ ReleaseMPI/
 *.user
 *.pdb
 data/clik
+data/clik_14.0
 cosmomc
 cosmomc_debug
 CosmoMC/
