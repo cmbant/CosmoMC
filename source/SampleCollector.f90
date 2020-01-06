@@ -98,7 +98,7 @@
     if (this%acc >= thin .or. thin==1) then
         if (want) then
             output_lines = output_lines +1
-            call CurParams%WriteParams(this%Config,this%acc/thin,CurLike)
+            call CurParams%WriteParams(this%Config,real(floor(this%acc/thin),mcp),CurLike)
         end if
         this%acc = mod(this%acc, real(thin,mcp))
     end if

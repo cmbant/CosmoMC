@@ -15,7 +15,7 @@
 				<Tool Name="VFPostBuildEventTool"/>
 				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration>
 		<Configuration Name="Release|x64">
-				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" UseProcessorExtensions="codeExclusivelyHost" Preprocess="preprocessYes" ErrorLimit="4" WarnDeclarations="true" WarnUnusedVariables="true" WarnTruncateSource="true" FloatingPointExceptionHandling="fpe0" UseMkl="mklSequential"/>
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" UseProcessorExtensions="codeExclusivelyHost" Preprocess="preprocessYes" ErrorLimit="4" WarnDeclarations="true" WarnUnusedVariables="true" WarnTruncateSource="true" UseMkl="mklSequential"/>
 				<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" SubSystem="subSystemConsole"/>
 				<Tool Name="VFResourceCompilerTool"/>
 				<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
