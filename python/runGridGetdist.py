@@ -38,8 +38,6 @@ plot_ext = 'py'
 plot_cmd = 'python'
 
 plot_types = ['.', '_2D.']
-# you don't need these for python plots generated separately
-# '_tri' is very slow for so many
 
 if args.plot_data is None and getdist.use_plot_data:
     data_dir = os.path.abspath(args.plot_data) + os.sep

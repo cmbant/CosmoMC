@@ -325,7 +325,7 @@
     class(TMpiChainCollector) :: this
     real(mcp), intent(in) ::like
     real(mcp) P(:)
-    !Collect thinned samples after a burn-in perdiod
+    !Collect thinned samples after a burn-in period
     !Then use second half of the samples to get convergence
     !Use R = worst eigenvalue (variance of chain means)/(mean of chain variances) statistic for
     !convergence test, followed optionally by (variance of limit)/(mean variance) statistic

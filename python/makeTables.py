@@ -2,12 +2,9 @@ from __future__ import absolute_import
 from __future__ import print_function
 import os
 import copy
-import planckStyle
 from paramgrid import batchjob, batchjob_args
 from getdist import types, paramnames
-from getdist.mcsamples import loadMCSamples, MCSamples
-from getdist.paramnames import ParamNames
-import numpy as np
+from getdist.mcsamples import loadMCSamples
 
 Opts = batchjob_args.batchArgs('Make pdf tables from latex generated from getdist outputs', importance=True,
                                converge=True)
@@ -65,6 +62,7 @@ if args.blockEndParams is not None: args.blockEndParams = args.blockEndParams.sp
 if args.paramList is not None: args.paramList = paramnames.ParamNames(args.paramList)
 
 if args.forpaper:
+    import planckStyle
     formatter = planckStyle.planckStyleTableFormatter()
 else:
     formatter = None
@@ -91,12 +89,6 @@ def getSystematicAverageTableLines(jobItem1, jobItem2):
     samps1 = loadMCSamples(jobItem1.chainRoot, jobItem=jobItem1, settings=batch.getdist_options)
     samps2 = loadMCSamples(jobItem2.chainRoot, jobItem=jobItem2, settings=batch.getdist_options)
     samps = samps1.getCombinedSamplesWithSamples(samps2)
-    if False:
-        import planckStyle as s
-        g = s.getSubplotPlotter()
-        g.plots_1d([samps, samps1, samps2], params=params.list(),
-                   legend_labels=['Combined', texEscapeText(jobItem1.name), texEscapeText(jobItem2.name)])
-        g.export('joint_' + jobItem1.name)
     return getTableLines(samps.getMargeStats())
 
 
