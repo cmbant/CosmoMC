@@ -677,39 +677,39 @@
     IF ( has_mag_covmat .OR. has_stretch_covmat .OR. has_colour_covmat .OR. &
         has_mag_stretch_covmat .OR. has_mag_colour_covmat .OR. &
         has_stretch_colour_covmat ) THEN
-    diag_errors = .FALSE.
+        diag_errors = .FALSE.
 
-    !Now Read in the covariance matricies
-    IF (has_mag_covmat) THEN
-        covfile = Ini%Read_String('mag_covmat_file',.TRUE.)
-        ALLOCATE( mag_covmat( nsn, nsn ) )
-        CALL read_cov_matrix( covfile, mag_covmat, nsn )
-    ENDIF
-    IF (has_stretch_covmat) THEN
-        covfile = Ini%Read_String('stretch_covmat_file',.TRUE.)
-        ALLOCATE( stretch_covmat( nsn, nsn ) )
-        CALL read_cov_matrix( covfile, stretch_covmat, nsn )
-    ENDIF
-    IF (has_colour_covmat) THEN
-        covfile = Ini%Read_String('colour_covmat_file',.TRUE.)
-        ALLOCATE( colour_covmat( nsn, nsn ) )
-        CALL read_cov_matrix( covfile, colour_covmat, nsn )
-    ENDIF
-    IF (has_mag_stretch_covmat) THEN
-        covfile = Ini%Read_String('mag_stretch_covmat_file',.TRUE.)
-        ALLOCATE( mag_stretch_covmat( nsn, nsn ) )
-        CALL read_cov_matrix( covfile, mag_stretch_covmat, nsn )
-    ENDIF
-    IF (has_mag_colour_covmat) THEN
-        covfile = Ini%Read_String('mag_colour_covmat_file',.TRUE.)
-        ALLOCATE( mag_colour_covmat( nsn, nsn ) )
-        CALL read_cov_matrix( covfile, mag_colour_covmat, nsn )
-    ENDIF
-    IF (has_stretch_colour_covmat) THEN
-        covfile = Ini%Read_String('stretch_colour_covmat_file',.TRUE.)
-        ALLOCATE( stretch_colour_covmat( nsn, nsn ) )
-        CALL read_cov_matrix( covfile, stretch_colour_covmat, nsn )
-    ENDIF
+        !Now Read in the covariance matricies
+        IF (has_mag_covmat) THEN
+            covfile = Ini%Read_String('mag_covmat_file',.TRUE.)
+            ALLOCATE( mag_covmat( nsn, nsn ) )
+            CALL read_cov_matrix( covfile, mag_covmat, nsn )
+        ENDIF
+        IF (has_stretch_covmat) THEN
+            covfile = Ini%Read_String('stretch_covmat_file',.TRUE.)
+            ALLOCATE( stretch_covmat( nsn, nsn ) )
+            CALL read_cov_matrix( covfile, stretch_covmat, nsn )
+        ENDIF
+        IF (has_colour_covmat) THEN
+            covfile = Ini%Read_String('colour_covmat_file',.TRUE.)
+            ALLOCATE( colour_covmat( nsn, nsn ) )
+            CALL read_cov_matrix( covfile, colour_covmat, nsn )
+        ENDIF
+        IF (has_mag_stretch_covmat) THEN
+            covfile = Ini%Read_String('mag_stretch_covmat_file',.TRUE.)
+            ALLOCATE( mag_stretch_covmat( nsn, nsn ) )
+            CALL read_cov_matrix( covfile, mag_stretch_covmat, nsn )
+        ENDIF
+        IF (has_mag_colour_covmat) THEN
+            covfile = Ini%Read_String('mag_colour_covmat_file',.TRUE.)
+            ALLOCATE( mag_colour_covmat( nsn, nsn ) )
+            CALL read_cov_matrix( covfile, mag_colour_covmat, nsn )
+        ENDIF
+        IF (has_stretch_colour_covmat) THEN
+            covfile = Ini%Read_String('stretch_colour_covmat_file',.TRUE.)
+            ALLOCATE( stretch_colour_covmat( nsn, nsn ) )
+            CALL read_cov_matrix( covfile, stretch_colour_covmat, nsn )
+        ENDIF
     ELSE
         diag_errors = .TRUE.
     END IF
@@ -797,9 +797,9 @@
             RETURN
         ELSE IF ( (ABS(alpha-alpha_prev) .LT. alphatol) .AND. &
             ( ABS(beta-beta_prev) .LT. betatol ) ) THEN
-        !Previous invcovmatrix is close enough
-        status = 0
-        RETURN
+            !Previous invcovmatrix is close enough
+            status = 0
+            RETURN
         ENDIF
     ENDIF
 

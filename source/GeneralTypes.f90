@@ -553,7 +553,7 @@
     select type (like => L%Items(i)%P)
     class is (TDataLikelihood)
         P => like
-        class default
+    class default
         stop 'List contains non-TDataLikelihood item'
     end select
 

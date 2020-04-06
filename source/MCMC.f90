@@ -175,7 +175,7 @@
     if (accpt) then
         if (mult>0) then
             if (associated(this%SampleCollector) .and. CurLike /= LogZero .and. this%num_accept> this%burn_in) &
-            & call this%SampleCollector%AddNewWeightedPoint(CurParams, CurLike, mult, thin_fac)
+                & call this%SampleCollector%AddNewWeightedPoint(CurParams, CurLike, mult, thin_fac)
             this%num_accept = this%num_accept + 1
         end if
         mult=1
@@ -259,7 +259,7 @@
     call this%TSamplingAlgorithm%Init(LikeCalculator,SampleCollector)
     allocate(BlockedProposer::this%Proposer)
     call this%Proposer%Init(BaseParams%param_blocks, slow_block_max= slow_tp_max, &
-    oversample_fast=this%oversample_fast, propose_scale=this%propose_scale)
+        oversample_fast=this%oversample_fast, propose_scale=this%propose_scale)
     this%num_accept=0
 
     end subroutine TChainSampler_InitWithPropose
@@ -295,10 +295,10 @@
         CurLike = Like
         this%num_metropolis_accept = this%num_metropolis_accept + 1
         if (Feedback > 1) write (*,*) this%num_metropolis, ' metropolis accept. ratio:', &
-        & real(this%num_metropolis_accept)/this%num_metropolis
+            & real(this%num_metropolis_accept)/this%num_metropolis
         if (LogFile%Opened() .and. mod(this%num_metropolis_accept,50*this%Oversample_fast) ==0) then
             write (LogFile%unit,*) 'metropolis rat:',real(this%num_metropolis_accept)/this%num_metropolis,  &
-            & ' in ',this%num_metropolis, ', best: ',real(this%MaxLike)
+                & ' in ',this%num_metropolis, ', best: ',real(this%MaxLike)
             write (LogFile%unit,*) 'local acceptance ratio:', 50./(this%num_metropolis - this%last_num)
             this%last_num = this%num_metropolis
         end if
@@ -445,8 +445,8 @@
         CurLike = CurEndLike
         this%drag_accpt=this%drag_accpt+1
         if (Feedback > 0 .and. mod(this%drag_accpt,30)==0 .or. Feedback>1) &
-        write (*,*) trim(concat('Chain:',MpiRank,' drag accpt:')), real(this%drag_accpt)/(this%num_drag/this%oversample_fast), &
-        'fast/slow',real(this%num_fast_calls)/this%num_slow_calls, 'slow:', this%num_slow_calls
+            write (*,*) trim(concat('Chain:',MpiRank,' drag accpt:')), real(this%drag_accpt)/(this%num_drag/this%oversample_fast), &
+            'fast/slow',real(this%num_fast_calls)/this%num_slow_calls, 'slow:', this%num_slow_calls
     end if
 
     end subroutine TFastDraggingSampler_GetNewSample

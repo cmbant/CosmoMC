@@ -366,13 +366,13 @@
             do j=1, num_params_used-1
                 if (param_type(params_used(j))==tp_fast .and. params_used(j) >= DataLike%new_param_block_start &
                     .and. params_used(j) < DataLike%new_param_block_start + DataLike%new_params) then
-                if (first) then
-                    first = .false.
-                else
-                    num_breaks = num_breaks+1
-                    breaks(num_breaks)=j
-                end if
-                exit
+                    if (first) then
+                        first = .false.
+                    else
+                        num_breaks = num_breaks+1
+                        breaks(num_breaks)=j
+                    end if
+                    exit
                 end if
             end do
         end do

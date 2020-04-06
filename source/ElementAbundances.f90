@@ -66,7 +66,7 @@
         end if
     else if (this%measurement=='D/H') then
         if (.not. CosmoSettings%bbn_consistency) &
-              call MpiStop('D/H abundance measurement requires BBN consistency')
+            call MpiStop('D/H abundance measurement requires BBN consistency')
         this%BBN_value => BBN_DH
         this%BBN_error => BBN_DH_err
     else

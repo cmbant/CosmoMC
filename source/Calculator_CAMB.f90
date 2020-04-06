@@ -98,14 +98,14 @@
     class is (TTanhReionization)
         Reion%redshift= CMB%zre
         Reion%delta_redshift = CMB%zre_delta
-        class default
+    class default
         call MpiStop('Unknown reionizxation model')
     end select
     select type(DE => P%DarkEnergy)
     class is (TDarkEnergyEqnOfState)
         DE%w_lam = CMB%w
         DE%wa = CMB%wa
-        class default
+    class default
         call MpiStop('Unknown dark energy model')
     end select
     P%ALens = CMB%ALens
@@ -170,6 +170,7 @@
         !set background parameters, but don't calculate thermal history
         call this%CMBToCAMB(CMB, P)
         call Info%State%SetParams(P)
+        this%CurrentState => Info%State
     end select
 
     end subroutine CAMBCalc_SetParamsForBackground
@@ -209,6 +210,7 @@
     class is (CAMBTransferCache)
 
         call this%CMBToCAMB(CMB, P)
+        this%CurrentState => Info%State
 
         if (Feedback > 1) write (*,*) 'Calling CAMB'
         Threadnum =num_threads
@@ -216,7 +218,7 @@
         if (this%CAMB_timing) time = TimerTime()
         call CAMB_GetResults(Info%State, P, error, onlytransfer=.true.)
         if (this%CAMB_timing) call Timer('GetTransfers', time)
-        class default
+    class default
         call MpiStop('CAMB_GetNewTransferData with wrong TTheoryIntermediateCache type')
     end select
     if (error==0) then
@@ -670,7 +672,7 @@
     select type(Reion=>P%Reion)
     class is (TTanhReionization)
         GetZreFromTau = Reion%GetZreFromTau(P, tau)
-        class default
+    class default
         call MpiStop('GetZreFromTau: Unknown reionization model')
     end select
     end function CAMBCalc_GetZreFromTau
@@ -826,7 +828,7 @@
     select type(Reion=>P%Reion)
     class is (TTanhReionization)
         Reion%use_optical_depth = .false.
-        class default
+    class default
         call MpiStop('Reionization not TTanhReionization')
     end select
 
@@ -895,7 +897,7 @@
             InitPower%At = CMB%InitPower(nt_index)
             InitPower%ntrun = CMB%InitPower(ntrun_index)
         end if
-        class default
+    class default
         stop 'CAMB_Calculator:Wrong initial power spectrum'
     end select
 

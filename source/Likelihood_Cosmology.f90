@@ -44,10 +44,10 @@
         select type(Theory)
         class is (TCosmoTheoryPredictions)
             logLike = this%LogLike(Params,Theory,DataParams)
-            class default
+        class default
             call MpiStop('TCosmologyLikelihood requires TCosmoTheoryPredictions')
         end select
-        class default
+    class default
         call MpiStop('TCosmologyLikelihood requires CMBParams')
     end select
 
@@ -95,7 +95,7 @@
     class is (TCosmologyCalculator)
         !Just store for convenient also pointer type cast to the right thing
         this%Calculator => Calc
-        class default
+    class default
         call MpiStop('TCosmoCalcLikelihood requires TCosmologyCalculator')
     end select
 

@@ -287,11 +287,11 @@
     do
         if (.not. IO_ReadChainRow(F, invars(1), invars(2), &
             invars,indices,chainOK,samples_are_chains)) then
-        if (.not. chainOK) then
-            write (*,*) 'error reading line ', nrows -row_start + ignorerows ,' - skipping to next row'
-            cycle
-        endif
-        return
+            if (.not. chainOK) then
+                write (*,*) 'error reading line ', nrows -row_start + ignorerows ,' - skipping to next row'
+                cycle
+            endif
+            return
         else
             if (.not. chainOK) then
                 write (*,*) 'WARNING: skipping line with probable NaN'

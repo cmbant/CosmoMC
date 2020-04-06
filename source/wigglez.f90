@@ -336,7 +336,7 @@
     if (Feedback > 1) then
         write(*,*) 'reading: '//trim(this%name)//' data'
         write(*,*) 'Using kbands windows between',real(mpk_kfull(min_mpk_kbands_use)),&
-        ' < k/h < ',real(mpk_kfull(max_mpk_kbands_use))
+            ' < k/h < ',real(mpk_kfull(max_mpk_kbands_use))
     endif
 
     measurements_file  = Ini%ReadFileName('measurements_file')
@@ -358,7 +358,7 @@
             end do
 
             if (Feedback > 1 .and. min_mpk_points_use>1) write(*,*) 'Not using bands with keff=  ',real(keff),&
-            ' or below in region', i_regions
+                ' or below in region', i_regions
             do i =1, num_mpk_points_use
                 read (F%unit,*, iostat=iopb) keff,klo,khi,this%PKdata(count)%mpk_P(i),beff,beff
             end do
@@ -388,7 +388,7 @@
         if(regions_active(i_regions)) then
             count = count + 1
             this%PKdata(count)%mpk_W(1:num_mpk_points_use,1:num_mpk_kbands_use)= &
-            mpk_Wfull(i_regions,min_mpk_points_use:max_mpk_points_use,min_mpk_kbands_use:max_mpk_kbands_use)
+                mpk_Wfull(i_regions,min_mpk_points_use:max_mpk_points_use,min_mpk_kbands_use:max_mpk_kbands_use)
         endif
     enddo
 
@@ -404,7 +404,7 @@
                 count = count + 1
                 allocate(this%PKdata(count)%mpk_invcov(num_mpk_points_use,num_mpk_points_use))
                 invcov_tmp(:,:) = &
-                mpk_covfull(i_regions,min_mpk_points_use:max_mpk_points_use,min_mpk_points_use:max_mpk_points_use)
+                    mpk_covfull(i_regions,min_mpk_points_use:max_mpk_points_use,min_mpk_points_use:max_mpk_points_use)
                 call Matrix_Inverse(invcov_tmp)
                 this%PKdata(count)%mpk_invcov(1:num_mpk_points_use,1:num_mpk_points_use) = invcov_tmp(:,:)
             endif

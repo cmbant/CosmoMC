@@ -34,8 +34,8 @@
         this%CosmoCalc => p
     end select
     end subroutine TCosmoLikeCalculator_InitConfig
-    
-    
+
+
     subroutine TCosmoLikeCalculator_SetTheoryParams(this, Params)
     class(TCosmoLikeCalculator) :: this
     class(TCalculationAtParamPoint), target :: Params

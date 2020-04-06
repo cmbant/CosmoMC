@@ -104,7 +104,7 @@
     call F%Open(trim(DataDir)//'sn_z_mu_dmu_plow_union2.1.txt')
     do i=1,  sn_num
         read(F%unit, *) name, this%SN_z(i),this%SN_moduli(i), &
-        this%SN_modulierr(i),this%SN_plow(i)
+            this%SN_modulierr(i),this%SN_plow(i)
         !     read(unit, *) name, SN_z(i),SN_moduli(i)
     end do
     call F%Close()

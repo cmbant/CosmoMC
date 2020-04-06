@@ -20,7 +20,7 @@
     contains
     procedure ::  Init => Kernel1D_Init
     end Type TKernel1D
-    
+
     !Spline interpolated density function
     Type TDensity1D
         integer n
@@ -225,14 +225,14 @@
     end subroutine Density1D_Limits
 
 
-    subroutine Kernel1D_Init(this,winw, h, has_boundary)    
+    subroutine Kernel1D_Init(this,winw, h, has_boundary)
     class(TKernel1D) :: this
     integer, intent(in) :: winw
     real(mcp), intent(in) :: h
     logical, intent(in) :: has_boundary
     real(mcp), allocatable :: a1(:), a2(:)
     integer i
-    
+
     this%winw=winw
     this%h = h
     allocate(this%Win(-winw:winw))
@@ -252,7 +252,7 @@
             a2(0) = a2(0) + this%Win(i)*i**2
         end do
         this%a0(0) = sum(this%Win(-winw:0))
-        a1(0) = sum(this%xWin(-winw:0)) 
+        a1(0) = sum(this%xWin(-winw:0))
         do i=1,winw
             this%xWin(i) = this%Win(i)*i
             this%a0(i) = this%a0(i-1)+ this%Win(i)
@@ -262,7 +262,7 @@
         this%boundary_K = a2/ (this%a0*a2-a1**2)
         this%boundary_xK = a1/ (this%a0*a2-a1**2)
     end if
-    
-    end subroutine Kernel1D_Init 
+
+    end subroutine Kernel1D_Init
 
     end module Samples

@@ -21,7 +21,7 @@
     procedure :: Hofz
     procedure :: Hofz_Hunit
     procedure :: AngularDiameterDistance
-    procedure :: ComovingRadialDistance    
+    procedure :: ComovingRadialDistance
     procedure :: ComovingRadialDistanceArr
     procedure :: AngularDiameterDistance2
     procedure :: LuminosityDistance
@@ -64,7 +64,7 @@
         if (.not. Param%late_time_only) then
             call this%SetBackgroundTheoryData(CMB, Info, Theory, error)
         end if
-        class default
+    class default
         call MpiStop('TCosmologyCalculator: Must have CosmologyParameterization')
     end select
 
@@ -83,7 +83,7 @@
     class(TCosmologyCalculator), target :: this
     class(TCalculationAtParamPoint), target :: Params
     end subroutine SetCurrentPoint
-    
+
     subroutine SetBackgroundTheoryData(this, CMB,Info, Theory,error)
     class(TCosmologyCalculator) :: this
     class(CMBParams) :: CMB
@@ -206,18 +206,18 @@
     ComovingRadialDistance = 0
 
     end function ComovingRadialDistance
-    
+
     subroutine ComovingRadialDistanceArr(this, z, arr, n)
     class(TCosmologyCalculator) :: this
     integer, intent(in) :: n
     real(mcp), intent(IN) :: z(n)
     real(mcp), intent(out) :: arr(n)
-    
+
     call this%ErrorNotImplemented('ComovingRadialDistanceArr')
     arr= 0
 
     end subroutine ComovingRadialDistanceArr
-    
+
 
     real(mcp) function AngularDiameterDistance2(this, z1, z2)
     class(TCosmologyCalculator) :: this

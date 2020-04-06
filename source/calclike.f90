@@ -101,7 +101,7 @@
 
     if (any(Params%P(:num_params) > BaseParams%PMax(:num_params)) .or. &
         & any(Params%P(:num_params) < BaseParams%PMin(:num_params))) then
-    GetLogLikeBounds = logZero
+        GetLogLikeBounds = logZero
     else
         GetLogLikeBounds=0
     end if
@@ -118,7 +118,7 @@
     do i=1,num_params
         if ((BaseParams%varying(i) .or. BaseParams%include_fixed_parameter_priors) &
             .and. BaseParams%GaussPriors%std(i)/=0) then
-        logLike = logLike + ((P(i)-BaseParams%GaussPriors%mean(i))/BaseParams%GaussPriors%std(i))**2
+            logLike = logLike + ((P(i)-BaseParams%GaussPriors%mean(i))/BaseParams%GaussPriors%std(i))**2
         end if
     end do
 

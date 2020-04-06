@@ -134,7 +134,7 @@
     real(dl) :: r
     real(dl), PARAMETER :: tol=1.0d-5
     real(dl) :: integral
-    
+
     integral=rombint(rint,0._dl,z,tol)
     ! maybe soften this to 10^-5
     if (cosmopar%omegak == 0._dl) then
@@ -1810,7 +1810,7 @@
                 DO ii=1,nrows
                     if ((SZcat(ii,1) >= z_min) .and. (SZcat(ii,1) < z_max) .and.&
                         (SZcat(ii,3) < y_max) .and. (SZcat(ii,3) >= y_min)) then
-                    DNcat(I,J)=DNcat(I,J)+1.
+                        DNcat(I,J)=DNcat(I,J)+1.
                     endif
                 ENDDO
             ENDDO

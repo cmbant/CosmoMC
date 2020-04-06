@@ -179,7 +179,7 @@
                 cache = mod(cache,ncache)+1
             end if
         end select
-        class default
+    class default
         call MpiStop('CosmologyParameterizations: Calculator is not TCosmologyCalculator')
     end select
 
@@ -494,6 +494,7 @@
         CMB%iso_cdm_correlated=0
         CMB%Alens=1
         CMB%omnuh2_sterile = 0
+
     end select
     end subroutine AP_ParamArrayToTheoryParams
 

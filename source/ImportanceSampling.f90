@@ -95,7 +95,7 @@
     select type (LikeCalculator)
     class is (TTheoryLikeCalculator)
         this%LikeCalculator => LikeCalculator
-        class default
+    class default
         call MpiStop('Importance sampling requires TTheoryLikeCalculator')
     end select
 
@@ -339,27 +339,27 @@
 
                     if (this%redo_auto_likescale .and. redo_loop==1 .and. num_used == this%redo_auto_likescale_count &
                         & .and. .not. this%redo_change_like_only .and. .not. this%redo_nochange) then
-                    !Check log likelihoods scaled to give sensible weights. Rescale must be constant between chains
-                    if (max_truelike /= logZero) then
-                        like_diff = max_truelike - max_like
-                    else
-                        like_diff = logZero
-                    end if
+                        !Check log likelihoods scaled to give sensible weights. Rescale must be constant between chains
+                        if (max_truelike /= logZero) then
+                            like_diff = max_truelike - max_like
+                        else
+                            like_diff = logZero
+                        end if
 #ifdef MPI
-                    allocate(like_diffs(MPIchains))
-                    call MPI_Allgather(like_diff, 1, MPI_real_mcp, like_diffs, 1,  MPI_real_mcp, MPI_COMM_WORLD, ierror)
-                    if (all(like_diffs==logZero)) then
-                        like_diff=0
-                    else
-                        like_diff = sum(like_diffs, mask = like_diffs/=logZero) / count(like_diffs/=logZero)
-                    end if
+                        allocate(like_diffs(MPIchains))
+                        call MPI_Allgather(like_diff, 1, MPI_real_mcp, like_diffs, 1,  MPI_real_mcp, MPI_COMM_WORLD, ierror)
+                        if (all(like_diffs==logZero)) then
+                            like_diff=0
+                        else
+                            like_diff = sum(like_diffs, mask = like_diffs/=logZero) / count(like_diffs/=logZero)
+                        end if
 #endif
-                    if (abs(like_diff) > this%redo_max_logLike_diff) then
-                        this%redo_likeoffset = like_diff
-                        if (Feedback > 0 .and. MpiRank==0) write(*,*) 'Re-starting with redo_likeoffset = ',this%redo_likeoffset
-                        redo_loop=2
-                        exit
-                    end if
+                        if (abs(like_diff) > this%redo_max_logLike_diff) then
+                            this%redo_likeoffset = like_diff
+                            if (Feedback > 0 .and. MpiRank==0) write(*,*) 'Re-starting with redo_likeoffset = ',this%redo_likeoffset
+                            redo_loop=2
+                            exit
+                        end if
                     end if
 
                     if (mult > 1e-100_mcp) then

@@ -163,7 +163,7 @@
     if (Feedback > 1) then
         write(*,*) 'reading: '//trim(this%name)//' data'
         write(*,*) 'Using kbands windows between',real(this%PKData%mpk_k(1)),' < k/h < ', &
-        & real(this%PKData%mpk_k(this%num_mpk_kbands_use))
+            & real(this%PKData%mpk_k(this%num_mpk_kbands_use))
     endif
     !if  (this%PKData%mpk_k(1) < matter_power_minkh) then
     !    write (*,*) 'WARNING: k_min in '//trim(this%name)//'less than setting in CosmologyTypes.f90'
@@ -189,7 +189,7 @@
     if (windows_file.eq.'') write(*,*) 'ERROR: mpk windows_file not specified'
     call File%ReadTextMatrix(windows_file,mpk_Wfull,num_mpk_points_full,num_mpk_kbands_full)
     this%PKData%mpk_W(1:this%num_mpk_points_use,1:this%num_mpk_kbands_use)= &
-    mpk_Wfull(min_mpk_points_use:max_mpk_points_use,min_mpk_kbands_use:max_mpk_kbands_use)
+        mpk_Wfull(min_mpk_points_use:max_mpk_points_use,min_mpk_kbands_use:max_mpk_kbands_use)
 
 
     cov_file  = Ini%ReadFileName('cov_file')

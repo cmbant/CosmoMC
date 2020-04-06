@@ -136,7 +136,7 @@
         if (Feedback > 0 .and. MPIRank==0) write (*,*) 'starting Monte-Carlo'
         call Sampler%SampleFrom(Params, StartLike, this%samples)
         call ChainOutFile%Close()
-        class default
+    class default
         call MpiStop('Sampling not implemented')
     end select
     if (Feedback > 0) write (*,*) 'finished'

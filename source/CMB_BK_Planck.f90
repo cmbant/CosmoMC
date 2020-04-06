@@ -55,7 +55,7 @@
     this%fpivot_dust_decorr(2) = Ini%Read_Double_Array('fpivot_dust_decorr', 2, 353.0_mcp)
     this%fpivot_sync_decorr(1) = Ini%Read_Double_Array('fpivot_sync_decorr', 1, 23.0_mcp)
     this%fpivot_sync_decorr(2) = Ini%Read_Double_Array('fpivot_sync_decorr', 2, 33.0_mcp)
-    
+
     ! Functional form of ell scaling for foreground decorrelation model.
     this%lform_dust_decorr = Ini%Read_String_Default('lform_dust_decorr', 'flat')
     this%lform_sync_decorr = Ini%Read_String_Default('lform_sync_decorr', 'flat')
@@ -100,7 +100,7 @@
 
     ! Calculate bandpass center-of-mass (i.e. mean frequency).
     Bandpass%nu_bar = sum(Bandpass%dnu * Bandpass%R(:,1) * Bandpass%R(:,2)) / &
-         sum(Bandpass%dnu * Bandpass%R(:,2))
+        sum(Bandpass%dnu * Bandpass%R(:,2))
 
     end subroutine TBK_planck_Read_Bandpass
 
@@ -129,12 +129,12 @@
     ! Add correction for band center error
     if (bandcenter_err /= 1.) then
         th_err = (bandcenter_err)**4 * &
-                 exp(Ghz_Kelvin * bandpass%nu_bar * (bandcenter_err - 1) / T_CMB) * &
-                 (exp(Ghz_Kelvin * bandpass%nu_bar / T_CMB) - 1)**2 / &
-                 (exp(Ghz_Kelvin * bandpass%nu_bar * bandcenter_err / T_CMB) - 1)**2
+            exp(Ghz_Kelvin * bandpass%nu_bar * (bandcenter_err - 1) / T_CMB) * &
+            (exp(Ghz_Kelvin * bandpass%nu_bar / T_CMB) - 1)**2 / &
+            (exp(Ghz_Kelvin * bandpass%nu_bar * bandcenter_err / T_CMB) - 1)**2
         gb_err = (bandcenter_err)**(3+beta) * &
-                 (exp(Ghz_Kelvin * bandpass%nu_bar / Tdust) - 1) / &
-                 (exp(Ghz_Kelvin * bandpass%nu_bar * bandcenter_err / Tdust) - 1)
+            (exp(Ghz_Kelvin * bandpass%nu_bar / Tdust) - 1) / &
+            (exp(Ghz_Kelvin * bandpass%nu_bar * bandcenter_err / Tdust) - 1)
     else
         th_err = 1.0_mcp
         gb_err = 1.0_mcp
@@ -168,9 +168,9 @@
     ! Add correction for band center error
     if (bandcenter_err /= 1.) then
         th_err = (bandcenter_err)**4 * &
-                 exp(Ghz_Kelvin * bandpass%nu_bar * (bandcenter_err - 1) / T_CMB) * &
-                 (exp(Ghz_Kelvin * bandpass%nu_bar / T_CMB) - 1)**2 / &
-                 (exp(Ghz_Kelvin * bandpass%nu_bar * bandcenter_err / T_CMB) - 1)**2
+            exp(Ghz_Kelvin * bandpass%nu_bar * (bandcenter_err - 1) / T_CMB) * &
+            (exp(Ghz_Kelvin * bandpass%nu_bar / T_CMB) - 1)**2 / &
+            (exp(Ghz_Kelvin * bandpass%nu_bar * bandcenter_err / T_CMB) - 1)**2
         pl_err = (bandcenter_err)**(2+beta)
     else
         th_err = 1.0_mcp
@@ -193,35 +193,35 @@
     real(mcp), intent(out) :: Deltap
     real(mcp) :: lpivot = 80.0_mcp
     real(mcp) :: scl_nu, scl_ell
-   
+
     ! Decorrelation scales as log^2(nu0/nu1)
     scl_nu = (log(nu0 / nu1)**2) / (log(nupivot(1) / nupivot(2))**2)
     ! Functional form for ell scaling is specified in .dataset file.
     select case (lform)
-       case ("flat")
-          scl_ell = 1.0_mcp
-       case ("lin")
-          scl_ell = l / lpivot
-       case ("quad")
-          scl_ell = (l / lpivot)**2
-       case default
-          scl_ell = 1.0_mcp
+    case ("flat")
+        scl_ell = 1.0_mcp
+    case ("lin")
+        scl_ell = l / lpivot
+    case ("quad")
+        scl_ell = (l / lpivot)**2
+        case default
+        scl_ell = 1.0_mcp
     end select
 
-    ! Even for small cval, correlation can become negative for sufficiently large frequency 
+    ! Even for small cval, correlation can become negative for sufficiently large frequency
     ! difference or ell value (with linear or quadratic scaling).
     ! Following Vansyngel et al, A&A, 603, A62 (2017), we use an exponential function to
-    ! remap the correlation coefficient on to the range [0,1]. 
+    ! remap the correlation coefficient on to the range [0,1].
     ! We symmetrically extend this function to (non-physical) correlation coefficients
     ! greater than 1 -- this is only used for validation tests of the likelihood model.
     ! Value returned corresponds to the "re-mapped" decorrelation parameter, denoted as
     ! $\Delta'_d$ in Appendix F of the BK15 paper (equations F4 and F5)
     if (Delta > 1) then
-       ! If using a physical prior for Delta, then this scenario should never happen.
-       Deltap = 2.0_mcp - exp(log(2.0_mcp - Delta) * scl_nu * scl_ell)
+        ! If using a physical prior for Delta, then this scenario should never happen.
+        Deltap = 2.0_mcp - exp(log(2.0_mcp - Delta) * scl_nu * scl_ell)
     else
-       ! This is for physically-relevant values of Delta.
-       Deltap = exp(log(Delta) * scl_nu * scl_ell)
+        ! This is for physically-relevant values of Delta.
+        Deltap = exp(log(Delta) * scl_nu * scl_ell)
     end if
 
     end subroutine Decorrelation
@@ -259,20 +259,20 @@
     EEtoBB_sync = DataParams(10)
     Delta_dust = DataParams(11)
     Delta_sync = DataParams(12)
-   
+
     ! Calculate dust and sync scaling for each map.
     do i=1, this%nmaps_required
         !Read and assign values to band center error params
         if (index(this%used_map_order%Item(i) , '95') > 0) then
             bandcenter_err(i)= DataParams(13)+ DataParams(14) + 1.
         else if (index(this%used_map_order%Item(i),'150') > 0) then
-            bandcenter_err(i)= DataParams(13)+ DataParams(15) + 1. 
+            bandcenter_err(i)= DataParams(13)+ DataParams(15) + 1.
         else if (index(this%used_map_order%Item(i), '220') > 0) then
-            bandcenter_err(i)= DataParams(13)+ DataParams(16) + 1. 
+            bandcenter_err(i)= DataParams(13)+ DataParams(16) + 1.
         else
             bandcenter_err(i)= 1.
         end if
-  
+
         call DustScaling(betadust,Tdust,this%Bandpasses(i),this%fpivot_dust,bandcenter_err(i),fdust(i))
         call SyncScaling(betasync,this%Bandpasses(i),this%fpivot_sync,bandcenter_err(i),fsync(i))
     end do
@@ -287,7 +287,7 @@
     ! Only calculate foreground decorrelation if necessary.
     need_dust_decorr = abs(Delta_dust-1) > 1d-5
     need_sync_decorr = abs(Delta_sync-1) > 1d-5
-    
+
     ! Loop over all auto and cross spectra
     do i=1, this%nmaps_required
         do j=1, i
@@ -313,7 +313,7 @@
                         call this%Decorrelation(Delta_dust,this%Bandpasses(i)%nu_bar*bandcenter_err(i),&
                             this%Bandpasses(j)%nu_bar*bandcenter_err(j),this%fpivot_dust_decorr, l, &
                             this%lform_dust_decorr, Deltap_dust)
-                    else 
+                    else
                         ! No dust decorrelation for auto-spectra.
                         Deltap_dust = 1.0_mcp
                     end if
@@ -325,7 +325,7 @@
                         ! No sync decorrelation for auto-spectra.
                         Deltap_sync = 1.0_mcp
                     end if
-          
+
                     ! Add foreground model to theory spectrum.
                     ! NOTE: Decorrelation is not implemented for the dust/sync correlated component.
                     !       In BK15, we never turned on correlation and decorrelation parameters

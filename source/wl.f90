@@ -491,7 +491,9 @@
     real(mcp) lens_photoz_errors(this%num_gal_bins)
 
     real(mcp) :: tmparr(size(this%ls_cl))
-    real(mcp) :: kharr(this%num_z_p),zarr(this%num_z_p), powers(this%num_z_p), wpowers(this%num_z_p), mwpowers(this%num_z_p), tmp(this%num_z_p), wtmp(this%num_z_p), mwtmp(this%num_z_p)
+    real(mcp) :: kharr(this%num_z_p),zarr(this%num_z_p), powers(this%num_z_p), &
+        wpowers(this%num_z_p), mwpowers(this%num_z_p), tmp(this%num_z_p), &
+        wtmp(this%num_z_p), mwtmp(this%num_z_p)
     real(mcp) :: time
 
     time= TimerTime()

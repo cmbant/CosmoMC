@@ -77,8 +77,8 @@
     end if
 
     end function PowerAt
-    
-    subroutine PowerAtArr(PK,k,z, n, outpower) 
+
+    subroutine PowerAtArr(PK,k,z, n, outpower)
     class(TCosmoTheoryPK) PK
     integer, intent(in) :: n
     real(mcp), intent(in) :: k(n),z(n)
@@ -100,7 +100,7 @@
     end if
 
     end subroutine PowerAtArr
-    
+
 
     subroutine TCosmoTheoryPK_InitExtrap(this, x, y, z, extrap_kmax)
     class(TCosmoTheoryPK):: this

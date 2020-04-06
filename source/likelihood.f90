@@ -79,10 +79,10 @@
         do i= 1, full_list%count
             like_other => full_list%Item(i)
             if (like_other%LikelihoodType==trim(this%conflict_type(i_conflict)) &
-            .and. like_other%name==trim(this%conflict_name(i_conflict))) then
+                .and. like_other%name==trim(this%conflict_name(i_conflict))) then
                 write(*,*) 'ERROR: Cannot use '//trim(this%LikelihoodType)//' dataset: '//trim(this%name)//&
-                ' and '//trim(like_other%LikelihoodType)//' dataset: '&
-                //trim(like_other%name)//' at the same time.'
+                    ' and '//trim(like_other%LikelihoodType)//' dataset: '&
+                    //trim(like_other%name)//' at the same time.'
                 OK = .false.
             end if
         end do

@@ -124,7 +124,7 @@
     like = this%LikeCalculator%GetLogLike(P)
     if (like == logZero) then
         print *, 'Warning: Minimizer does not currently properly support non-boundary LogZero rejections'
-!        call MpiStop('Minimizer does not currently support non-boundary LogZero rejections')
+        !        call MpiStop('Minimizer does not currently support non-boundary LogZero rejections')
         call P%Clear(keep=this%MinParams)
     else
         call this%MinParams%Clear(keep=P)
