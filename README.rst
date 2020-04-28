@@ -25,8 +25,8 @@ Branches
 
 The master branch contains latest changes to the main release version, using latest CAMB 1.x.
 
-.. image:: https://secure.travis-ci.org/cmbant/CosmoMC.png?branch=master
-  :target: https://secure.travis-ci.org/cmbant/CosmoMC/builds
+.. image:: https://travis-ci.org/cmbant/CosmoMC.svg?branch=master
+  :target: https://travis-ci.org/cmbant/CosmoMC/builds
 
 The planck2018 branch contains the configuration used for the final Planck 2018 analysis, with 
 corresponding CAMB version.
