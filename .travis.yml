@@ -1,16 +1,15 @@
-language: sh
+os: linux
+language: shell
 
 git:
   depth: false
-
-sudo: required
 
 dist: xenial
 
 services:
   - docker
 
-matrix:
+jobs:
   include:
     - name: "GCC6"
       env:
