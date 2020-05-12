@@ -4,7 +4,7 @@ language: shell
 git:
   depth: false
 
-dist: xenial
+dist: bionic
 
 services:
   - docker
