@@ -17,17 +17,21 @@
     contains
     procedure :: ReadModel => ParamSet_ReadModel
     procedure :: WriteModel => ParamSet_WriteModel
+#ifdef __INTEL_COMPILER
     final :: FreeParams
+#endif
     end Type
 
     contains
 
+#ifdef __INTEL_COMPILER
     subroutine FreeParams(this)
     Type(ParamSet) this
-    !This should not be needed? but does solve memory leak in ifort compilation..
+    !This should not be needed but does solve memory leak in some old ifort compilation..
+    !In some gfortran versions having final destructor can give memory leaks, so only Intel
     if (allocated(this%Theory)) deallocate(this%Theory)
     end subroutine
-
+#endif
 
     subroutine ParamSet_WriteModel(this, F, like, mult)
     Class(ParamSet) :: this
