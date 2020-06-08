@@ -976,7 +976,7 @@
     class(TCalculationAtParamPoint), target :: Params
 
     if (.not. associated(Params%Info)) then
-        Params%Info =>this%DefaultInstance
+        allocate(Params%Info, source=this%DefaultInstance)
     end if
 
     select type(Info=>Params%Info)
