@@ -1,0 +1,64 @@
+aps100        A^{PS}_{100}      # Point source amplitude at 100 GHz
+aps143        A^{PS}_{143}      # Point source amplitude at 143 GHz
+aps217        A^{PS}_{217}      # Point source amplitude at 217 GHz
+acib143       A^{CIB}_{143}     # CIB amplitude at 143 GHz
+acib217       A^{CIB}_{217}     # CIB amplitude at 217 GHz
+asz143        A^{tSZ}_{143}     # Thermal SZ amplitude at 143 GHz
+psr           r^{PS}_{143\times217}  # 143-217 correlation coefficient of point source residuals
+cibr          r^{CIB}_{143\times217}       # 143-217 correlation coefficient of CIB
+ncib143       \gamma^{CIB}_{143}     # spectral index of the CIB 143
+ncib          \gamma^{CIB}           # spectral index of the CIB 217
+cibrun        d\ln\gamma^{CIB}/d\ln l  # running of the CIB
+xi            \xi^{tSZ-CIB}     # TSZ-CIB template amplitude (positive is negative)
+aksz          A^{kSZ}
+dust100       A^{\rm dust}_{100}  # rescaling of 100 GHz dust template
+dust143       A^{\rm dust}_{143}  # rescaling of 143 GHz dust template
+dust217       A^{\rm dust}_{217}  # rescaling of 217 GHz dust template
+dust143x217   A^{\rm dust}_{143\times217}  # rescaling of 143-217 GHz dust template
+amp_100	      A^{\rm power}_{100} # Amplitude of 100 GHz power law at l=1500 
+amp_143	      A^{\rm power}_{143} # Amplitude of 143 GHz power law at l=1500 
+amp_217	      A^{\rm power}_{217} # Amplitude of 217 GHz power law at l=1500 
+amp_143x217   A^{\rm power}_{143\times217} # Amplitude of 143x217 GHz power law at l=1500 
+n_100	      \gamma^{\rm power}_{100} # spectral index of power law 100
+n_143	      \gamma^{\rm power}_{143} # spectral index of power law 143
+n_217	      \gamma^{\rm power}_{217} # spectral index of power law 217
+n_143x217     \gamma^{\rm power}_{143\times217} # spectral index of power law 143x217
+wig1_143      w^1_{143}
+wig1_217      w^1_{217}
+wig1_r        w^1_r
+wig1_L        w^1_L
+wig1_sigma    w^1_\sigma
+wig2_143      w^2_{143}
+wig2_217      w^2_{217}
+wig2_r        w^2_r
+wig2_L        w^2_L
+wig2_sigma    w^2_\sigma
+calPlanck     y_{\rm cal}     # total Planck calibration (relative to 1), scales all channels
+cal0          c_{100}       # relative power spectrum calibration factor 100/143 to rescale measured power with
+cal1          c_{143}       # calibration factor 143
+cal2          c_{217}       # relative calibration factor 217/143 (as for 100)
+calTE         c_{TE}
+calEE         c_{EE}
+bm_1_1        \beta^1_1 
+bm_1_2        \beta^1_2
+bm_1_3        \beta^1_3
+bm_1_4        \beta^1_4
+bm_1_5        \beta^1_5
+bm_2_1        \beta^2_1
+bm_2_2        \beta^2_2
+bm_2_3        \beta^2_3
+bm_2_4        \beta^2_4
+bm_2_5        \beta^2_5
+bm_3_1        \beta^3_1
+bm_3_2        \beta^3_2
+bm_3_3        \beta^3_3
+bm_3_4        \beta^3_4
+bm_3_5        \beta^3_5
+bm_4_1        \beta^4_1
+bm_4_2        \beta^4_2
+bm_4_3        \beta^4_3
+bm_4_4        \beta^4_4
+bm_4_5        \beta^4_5
+f2000_143*    f_{2000}^{143}
+f2000_217*    f_{2000}^{217}
+f2000_x*      f_{2000}^{143\times217}
