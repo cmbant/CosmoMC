@@ -86,7 +86,7 @@ import os
 filename = os.path.join(tempfile.gettempdir(), 'standardmodel2018.dat')
 if not os.path.exists(filename):
     r = requests.get('http://member.ipmu.jp/satoshi.shirai/standardmodel2018.dat', allow_redirects=True)
-    open(filename, 'w').write(r.content)
+    open(filename, 'wb').write(r.content)
 table = np.loadtxt(filename)
 table_gstar = spline(table[:, 0], table[:, 1])
 table_gstar_err = spline(table[:, 0], table[:, 2])
@@ -132,8 +132,8 @@ gstar_P = spline(Tgamma, (s * Tgamma - rhotot) / Tgamma ** 4 * 30 / np.pi ** 2 +
 logTmatch = -0.1
 Tcut = np.unique(Tgamma[np.log10(Tgamma) < logTmatch])
 logTcut = np.log10(Tcut)
-print 'Match at T=%s, g=%s for match to g=%s' % (10. ** logTmatch, gstar_s(Tcut)[-1], gs_nodes[0])
-print 'max GeV', 10. ** log10T_nodes[-2] / 1000
+print('Match at T=%s, g=%s for match to g=%s' % (10. ** logTmatch, gstar_s(Tcut)[-1], gs_nodes[0]))
+print('max GeV', 10. ** log10T_nodes[-2] / 1000)
 
 # join results
 full_T = np.concatenate((np.log10(Tcut), log10T_nodes))
@@ -210,7 +210,7 @@ data_limit['SO'] = [0.06, 0.12]
 data_limit['S4'] = [0.03, 0.06]
 data_limit['0.1 muK-arcmin'] = [0.014, 0.028]
 
-fig, axs = plt.subplots(len(wants), 1, sharex='col', figsize=(5.5, 5.5/8*3.5 * len(wants)))
+fig, axs = plt.subplots(len(wants), 1, sharex='col', figsize=(5.5, 5.5 / 8 * 3.5 * len(wants)))
 axs = np.atleast_1d(axs)
 
 for i, (ax, want) in enumerate(zip(axs.reshape(-1), wants)):
@@ -271,10 +271,10 @@ for i, (ax, want) in enumerate(zip(axs.reshape(-1), wants)):
                         bbox=dict(facecolor='white', ec='white', alpha=1, boxstyle="square,pad=0.25"))
 
         elif do_data:
-            ax.axhspan(data_limit[do_data][1],20, color='gold', alpha=0.2)
-            ax.axhspan(data_limit[do_data][0],20, color='gold', alpha=0.1)
-#            ax.axhspan(0, data_limit[do_data][1], color='gold', alpha=0.1)
-#            ax.axhspan(0, data_limit[do_data][0], color='gold', alpha=0.2)
+            ax.axhspan(data_limit[do_data][1], 20, color='gold', alpha=0.2)
+            ax.axhspan(data_limit[do_data][0], 20, color='gold', alpha=0.1)
+        #            ax.axhspan(0, data_limit[do_data][1], color='gold', alpha=0.1)
+        #            ax.axhspan(0, data_limit[do_data][0], color='gold', alpha=0.2)
 
         ax2 = ax.twinx()
         labs = [Neff_min, 7. / 8 * 2 * Neff_min, 7. / 8 * 4 * Neff_min, 0.57, 1]
