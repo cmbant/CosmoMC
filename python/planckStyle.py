@@ -188,7 +188,12 @@ class planckPlotter(plots.GetDistPlotter):
         self.doExport(fname, 'plots')
 
     def getRoot(self, paramtag, datatag, returnJobItem=False):
-        return self.getBatch().resolveName(paramtag, datatag, returnJobItem=returnJobItem)
+        batch = self.getBatch()
+        if not batch:
+            raise Exception("Could not load chain grid. Make sure you installed the Planck chains "
+                            "and set the directory in the config as described at "
+                            "https://cosmologist.info/cosmomc/readme_planck.html")
+        return batch.resolveName(paramtag, datatag, returnJobItem=returnJobItem)
 
     def getSamples(self, paramtag, datatag=None):
         if datatag is not None:
