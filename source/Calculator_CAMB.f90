@@ -461,9 +461,9 @@
     end if
 
     if (CosmoSettings%compute_tensors) then
-        Theory%tensor_ratio_02 = this%CAMBP%InitPower%TensorPower(0.002d0)/this%CAMBP%InitPower%ScalarPower(0.002d0)
-        Theory%tensor_AT = this%CAMBP%InitPower%TensorPower(CosmoSettings%tensor_pivot_k)
-        Theory%tensor_ratio_BB = this%CAMBP%InitPower%TensorPower(0.01d0)/this%CAMBP%InitPower%ScalarPower(0.01d0)
+        Theory%tensor_ratio_02 = State%CP%InitPower%TensorPower(0.002d0)/State%CP%InitPower%ScalarPower(0.002d0)
+        Theory%tensor_AT = State%CP%InitPower%TensorPower(CosmoSettings%tensor_pivot_k)
+        Theory%tensor_ratio_BB = State%CP%InitPower%TensorPower(0.01d0)/State%CP%InitPower%ScalarPower(0.01d0)
         Theory%tensor_ratio_C10 = State%CLData%Cl_tensor(10, 1)/State%CLData%Cl_scalar(10, 1)
     else
         Theory%tensor_ratio_02 = 0
