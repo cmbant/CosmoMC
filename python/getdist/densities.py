@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.interpolate import splrep, splev, RectBivariateSpline, LinearNDInterpolator
+from typing import Sequence
 
 
 class DensitiesError(Exception):
@@ -9,13 +10,19 @@ class DensitiesError(Exception):
 defaultContours = (0.68, 0.95)
 
 
+class InterpGridCache:
+    __slots__ = "factor", "grid", "sortgrid", "bign", "norm", "softgrid", "cumsum"
+
+
+# noinspection PyTypeChecker
 def getContourLevels(inbins, contours=defaultContours, missing_norm=0, half_edge=True):
     """
      Get contour levels enclosing "contours" fraction of the probability, for any dimension bins array
 
      :param inbins: binned density.
      :param contours: list or tuple of confidence contours to calculate, default [0.68, 0.95]
-     :param missing_norm: accounts of any points not included in inbins (e.g. points in far tails that are not in inbins)
+     :param missing_norm: accounts of any points not included in inbins
+                         (e.g. points in far tails that are not in inbins)
      :param half_edge: If True, edge bins are only half integrated over in each direction.
      :return: list of density levels
 
@@ -48,12 +55,16 @@ def getContourLevels(inbins, contours=defaultContours, missing_norm=0, half_edge
     return contour_levels
 
 
-class GridDensity(object):
+class GridDensity:
     """
     Base class for probability density grids (normalized or not)
 
     :ivar P: array of density values
     """
+    norm: float
+    axes: Sequence[np.ndarray]
+    view_ranges: Sequence[Sequence[float]]
+    norm_integral: callable
 
     def normalize(self, by='integral', in_place=False):
         """
@@ -119,6 +130,7 @@ class GridDensity(object):
 class Density1D(GridDensity):
     """
     Class for 1D marginalized densities, inheriting from :class:`GridDensity`.
+    You can call it like a InterpolatedUnivariateSpline obect to get interpolated values, or call Prob.
 
     """
 
@@ -154,11 +166,14 @@ class Density1D(GridDensity):
         :param derivative: optional order of derivative to calculate (default: no derivative)
         :return: P(x) density value
         """
-        if self.spl is None: self._initSpline()
+        if self.spl is None:
+            self._initSpline()
         if isinstance(x, (np.ndarray, list, tuple)):
             return splev(x, self.spl, derivative, ext=1)
         else:
             return splev([x], self.spl, derivative, ext=1)
+
+    __call__ = Prob
 
     def integrate(self, P):
         return ((P[0] + P[-1]) / 2 + np.sum(P[1:-1])) * self.spacing
@@ -167,11 +182,11 @@ class Density1D(GridDensity):
         return self.integrate(self.P)
 
     def initLimitGrids(self, factor=None):
-        class InterpGrid(object):
-            pass
 
-        if self.spl is None: self._initSpline()
-        g = InterpGrid()
+        if self.spl is None:
+            self._initSpline()
+
+        g = InterpGridCache()
         if factor is None:
             g.factor = max(2, 20000 // self.n)
         else:
@@ -226,14 +241,16 @@ class Density1D(GridDensity):
                 i = g.bign - np.argmax(g.grid[::-1] > trial) - 1
                 d = (g.grid[i] - trial) / (g.grid[i] - g.grid[i + 1])
                 mx = self.x[0] + (i + d) * finespace
-            if parr is not p: return mn, mx, lim_bot, lim_top
+            if parr is not p:
+                return mn, mx, lim_bot, lim_top
             results.append((mn, mx, lim_bot, lim_top))
         return results
 
 
-class Density2D(GridDensity, RectBivariateSpline):
+class Density2D(GridDensity):
     """
-    Class for 2D marginalized densities, inheriting from :class:`GridDensity` and :class:`~scipy:scipy.interpolate.RectBivariateSpline`.
+    Class for 2D marginalized densities, inheriting from :class:`GridDensity`.
+    You can call it like a :class:`~scipy:scipy.interpolate.RectBivariateSpline` object to get interpolated values.
     """
 
     def __init__(self, x, y, P=None, view_ranges=None):
@@ -260,20 +277,30 @@ class Density2D(GridDensity, RectBivariateSpline):
         return self.integrate(self.P)
 
     def _initSpline(self):
-        RectBivariateSpline.__init__(self, self.x, self.y, self.P.T, s=0)
-        self.spl = self
+        self.spl = RectBivariateSpline(self.x, self.y, self.P.T, s=0)
 
-    def Prob(self, x, y):
+    def Prob(self, x, y, grid=False):
         """
         Evaluate density at x,y using interpolation
+
+        :param x: x value or array
+        :param y: y value or array
+        :param grid: whether to make a grid, see :class:`~scipy:scipy.interpolate.RectBivariateSpline`. Default False.
         """
-        if self.spl is None: self._initSpline()
-        return self.spl.ev(x, y)
+        self.__call__(x, y, grid=grid)
+
+    def __call__(self, *args, **kwargs):
+        if self.spl is None:
+            self._initSpline()
+        return self.spl(*args, **kwargs)
 
 
-class DensityND(GridDensity, LinearNDInterpolator):
+class DensityND(GridDensity):
     """
-    Class for ND marginalized densities, inheriting from :class:`GridDensity` and :class:`~scipy:scipy.interpolate.LinearNDInterpolator`.
+    Class for ND marginalized densities, inheriting from :class:`GridDensity`
+    and :class:`~scipy:scipy.interpolate.LinearNDInterpolator`.
+
+    This is not well tested recently.
     """
 
     def __init__(self, xs, P=None, view_ranges=None):
@@ -284,7 +311,7 @@ class DensityND(GridDensity, LinearNDInterpolator):
         """
         self.dim = len(xs)
 
-        # for compat and tests
+        # for compatability and tests
         self.x = xs[0]
         if self.dim >= 2:
             self.y = xs[1]
@@ -336,12 +363,14 @@ class DensityND(GridDensity, LinearNDInterpolator):
         return self.integrate(self.P)
 
     def _initSpline(self):
-        LinearNDInterpolator.__init__(self, self.xs, self.P.T, rescale=True)
-        self.spl = self
+        self.spl = LinearNDInterpolator(self.xs, self.P.T, rescale=True)
 
     def Prob(self, xs):
         """
         Evaluate density at x,y,z using interpolation
         """
-        if self.spl is None: self._initSpline()
+        if self.spl is None:
+            self._initSpline()
         return self.spl.__call__(xs)
+
+    __call__ = Prob

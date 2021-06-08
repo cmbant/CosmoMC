@@ -1,14 +1,6 @@
-from __future__ import print_function
 import numpy as np
 from scipy import fftpack
-
-try:
-    from scipy.optimize import fsolve, brentq, minimize
-except ImportError:
-    print(
-        'Install scipy version 11 or higher (or e.g. module load python 2.7.5 or higher which is likely linked to later scipy)')
-    raise
-
+from scipy.optimize import fsolve, brentq, minimize
 from getdist.convolve import dct2d
 import logging
 import warnings
@@ -80,12 +72,14 @@ def bin_samples(samples, range_min=None, range_max=None, nbins=2046, edge_fac=0.
     mx = np.max(samples)
     mn = np.min(samples)
     delta = mx - mn
-    if range_min is None: range_min = mn - delta * edge_fac
-    if range_max is None: range_max = mx + delta * edge_fac
+    if range_min is None:
+        range_min = mn - delta * edge_fac
+    if range_max is None:
+        range_max = mx + delta * edge_fac
     R = range_max - range_min
     dx = R / (nbins - 1)
     bins = (samples - range_min) / dx
-    return bins.astype(np.int), R
+    return bins.astype(int), R
 
 
 def gaussian_kde_bandwidth(samples, Neff=None, range_min=None, range_max=None, nbins=2046):
@@ -113,7 +107,8 @@ def gaussian_kde_bandwidth_binned(data, Neff, a=None):
     """
     I = np.arange(1, data.size) ** 2
     logI = np.log(I)
-    if a is None: a = fftpack.dct(data / np.sum(data))
+    if a is None:
+        a = fftpack.dct(data / np.sum(data))
     a2 = (a[1:] / 2) ** 2
     try:
         n_scaling = Neff ** (-1. / 5)
@@ -142,7 +137,7 @@ K = np.array(
 Kodd = np.array([1] + [np.prod(np.arange(1, 2 * j, 2)) / 2. ** (j + 1) / np.sqrt(np.pi) for j in range(1, 9)])
 
 
-class KernelOptimizer2D(object):
+class KernelOptimizer2D:
     def __init__(self, data, Neff, correlation, do_correlation=True, fallback_t=None):
         size = data.shape[0]
         if size != data.shape[1]:
@@ -159,6 +154,7 @@ class KernelOptimizer2D(object):
         try:
             # t is the bandwidth squared (used for estimating moments), calculated using fixed point
             self.t_star = brentq(self._bandwidth_fixed_point_2D, 0, 0.1, xtol=0.001 ** 2)
+            # noinspection PyTypeChecker
             if fallback_t and self.t_star > 0.01 and self.t_star > 2 * fallback_t:
                 # For 2D distributions with boundaries, fixed point can overestimate significantly
                 logging.debug('KernelOptimizer2D Using fallback (t* > 2*t_gallback)')
@@ -228,7 +224,8 @@ class KernelOptimizer2D(object):
         return var + bias
 
     def get_h(self, do_correlation=None):
-        if do_correlation is None: do_correlation = self.do_correlation
+        if do_correlation is None:
+            do_correlation = self.do_correlation
         p = np.zeros((5, 5))
         fixed = False
         tpsi = self.t_star
@@ -250,16 +247,15 @@ class KernelOptimizer2D(object):
         p[4, 0] = p_20
         p[2, 2] = p_11
 
-        if False:
-            p[0, 0] = self.psi([0, 0], tpsi)
-            self.p00 = p[0, 0]
-            p[1, 3] = self.psi_odd([1, 3], tpsi)
-            p[3, 1] = self.psi_odd([3, 1], tpsi)
-        else:
-            p[0, 0] = self.func2d([0, 0], tpsi)
-            self.p00 = p[0, 0]
-            p[1, 3] = self.func2d_odd([1, 3], tpsi)
-            p[3, 1] = self.func2d_odd([3, 1], tpsi)
+        # p[0, 0] = self.psi([0, 0], tpsi)
+        # self.p00 = p[0, 0]
+        # p[1, 3] = self.psi_odd([1, 3], tpsi)
+        # p[3, 1] = self.psi_odd([3, 1], tpsi)
+
+        p[0, 0] = self.func2d([0, 0], tpsi)
+        self.p00 = p[0, 0]
+        p[1, 3] = self.func2d_odd([1, 3], tpsi)
+        p[3, 1] = self.func2d_odd([3, 1], tpsi)
 
         self.p = p
         AMISE = self.AMISE(np.array([h_x, h_y, 0]))

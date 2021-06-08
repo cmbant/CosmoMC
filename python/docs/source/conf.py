@@ -14,7 +14,7 @@
 
 import sys
 import os
-import shlex
+import getdist
 
 autoclass_content = 'both'
 
@@ -48,11 +48,12 @@ needs_sphinx = '1.3'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc', 'sphinx.ext.intersphinx', 'sphinx.ext.viewcode', 'sphinx.ext.autosummary', 'plot_directive'
+    'sphinx.ext.autodoc', 'sphinx.ext.intersphinx', 'sphinx.ext.viewcode', 'sphinx.ext.autosummary',
+    'matplotlib.sphinxext.plot_directive'
 ]
 
-intersphinx_mapping = {'python': ('https://docs.python.org/2', None),
-                       'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
+                       'numpy': ('https://numpy.org/doc/stable/', None),
                        'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
                        'matplotlib': ('https://matplotlib.org/', None)}
 
@@ -78,8 +79,6 @@ master_doc = 'index'
 project = u'GetDist'
 copyright = u'Antony Lewis'
 author = u'Antony Lewis'
-
-import getdist
 
 version = getdist.__version__
 release = getdist.__version__

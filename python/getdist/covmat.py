@@ -1,9 +1,7 @@
-from __future__ import print_function
 import numpy as np
-import io
 
 
-class CovMat(object):
+class CovMat:
     """
     Class holding a covariance matrix for some named parameters
 
@@ -21,7 +19,8 @@ class CovMat(object):
         self.matrix = matrix
         self.paramNames = paramNames
         self.size = 0
-        if matrix is not None: self.size = matrix.shape[0]
+        if matrix is not None:
+            self.size = matrix.shape[0]
         if filename != '':
             self.loadFromFile(filename)
 
@@ -29,13 +28,14 @@ class CovMat(object):
         return " ".join(self.paramNames)
 
     def loadFromFile(self, filename):
-        with open(filename) as f:
+        with open(filename, encoding="utf-8-sig") as f:
             first = f.readline().strip()
             if first.startswith('#'):
                 self.paramNames = first[1:].split()
                 self.size = len(self.paramNames)
             else:
                 raise Exception('.covmat must now have parameter names header')
+            # noinspection PyTypeChecker
             self.matrix = np.loadtxt(f)
 
     def saveToFile(self, filename):
@@ -44,7 +44,7 @@ class CovMat(object):
 
         :param filename: name of file to save to (.covmat)
         """
-        with io.open(filename, 'wb') as fout:
+        with open(filename, 'wb') as fout:
             fout.write(('# ' + self.paramNameString() + '\n').encode('UTF-8'))
             np.savetxt(fout, self.matrix, '%15.7E')
 
@@ -74,15 +74,15 @@ class CovMat(object):
                 C.paramNames.append(param)
         l1 = len(params1)
         l2 = len(params2)
-        l = len(C.paramNames)
+        length = len(C.paramNames)
 
         map1 = dict(list(zip(params1, list(range(0, l1)))))
         map2 = dict(list(zip(params2, list(range(0, l2)))))
-        covmap = dict(list(zip(list(range(0, l)), C.paramNames)))
+        covmap = dict(list(zip(list(range(0, length)), C.paramNames)))
 
-        C.matrix = np.zeros((l, l))
-        for i in range(0, l):
-            for j in range(0, l):
+        C.matrix = np.zeros((length, length))
+        for i in range(0, length):
+            for j in range(0, length):
                 if C.paramNames[i] in params1 and C.paramNames[j] in params1:
                     C.matrix[i, j] = self.matrix[map1[covmap[i]], map1[covmap[j]]]
                 elif C.paramNames[i] in params2 and C.paramNames[j] in params2:

@@ -16,7 +16,7 @@ fastFFT = np.array(
      125829120, 134217728, 150994944, 167772160, 188743680, 201326592, 226492416, 234881024, 251658240, 268435456,
      301989888, 335544320, 377487360, 402653184, 452984832, 503316480, 536870912, 603979776, 671088640, 754974720,
      805306368, 905969664, 1006632960, 1207959552, 1342177280, 1358954496, 1509949440, 1610612736, 1811939328,
-     2013265920], dtype=np.int)
+     2013265920], dtype=int)
 
 
 def nearestFFTnumber(x):
@@ -34,6 +34,7 @@ def convolve2D(x, y, mode, largest_size=0, cache=None, cache_args=(1, 2)):
     return convolveFFTn(x, y, mode, largest_size, cache, cache_args=cache_args)
 
 
+# noinspection PyUnboundLocalVariable
 def convolveFFT(x, y, mode='same', yfft=None, xfft=None, largest_size=0, cache=None, cache_args=(1, 2)):
     """
     convolution of x with y; fft cans be cached.
@@ -67,6 +68,7 @@ def convolveFFT(x, y, mode='same', yfft=None, xfft=None, largest_size=0, cache=N
         return res[y.size - 1:x.size]
 
 
+# noinspection PyUnboundLocalVariable
 def convolveFFTn(in1, in2, mode="same", largest_size=0, cache=None, yfft=None, xfft=None, cache_args=(1, 2)):
     s1 = np.array(in1.shape)
     s2 = np.array(in2.shape)
@@ -141,7 +143,8 @@ def autoConvolve(x, n=None, normalize=True):
     return res
 
 
-def convolveGaussianDCT(x, sigma, pad_sigma=4, mode='same', cache={}):
+# noinspection PyUnboundLocalVariable
+def convolveGaussianDCT(x, sigma, pad_sigma=4, mode='same', cache=None):
     """
     1D convolution of x with Gaussian of width sigma pixels
     If pad_sigma>0, pads ends with zeros by int(pad_sigma*sigma) pixels
@@ -159,13 +162,14 @@ def convolveGaussianDCT(x, sigma, pad_sigma=4, mode='same', cache={}):
 
     s = padded_x.size
     hnorm = sigma / float(s)
-    gauss = cache.get((s, hnorm))
+    gauss = cache.get((s, hnorm)) if cache is not None else None
     if gauss is None:
         gauss = np.exp(-(np.arange(0, s) * (np.pi * hnorm)) ** 2 / 2.)
         cache[(s, hnorm)] = gauss
     res = fftpack.idct(fftpack.dct(padded_x, overwrite_x=fill > 0) * gauss, overwrite_x=fill > 0) / (2 * s)
-    if fill == 0: return res
-    if mode == 'same':
+    if fill == 0:
+        return res
+    elif mode == 'same':
         return res[fill:-fill2]
     elif mode == 'valid':
         return res[fill * 2:-fill2 - fill]

@@ -8,14 +8,33 @@ from bisect import bisect_left
 class SciFuncFormatter(ticker.Formatter):
     # To put full sci notation into each axis label rather than split offsetText
 
-    sFormatter = ticker.ScalarFormatter(useOffset=False, useMathText=True)
-
     def __call__(self, x, pos=None):
-        return "${}$".format(SciFuncFormatter.sFormatter._formatSciNotation('%.10e' % x))
+        return "${}$".format(self._format_sci_notation('%.10e' % x))
 
     def format_data(self, value):
         # e.g. for the navigation toolbar, no latex
         return '%-8g' % value
+
+    @staticmethod
+    def _format_sci_notation(s):
+        # adapted from old matplotlib
+        # transform 1e+004 into 1e4, for example
+        tup = s.split('e')
+        try:
+            significand = tup[0].rstrip('0').rstrip('.')
+            sign = tup[1][0].replace('+', '')
+            exponent = tup[1][1:].lstrip('0')
+            if significand == '1' and exponent != '':
+                # reformat 1x10^y as 10^y
+                significand = ''
+            if exponent:
+                exponent = '10^{%s%s}' % (sign, exponent)
+            if significand and exponent:
+                return r'%s{\times}%s' % (significand, exponent)
+            else:
+                return r'%s%s' % (significand, exponent)
+        except IndexError:
+            return s
 
 
 _min_label_len_chars = 1.35
@@ -38,7 +57,7 @@ class BoundedMaxNLocator(ticker.MaxNLocator):
                 else:
                     g2.append(0)
             self._offsets.append(_staircase(np.array(g2), g))
-        super(BoundedMaxNLocator, self).__init__(nbins=nbins, steps=step_groups[0])
+        super().__init__(nbins=nbins, steps=step_groups[0])
 
     def _bounded_prune(self, locs, label_len):
         if len(locs) > 1 and self.bounded_prune:
@@ -123,6 +142,7 @@ class BoundedMaxNLocator(ticker.MaxNLocator):
             locs = self._bounded_prune(locs, label_len)
             if len(locs) > 1:
                 step = locs[1] - locs[0]
+            # noinspection PyUnboundLocalVariable
             if len(locs) < max(3, nbins) or step < label_len * (1.1 if len(locs) < 4 else 1.5) \
                     or (locs[0] - vmin > min(step * 1.01, label_len * 1.5) or
                         vmax - locs[-1] > min(step * 1.01, label_len * 1.5)):

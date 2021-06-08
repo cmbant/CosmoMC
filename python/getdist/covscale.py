@@ -1,4 +1,3 @@
-from __future__ import print_function
 import sys
 import fnmatch
 import os
@@ -14,7 +13,8 @@ outdir = os.path.abspath(sys.argv[2]) + os.sep
 pars = sys.argv[3].split(':')
 factors = sys.argv[4].split(':')
 
-if not os.path.exists(outdir): os.makedirs(outdir)
+if not os.path.exists(outdir):
+    os.makedirs(outdir)
 
 for f in os.listdir(indir):
     if fnmatch.fnmatch(f, "*.covmat"):

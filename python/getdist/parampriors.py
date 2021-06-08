@@ -1,8 +1,8 @@
 import os
-from collections import OrderedDict
+import numpy as np
 
 
-class ParamBounds(object):
+class ParamBounds:
     """
     Class for holding list of parameter bounds (e.g. for plotting, or hard priors).
     A limit is None if not specified, denoted by 'N' if read from a string or file
@@ -17,26 +17,29 @@ class ParamBounds(object):
         :param fileName: optional file name to read from
         """
         self.names = []
-        self.lower = OrderedDict()
-        self.upper = OrderedDict()
-        if fileName is not None: self.loadFromFile(fileName)
+        self.lower = {}
+        self.upper = {}
+        if fileName is not None:
+            self.loadFromFile(fileName)
 
     def loadFromFile(self, fileName):
         self.filenameLoadedFrom = os.path.split(fileName)[1]
         extension = os.path.splitext(fileName)[-1]
         if extension in ('.ranges', '.bounds'):
-            with open(fileName) as f:
+            with open(fileName, encoding='utf-8-sig') as f:
                 for line in f:
                     strings = [text.strip() for text in line.split()]
                     if len(strings) == 3:
                         self.setRange(strings[0], strings[1:])
         elif extension in ('.yaml', '.yml'):
-            from getdist.cobaya_interface import get_range, is_fixed_param, get_info_params
-            from getdist.yaml_tools import yaml_load_file
-            info_params = get_info_params(yaml_load_file(fileName))
+            from getdist.cobaya_interface import get_range, get_info_params, is_parameter_with_range
+            info_params = get_info_params(fileName)
             for p, info in info_params.items():
-                if not is_fixed_param(info):
+                if is_parameter_with_range(info):
                     self.setRange(p, get_range(info))
+        else:
+            raise ValueError('ParamBounds must be loaded from .bounds, .ranges or .yaml/.yml file, '
+                             'not %s' % fileName)
 
     def __str__(self):
         s = ''
@@ -60,19 +63,31 @@ class ParamBounds(object):
 
         :param fileName: file name to save to
         """
-        with open(fileName, 'w') as f:
+        with open(fileName, 'w', encoding='utf-8') as f:
             f.write(str(self))
 
+    def _check_name(self, name):
+        if not isinstance(name, str):
+            raise ValueError('"name" must be a parameter name string not %s: %s' % (type(name), name))
+
+    def setFixed(self, name, value):
+        self.setRange(name, (value, value))
+
     def setRange(self, name, strings):
-        if strings[0] != 'N' and strings[0] is not None: self.lower[name] = float(strings[0])
-        if strings[1] != 'N' and strings[1] is not None: self.upper[name] = float(strings[1])
-        if not name in self.names: self.names.append(name)
+        self._check_name(name)
+        if strings[0] != 'N' and strings[0] is not None and strings[0] != -np.inf:
+            self.lower[name] = float(strings[0])
+        if strings[1] != 'N' and strings[1] is not None and strings[1] != np.inf:
+            self.upper[name] = float(strings[1])
+        if name not in self.names:
+            self.names.append(name)
 
     def getUpper(self, name):
         """
         :param name: parameter name
         :return: upper limit, or None if not specified
         """
+        self._check_name(name)
         return self.upper.get(name, None)
 
     def getLower(self, name):
@@ -80,6 +95,7 @@ class ParamBounds(object):
         :param name: parameter name
         :return: lower limit, or None if not specified
         """
+        self._check_name(name)
         return self.lower.get(name, None)
 
     def fixedValue(self, name):
@@ -99,8 +115,7 @@ class ParamBounds(object):
         """
         :return: dictionary of fixed parameter values
         """
-        from collections import OrderedDict
-        res = OrderedDict()
+        res = {}
         for name in self.names:
             value = self.fixedValue(name)
             if value is not None:

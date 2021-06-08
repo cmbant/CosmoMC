@@ -2,12 +2,16 @@
 CosmoMC
 ===================
 :CosmoMC:  Fortran 2008 parallelized MCMC sampler (general and cosmology)
-:Homepage: http://cosmologist.info/cosmomc/
+:Homepage: https://cosmologist.info/cosmomc/
 
 Description and installation
 =============================
 
-For full details see the `ReadMe <http://cosmologist.info/cosmomc/readme.html>`_.
+The new Python `Cobaya <https://github.com/CobayaSampler/cobaya>`_ sampling package incorporates a 
+version of CosmoMC's sampler and most other CosmoMC features, but has more general speed optimization and
+general support of multiple inter-dependent theory and likelihood codes. New users should probably use that.
+
+For full CosmoMC install details see the `ReadMe <http://cosmologist.info/cosmomc/readme.html>`_.
 
 Algorithm details
 ==================
@@ -19,13 +23,6 @@ GetDist
 
 CosmoMC includes the GetDist python sample analysis and plotting package, which is
 also `available separately <http://getdist.readthedocs.org/en/latest/>`_.
-
-Related code
-==================
-
-The new Python `Cobaya <https://github.com/CobayaSampler/cobaya>`_ sampling package incorporates a 
-version of CosmoMC's sampler and most other CosmoMC features, but has more general speed optimization and
-general support of multiple inter-dependent theory and likelihood codes.
 
 
 Branches

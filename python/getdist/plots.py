@@ -1,14 +1,17 @@
-from __future__ import absolute_import
-from __future__ import print_function
 import os
 import copy
 import matplotlib
 import sys
-import six
 import warnings
 import logging
+from types import MappingProxyType
+from typing import Mapping, Sequence, Union, Optional, Iterable, Tuple, Any
 
-matplotlib.use('Agg', warn=False)
+if 'ipykern' not in matplotlib.rcParams['backend'] and \
+        'linux' in sys.platform and os.environ.get('DISPLAY', '') == '':
+    # default to agg if not in notebook and linux with no display
+    matplotlib.use('Agg')
+
 import matplotlib.patches
 import matplotlib.colors
 import matplotlib.gridspec
@@ -19,10 +22,10 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from matplotlib.font_manager import font_scalings
 import numpy as np
-from paramgrid import gridconfig, batchjob
 import getdist
 from getdist import MCSamples, loadMCSamples, ParamNames, ParamInfo, IniFile
-from getdist.chains import chainFiles
+from getdist.chain_grid import is_grid_object, get_chain_root_files, ChainDirGrid, load_supported_grid
+from getdist.chains import findChainFileRoot
 from getdist.paramnames import escapeLatex, makeList, mergeRenames
 from getdist.densities import Density2D
 from getdist.gaussian_mixtures import MixtureND
@@ -31,12 +34,22 @@ from getdist._base import _BaseObject
 
 """Plotting scripts for GetDist outputs"""
 
+empty_dict = MappingProxyType({})
+
+
+def extend_list_zip(*args):
+    vals = [(list(arg) if isinstance(arg, (list, tuple)) else [arg]) for arg in args]
+    for i in range(len(args[0])):
+        res = []
+        for v in vals:
+            res.append(v[i if i < len(v) else -1])
+        yield res
+
 
 class GetDistPlotError(Exception):
     """
     An exception that is raised when there is an error plotting
     """
-    pass
 
 
 class GetDistPlotSettings(_BaseObject):
@@ -62,7 +75,7 @@ class GetDistPlotSettings(_BaseObject):
     :ivar colormap: a `Matplotlib color map <https://www.scipy.org/Cookbook/Matplotlib/Show_colormaps>`_ for shading
     :ivar colormap_scatter: a Matplotlib `color map <https://www.scipy.org/Cookbook/Matplotlib/Show_colormaps>`_
                             for 3D scatter plots
-    :ivar constrained_layout: use matplotlib's constrained-layout to fit plots within the figure and avoid overlaps
+    :ivar constrained_layout: use matplotlib's constrained-layout to fit plots within the figure and avoid overlaps.
     :ivar fig_width_inch: The width of the figure in inches
     :ivar figure_legend_frame: draw box around figure legend
     :ivar figure_legend_loc: The location for the figure legend
@@ -96,9 +109,10 @@ class GetDistPlotSettings(_BaseObject):
     :ivar progress: write out some status
     :ivar scaling: True to scale down fonts and lines for smaller subplots; False to use fixed sizes.
     :ivar scaling_max_axis_size: font sizes will only be scaled for subplot widths (in inches) smaller than this.
-    :ivar scaling_factor: factor by which to multiply the different of the axis size to the reference size when
+    :ivar scaling_factor: factor by which to multiply the difference of the axis size to the reference size when
                           scaling font sizes
     :ivar scaling_reference_size: axis width (in inches) at which font sizes are specified.
+    :ivar direct_scaling: True to directly scale the font size with the axis size for small axes (can be very small)
     :ivar scatter_size: size of points in "3D" scatter plots
     :ivar shade_level_scale: shading contour colors are put at [0:1:spacing]**shade_level_scale
     :ivar shade_meanlikes: 2D shading uses mean likelihoods rather than marginalized density
@@ -130,7 +144,7 @@ class GetDistPlotSettings(_BaseObject):
                    'x_label_rotation': 'axis_tick_x_rotation'
                    }
 
-    def __init__(self, subplot_size_inch=2, fig_width_inch=None):
+    def __init__(self, subplot_size_inch: float = 2, fig_width_inch: Optional[float] = None):
         """
         If fig_width_inch set, fixed setting for fixed total figure size in inches.
         Otherwise use subplot_size_inch to determine default font sizes etc.,
@@ -141,8 +155,9 @@ class GetDistPlotSettings(_BaseObject):
         """
         self.scaling = True
         self.scaling_reference_size = 3.5  # reference subplot size for font sizes etc.
-        self.scaling_max_axis_size = self.scaling_reference_size
+        self.scaling_max_axis_size: Optional[float] = self.scaling_reference_size
         self.scaling_factor = 2
+        self.direct_scaling = False  # if true just scale directly with the axes size
 
         self.plot_meanlikes = False
         self.prob_label = None
@@ -151,10 +166,10 @@ class GetDistPlotSettings(_BaseObject):
         self.prob_y_ticks = False
         self.norm_1d_density = False
         # : line styles/colors
-        self.line_styles = ['-k', '-r', '-b', '-g', '-m', '-c', '-y', '--k', '--r', '--b', '--g', '--m']
+        self.line_styles: Sequence[str] = ['-k', '-r', '-b', '-g', '-m', '-c', '-y', '--k', '--r', '--b', '--g', '--m']
 
         self.plot_args = None
-        self.line_dash_styles = {'--': (3, 2), '-.': (4, 1, 1, 1)}
+        self.line_dash_styles: Mapping[str, Sequence[float]] = {'--': (3, 2), '-.': (4, 1, 1, 1)}
         self.line_labels = True
         self.num_shades = 80
         self.shade_level_scale = 1.8  # contour levels at [0:1:spacing]**shade_level_scale
@@ -170,11 +185,11 @@ class GetDistPlotSettings(_BaseObject):
         self.colormap = "Blues"
         self.colormap_scatter = "jet"
         self.colorbar_tick_rotation = None
-        self.colorbar_label_pad = 0
-        self.colorbar_label_rotation = -90
-        self.colorbar_axes_fontsize = 11
+        self.colorbar_label_pad: float = 0
+        self.colorbar_label_rotation: float = -90
+        self.colorbar_axes_fontsize: float = 11
 
-        self.subplot_size_inch = subplot_size_inch
+        self.subplot_size_inch: float = subplot_size_inch
         self.subplot_size_ratio = None
 
         self.param_names_for_labels = None
@@ -182,7 +197,7 @@ class GetDistPlotSettings(_BaseObject):
         self.legend_colored_text = False
         self.legend_loc = 'best'
         self.legend_frac_subplot_margin = 0.05
-        self.legend_fontsize = 12
+        self.legend_fontsize: float = 12
         self.legend_frame = True
         self.legend_rect_border = False
 
@@ -190,42 +205,42 @@ class GetDistPlotSettings(_BaseObject):
         self.figure_legend_frame = True
         self.figure_legend_ncol = 0
 
-        self.linewidth = 1
+        self.linewidth: float = 1
         self.linewidth_contour = 0.6
         self.linewidth_meanlikes = 0.5
 
-        self.num_plot_contours = 2
+        self.num_plot_contours: int = 2
         self.solid_contour_palefactor = 0.6
         self.solid_colors = ['#006FED', '#E03424', 'gray', '#009966', '#000866', '#336600', '#006633', 'm', 'r']
         self.alpha_filled_add = 0.85
         self.alpha_factor_contour_lines = 0.5
         self.shade_meanlikes = False
 
-        self.axes_fontsize = 11
-        self.axes_labelsize = 14
+        self.axes_fontsize: float = 11
+        self.axes_labelsize: float = 14
 
         self.axis_marker_color = 'gray'
         self.axis_marker_ls = '--'
         self.axis_marker_lw = 0.5
 
-        self.axis_tick_powerlimits = (-4, 5)
-        self.axis_tick_max_labels = 7
-        self.axis_tick_step_groups = [[1, 2, 5, 10], [2.5, 3, 4, 6, 8], [1.5, 7, 9]]
-        self.axis_tick_x_rotation = 0
-        self.axis_tick_y_rotation = 0
+        self.axis_tick_powerlimits: Tuple[int, int] = (-4, 5)
+        self.axis_tick_max_labels: int = 7
+        self.axis_tick_step_groups: Sequence[Sequence[float]] = [[1, 2, 5, 10], [2.5, 3, 4, 6, 8], [1.5, 7, 9]]
+        self.axis_tick_x_rotation: float = 0
+        self.axis_tick_y_rotation: float = 0
 
-        self.scatter_size = 3
+        self.scatter_size: float = 3
 
-        self.fontsize = 12
+        self.fontsize: float = 12
 
-        self.title_limit = 0
+        self.title_limit: int = 0  # which limit (1,2..) to plot in the title
         self.title_limit_labels = True
-        self.title_limit_fontsize = None
+        self.title_limit_fontsize: Optional[float] = None
         self._fail_on_not_exist = True
 
     def _numerical_fontsize(self, size):
         size = size or self.fontsize or 11
-        if isinstance(size, six.string_types):
+        if isinstance(size, str):
             scale = font_scalings.get(size)
             return self.fontsize * (scale or 1)
         return size or self.fontsize
@@ -235,7 +250,10 @@ class GetDistPlotSettings(_BaseObject):
         if not self.scaling or self.scaling_max_axis_size is not None and not self.scaling_max_axis_size:
             return var
         if self.scaling_max_axis_size is None or ax_size < (self.scaling_max_axis_size or self.scaling_reference_size):
-            return max(5, var + self.scaling_factor * (ax_size - self.scaling_reference_size))
+            if self.direct_scaling:
+                return var * ax_size / self.scaling_reference_size
+            else:
+                return max(5, var + self.scaling_factor * (ax_size - self.scaling_reference_size))
         else:
             return var + 2 * (self.scaling_max_axis_size - self.scaling_reference_size)
 
@@ -284,7 +302,7 @@ default_settings = GetDistPlotSettings()
 defaultSettings = default_settings
 
 
-def get_plotter(style=None, **kwargs):
+def get_plotter(style: Optional[str] = None, **kwargs):
     """
     Creates a new plotter and returns it
 
@@ -295,7 +313,8 @@ def get_plotter(style=None, **kwargs):
     return _style_manager.active_class(style)(**kwargs)
 
 
-def get_single_plotter(ratio=None, width_inch=None, scaling=None, rc_sizes=False, style=None, **kwargs):
+def get_single_plotter(ratio: Optional[float] = None, width_inch: Optional[float] = None,
+                       scaling: Optional[bool] = None, rc_sizes=False, style: Optional[str] = None, **kwargs):
     """
     Get a :class:`~.plots.GetDistPlotter` for making a single plot of fixed width.
 
@@ -318,8 +337,9 @@ def get_single_plotter(ratio=None, width_inch=None, scaling=None, rc_sizes=False
                                                                  rc_sizes=rc_sizes, **kwargs)
 
 
-def get_subplot_plotter(subplot_size=None, width_inch=None, scaling=None, rc_sizes=False,
-                        subplot_size_ratio=None, style=None, **kwargs):
+def get_subplot_plotter(subplot_size: Optional[float] = None, width_inch: Optional[float] = None,
+                        scaling: Optional[bool] = None, rc_sizes=False, subplot_size_ratio: Optional[float] = None,
+                        style: Optional[str] = None, **kwargs) -> 'GetDistPlotter':
     """
     Get a :class:`~.plots.GetDistPlotter` for making an array of subplots.
 
@@ -351,13 +371,13 @@ getSubplotPlotter = get_subplot_plotter
 getSinglePlotter = get_single_plotter
 
 
-class RootInfo(object):
+class RootInfo:
     """
     Class to hold information about a set of samples loaded from file
     """
     __slots__ = ['root', 'batch', 'path']
 
-    def __init__(self, root, path, batch=None):
+    def __init__(self, root: str, path: str, batch=None):
         """
         :param root: The root file to use.
         :param path: The path the root file is in.
@@ -376,7 +396,7 @@ class MCSampleAnalysis(_BaseObject):
     use plotter.sample_analyser.samples_for_root(name).
     """
 
-    def __init__(self, chain_locations, settings=None):
+    def __init__(self, chain_locations: Union[str, Iterable[str]], settings: Union[str, dict, IniFile] = None):
         """
         :param chain_locations: either a directory or the path of a grid of runs;
                it can also be a list of such, which is searched in order
@@ -388,7 +408,7 @@ class MCSampleAnalysis(_BaseObject):
         self.ini = None
         self.chain_settings_have_priority = True
         if chain_locations is not None:
-            if isinstance(chain_locations, six.string_types):
+            if isinstance(chain_locations, str) or not isinstance(chain_locations, Iterable):
                 chain_locations = [chain_locations]
             for chain_dir in chain_locations:
                 self.add_chain_dir(chain_dir)
@@ -398,29 +418,29 @@ class MCSampleAnalysis(_BaseObject):
         """
         Adds a new chain directory or grid path for searching for samples
 
-        :param chain_dir: The directory to add
+        :param chain_dir: The root directory to add
         """
+        if isinstance(chain_dir, str):
+            chain_dir = os.path.normpath(chain_dir)
         if chain_dir in self.chain_locations:
             return
         self.chain_locations.append(chain_dir)
-        is_batch = isinstance(chain_dir, batchjob.batchJob)
-        if is_batch or gridconfig.pathIsGrid(chain_dir):
-            if is_batch:
-                batch = chain_dir
-            else:
-                batch = batchjob.readobject(chain_dir)
+        batch = load_supported_grid(chain_dir)
+        if batch:
             self.chain_dirs.append(batch)
             # this gets things like specific parameter limits etc. specific to the grid
-            # yuk, this should only be for old Planck grids. New ones don't need getdist_common
+            # Legacy, only for old Planck grids. New ones don't need getdist_common
             # should instead set custom settings in the grid setting file
-            if os.path.exists(batch.commonPath + 'getdist_common.ini'):
+            if hasattr(batch, 'commonPath') and os.path.exists(batch.commonPath + 'getdist_common.ini'):
                 batchini = IniFile(batch.commonPath + 'getdist_common.ini')
                 if self.ini:
                     self.ini.params.update(batchini.params)
                 else:
                     self.ini = batchini
-        else:
+        elif get_chain_root_files(chain_dir):
             self.chain_dirs.append(chain_dir)
+        else:
+            self.chain_dirs.append(ChainDirGrid(chain_dir))
 
     def reset(self, settings=None, chain_settings_have_priority=True):
         """
@@ -433,7 +453,7 @@ class MCSampleAnalysis(_BaseObject):
         self.analysis_settings = {}
         if isinstance(settings, IniFile):
             ini = settings
-        elif isinstance(settings, dict):
+        elif isinstance(settings, Mapping):
             ini = IniFile(getdist.default_getdist_settings)
             ini.params.update(settings)
         else:
@@ -449,7 +469,8 @@ class MCSampleAnalysis(_BaseObject):
         self.single_samples = dict()
         self.chain_settings_have_priority = chain_settings_have_priority
 
-    def samples_for_root(self, root, file_root=None, cache=True, settings=None):
+    def samples_for_root(self, root: Union[str, MCSamples], file_root: Optional[str] = None,
+                         cache=True, settings: Optional[Mapping[str, Any]] = None):
         """
         Gets :class:`~.mcsamples.MCSamples` from root name
         (or just return root if it is already an MCSamples instance).
@@ -464,38 +485,39 @@ class MCSampleAnalysis(_BaseObject):
             return root
         if isinstance(root, MixtureND):
             raise GetDistPlotError('MixtureND is a distribution not a set of samples')
-        elif not isinstance(root, six.string_types):
+        elif not isinstance(root, str):
             raise GetDistPlotError('Root names must be strings (or MCSamples instances)')
-        if os.path.isabs(root):
-            # deal with just-folder prefix
-            if root.endswith((os.sep, "/")):
-                root = os.path.basename(root[:-1]) + os.sep
-            else:
-                root = os.path.basename(root)
         if root in self.mcsamples and cache:
             return self.mcsamples[root]
+        if os.path.isabs(root):
+            file_root = root
         job_item = None
         if self.chain_settings_have_priority:
-            dist_settings = settings or {}
+            dist_settings = dict(settings) if settings else {}
         else:
             dist_settings = {}
         if not file_root:
-            from getdist.cobaya_interface import _separator_files
             for chain_dir in self.chain_dirs:
-                if hasattr(chain_dir, "resolveRoot"):
-                    job_item = chain_dir.resolveRoot(root)
+                if is_grid_object(chain_dir):
+                    if hasattr(chain_dir, 'resolve_root'):
+                        job_item = chain_dir.resolve_root(root)
+                    else:
+                        job_item = chain_dir.resolveRoot(root)
                     if job_item:
                         file_root = job_item.chainRoot
                         if hasattr(chain_dir, 'getdist_options'):
                             dist_settings.update(chain_dir.getdist_options)
-                        dist_settings.update(job_item.dist_settings)
+                        if hasattr(job_item, 'dist_settings'):
+                            dist_settings.update(job_item.dist_settings)
                         break
                 else:
-                    name = os.path.join(chain_dir, root)
-                    if any([chainFiles(name, separator=sep)
-                            for sep in ['_', _separator_files]]):
-                        file_root = name
+                    file_root = findChainFileRoot(chain_dir, root)
+                    dir_ini = os.path.join(chain_dir, 'getdist.ini')
+                    if os.path.exists(dir_ini):
+                        dist_settings.update(IniFile(dir_ini).params)
+                    if file_root:
                         break
+
         if not file_root:
             raise GetDistPlotError('chain not found: ' + root)
         if not self.chain_settings_have_priority:
@@ -525,17 +547,17 @@ class MCSampleAnalysis(_BaseObject):
             if file_root.batch:
                 return self.samples_for_root(file_root.root)
             else:
-                return self.samples_for_root(file_root.root, os.path.join(file_root.path, file_root.root))
+                return self.samples_for_root(file_root.root,
+                                             os.path.normpath(os.path.join(file_root.path, file_root.root)))
         else:
             return self.samples_for_root(os.path.basename(file_root), file_root)
 
-    def remove_root(self, file_root):
+    def remove_root(self, root):
         """
         Remove a given root file (does not delete it)
 
-        :param file_root: The file root to remove
+        :param root: The root name to remove
         """
-        root = os.path.basename(file_root)
         self.mcsamples.pop(root, None)
         self.single_samples.pop(root, None)
         self.densities_1D.pop(root, None)
@@ -620,7 +642,7 @@ class MCSampleAnalysis(_BaseObject):
             samples = self.samples_for_root(root)
             names = samples.getParamNames()
         if label_params is not None:
-            names.setLabelsAndDerivedFromParamNames(os.path.join(batchjob.getCodeRootPath(), label_params))
+            names.setLabelsAndDerivedFromParamNames(label_params)
         return names
 
     def bounds_for_root(self, root):
@@ -646,10 +668,13 @@ class GetDistPlotter(_BaseObject):
          and derived data from a given root name tag (e.g. sample_analyser.samples_for_root('rootname'))
     """
 
-    def __init__(self, chain_dir=None, settings=None, analysis_settings=None, auto_close=False):
+    def __init__(self, chain_dir: Union[str, Iterable[str], None] = None,
+                 settings: Optional[GetDistPlotSettings] = None,
+                 analysis_settings: Union[str, dict, IniFile] = None,
+                 auto_close=False):
         """
 
-        :param chain_dir: Set this to a directory or grid root to search for chains
+        :param chain_dir: Set this to a directory or grid directory hierarchy to search for chains
                           (can also be a list of such, searched in order)
         :param analysis_settings: The settings to be used by :class:`MCSampleAnalysis` when analysing samples
         :param auto_close: whether to automatically close the figure whenever a new plot made or this instance released
@@ -686,7 +711,7 @@ class GetDistPlotter(_BaseObject):
 
     @classmethod
     def get_subplot_plotter(cls, subplot_size=None, width_inch=None, scaling=True, rc_sizes=False,
-                            subplot_size_ratio=None, **kwargs):
+                            subplot_size_ratio=None, **kwargs) -> 'GetDistPlotter':
         plotter = cls(**kwargs)
         plotter.settings.set_with_subplot_size(subplot_size or 2, size_ratio=subplot_size_ratio)
         if scaling is not None:
@@ -744,17 +769,17 @@ class GetDistPlotter(_BaseObject):
         :param kwargs: optional settings to override in the current ones
         :return: The updated dict of arguments.
         """
-        if isinstance(self.settings.plot_args, dict):
+        if isinstance(self.settings.plot_args, Mapping):
             args = self.settings.plot_args
         elif isinstance(self.settings.plot_args, (list, tuple)):
             if len(self.settings.plot_args) > plotno:
                 args = self.settings.plot_args[plotno]
                 if args is None:
-                    args = dict()
+                    args = {}
             else:
                 args = {}
         elif not self.settings.plot_args:
-            args = dict()
+            args = {}
         else:
             raise GetDistPlotError(
                 'plot_args must be list of dictionaries or dictionary: %s' % self.settings.plot_args)
@@ -781,7 +806,7 @@ class GetDistPlotter(_BaseObject):
             res = self._get_color_at_index(self.settings.line_styles, plotno)
             if matplotlib.colors.is_color_like(res):
                 return '-', res
-            if isinstance(res, six.string_types):
+            if isinstance(res, str):
                 i = 0
                 while i < len(res) and res[i] in ['-', '.', ':']:
                     i += 1
@@ -832,7 +857,7 @@ class GetDistPlotter(_BaseObject):
         :param i: index, or None to return the color array
         :return: color or array of colors
         """
-        if isinstance(colors, six.string_types):
+        if isinstance(colors, str):
             colormap = getattr(cm, colors, None)
             if colormap is None:
                 raise GetDistPlotError('Unknown matplotlib colormap %s' % colors)
@@ -1065,7 +1090,7 @@ class GetDistPlotter(_BaseObject):
                 if color is None:
                     color = self._get_color_at_index(self.settings.solid_colors,
                                                      (of - plotno - 1) if of is not None else plotno)
-                if isinstance(color, six.string_types) or matplotlib.colors.is_color_like(color):
+                if isinstance(color, str) or matplotlib.colors.is_color_like(color):
                     cols = self._get_paler_colors(color, len(contour_levels))
                 else:
                     cols = color
@@ -1109,7 +1134,7 @@ class GetDistPlotter(_BaseObject):
         :param colormap: color map, default to settings.colormap (see :class:`GetDistPlotSettings`)
         :param density: optional user-provided :class:`~.densities.Density2D` to plot rather than
                         the auto-generated density from the samples
-         :param ax: optional :class:`~matplotlib:matplotlib.axes.Axes` instance (or y,x subplot coordinate)
+        :param ax: optional :class:`~matplotlib:matplotlib.axes.Axes` instance (or y,x subplot coordinate)
                    to add to (defaults to current plot or the first/main plot if none)
         :param kwargs: keyword arguments for :func:`~matplotlib:matplotlib.pyplot.contourf`
         """
@@ -1262,7 +1287,7 @@ class GetDistPlotter(_BaseObject):
            :include-source:
 
             from getdist import plots, gaussian_mixtures
-            samples= gaussian_mixtures.randomTestMCSamples(ndim=2, nMCSamples=1)
+            samples = gaussian_mixtures.randomTestMCSamples(ndim=2, nMCSamples=1)
             g = plots.get_single_plotter(width_inch=4)
             g.plot_2d(samples, ['x0','x1'], filled=True);
             g.add_y_bands(0, 1)
@@ -1338,7 +1363,7 @@ class GetDistPlotter(_BaseObject):
             line_args = kwargs.get('contour_args')
         if line_args is None:
             line_args = [{}] * nroots
-        elif isinstance(line_args, dict):
+        elif isinstance(line_args, Mapping):
             line_args = [line_args] * nroots
         if len(line_args) < nroots:
             line_args += [{}] * (nroots - len(line_args))
@@ -1370,7 +1395,7 @@ class GetDistPlotter(_BaseObject):
 
     def _make_contour_args(self, nroots, **kwargs):
         contour_args = self._make_line_args(nroots, **kwargs)
-        filled = kwargs.get('filled')
+        filled: Union[None, bool, Sequence] = kwargs.get('filled')
         if filled and not isinstance(filled, bool):
             for cont, fill in zip(contour_args, filled):
                 cont['filled'] = fill
@@ -1393,7 +1418,7 @@ class GetDistPlotter(_BaseObject):
         formatter.set_powerlimits(power_limits)
         axis.set_major_formatter(formatter)
 
-    def _set_axis_properties(self, axis, rotation=0, tick_label_size=None):
+    def _set_axis_properties(self, axis, rotation: float = 0, tick_label_size=None):
         tick_label_size = self._scaled_fontsize(tick_label_size, self.settings.axes_fontsize)
         axis.set_tick_params(which='major', labelrotation=rotation, labelsize=tick_label_size)
         axis.get_offset_text().set_fontsize(tick_label_size * 3 / 4 if tick_label_size > 7 else tick_label_size)
@@ -1426,7 +1451,7 @@ class GetDistPlotter(_BaseObject):
         ax.yaxis.offsetText.set_visible(False)
 
     def set_axes(self, params=(), lims=None, do_xlabel=True, do_ylabel=True, no_label_no_numbers=False, pos=None,
-                 color_label_in_axes=False, ax=None, **other_args):
+                 color_label_in_axes=False, ax=None, **_other_args):
         """
         Set the axis labels and ticks, and various styles. Do not usually need to call this directly.
 
@@ -1440,7 +1465,7 @@ class GetDistPlotter(_BaseObject):
                                     the third parameter
         :param ax: optional :class:`~matplotlib:matplotlib.axes.Axes` instance (or y,x subplot coordinate)
                    to add to (defaults to current plot or the first/main plot if none)
-        :param other_args: Not used, just quietly ignore so that set_axes can be passed general kwargs
+        :param _other_args: Not used, just quietly ignore so that set_axes can be passed general kwargs
         :return: an :class:`~matplotlib:matplotlib.axes.Axes` instance
         """
         ax = self.get_axes(ax)
@@ -1485,13 +1510,26 @@ class GetDistPlotter(_BaseObject):
         :param param: the :class:`~.paramnames.ParamInfo` for the y axis parameter
         :param ax: optional :class:`~matplotlib:matplotlib.axes.Axes` instance (or y,x subplot coordinate)
                    to add to (defaults to current plot or the first/main plot if none)
-        :param kwargs: opional extra arguments for Axes set_ylabel
+        :param kwargs: optional extra arguments for Axes set_ylabel
         """
         ax = self.get_axes(ax)
         ax.set_ylabel(param.latexLabel(), fontsize=self._scaled_fontsize(self.settings.axes_labelsize), **kwargs)
 
+    def set_zlabel(self, param, ax=None, **kwargs):
+        """
+        Sets the label for the z axis.
+
+        :param param: the :class:`~.paramnames.ParamInfo` for the y axis parameter
+        :param ax: optional :class:`~matplotlib:matplotlib.axes.Axes` instance (or y,x subplot coordinate)
+                   to add to (defaults to current plot or the first/main plot if none)
+        :param kwargs: optional extra arguments for Axes set_zlabel
+        """
+        ax = self.get_axes(ax)
+        ax.set_zlabel(param.latexLabel(), fontsize=self._scaled_fontsize(self.settings.axes_labelsize), **kwargs)
+
     def plot_1d(self, roots, param, marker=None, marker_color=None, label_right=False, title_limit=None,
-                no_ylabel=False, no_ytick=False, no_zero=False, normalized=False, param_renames={}, ax=None, **kwargs):
+                no_ylabel=False, no_ytick=False, no_zero=False, normalized=False, param_renames=None, ax=None,
+                **kwargs):
         """
         Make a single 1D plot with marginalized density lines.
 
@@ -1719,7 +1757,7 @@ class GetDistPlotter(_BaseObject):
         self.subplots[:, :] = None
         return self.plot_col, self.plot_row
 
-    def get_param_array(self, root, params=None, renames={}):
+    def get_param_array(self, root, params: Union[None, str, Sequence] = None, renames: Mapping = None):
         """
         Gets an array of :class:`~.paramnames.ParamInfo` for named params
         in the given `root`.
@@ -1745,22 +1783,24 @@ class GetDistPlotter(_BaseObject):
         if params is None or len(params) == 0:
             return names.names
         # Fail only for parameters for which a string was passed
-        if isinstance(params, six.string_types):
-            error = True
+        if isinstance(params, str):
+            return names.parsWithNames(params, error=True, renames=renames)
         else:
             is_param_info = [isinstance(param, ParamInfo) for param in params]
             error = [not a for a in is_param_info]
             # Add renames of given ParamInfo's to the renames dict
             renames_from_param_info = {param.name: getattr(param, "renames", [])
                                        for i, param in enumerate(params) if is_param_info[i]}
-            renames = mergeRenames(renames, renames_from_param_info)
-            params = [getattr(param, "name", param) for param in params]
-        old = [(old if isinstance(old, ParamInfo) else ParamInfo(old)) for old in params]
-        return [new or old for new, old in zip(
-            names.parsWithNames(params, error=error, renames=renames),
-            old)]
+            if renames:
+                renames = mergeRenames(renames, renames_from_param_info)
+            else:
+                renames = renames_from_param_info
+            params_names = [getattr(param, "name", param) for param in params]
+            old = [(old if isinstance(old, ParamInfo) else ParamInfo(old)) for old in params]
+            return [new or old for new, old in zip(names.parsWithNames(params_names,
+                                                                       error=error, renames=renames), old)]
 
-    def _check_param(self, root, param, renames={}):
+    def _check_param(self, root, param, renames=None):
         """
         Get :class:`~.paramnames.ParamInfo` for given name for samples with specified root
 
@@ -1776,7 +1816,10 @@ class GetDistPlotter(_BaseObject):
         if isinstance(param, ParamInfo):
             name = param.name
             if hasattr(param, 'renames'):
-                renames = {name: makeList(renames.get(name, [])) + list(param.renames)}
+                if renames:
+                    renames = {name: makeList(renames.get(name, [])) + list(param.renames)}
+                else:
+                    renames = {name: list(param.renames)}
         else:
             name = param
         # NB: If a parameter is not found, errors only if param is a ParamInfo instance
@@ -1861,6 +1904,8 @@ class GetDistPlotter(_BaseObject):
         if figure:
             if figure_legend_outside and args.get('bbox_to_anchor') is None:
                 # this should put directly on top/below of figure
+                # TODO: once matplotlib 3.5 is out check  args['outside'] = True, outside='vertical'
+                #  for self.settings.constrained_layout
                 if legend_loc in ['best', 'center']:
                     legend_loc = 'upper center'
                 loc1, loc2 = legend_loc.split(' ')
@@ -1963,8 +2008,12 @@ class GetDistPlotter(_BaseObject):
             root = escapeLatex(root.get_name())
         elif hasattr(root, 'getName'):
             root = escapeLatex(root.getName())
-        elif isinstance(root, six.string_types):
-            return self._root_display_name(self.sample_analyser.samples_for_root(root), i)
+        elif isinstance(root, str):
+            label = self._root_display_name(self.sample_analyser.samples_for_root(root), i)
+            if label in root and '/' in root:
+                return escapeLatex(root)
+            else:
+                return label
         if not root:
             root = 'samples' + str(i)
         return root
@@ -1986,7 +2035,7 @@ class GetDistPlotter(_BaseObject):
 
     def plots_1d(self, roots, params=None, legend_labels=None, legend_ncol=None, label_order=None, nx=None,
                  param_list=None, roots_per_param=False, share_y=None, markers=None, title_limit=None,
-                 xlims=None, param_renames={}, **kwargs):
+                 xlims=None, param_renames=None, **kwargs):
         """
         Make an array of 1D marginalized density subplots
 
@@ -2034,7 +2083,8 @@ class GetDistPlotter(_BaseObject):
         if param_list is not None:
             wanted_params = ParamNames(param_list).list()
             params = [param for param in params if
-                      param.name in wanted_params or param_renames.get(param.name, '') in wanted_params]
+                      param.name in wanted_params or param_renames and param_renames.get(param.name,
+                                                                                         '') in wanted_params]
         nparam = len(params)
         if share_y is None:
             share_y = self.settings.prob_label is not None and nparam > 1
@@ -2154,7 +2204,7 @@ class GetDistPlotter(_BaseObject):
         if isinstance(ax, int):
             ax = self._subplot_number(ax)
         elif isinstance(ax, (list, tuple)):
-            if isinstance(ax[0], six.string_types) or isinstance(ax[0], ParamInfo):
+            if isinstance(ax[0], str) or isinstance(ax[0], ParamInfo):
                 ax = self.get_axes_for_params(*ax)
             else:
                 ax = self._subplot(ax[1], ax[0])
@@ -2214,7 +2264,7 @@ class GetDistPlotter(_BaseObject):
     @staticmethod
     def _get_marker(markers, index, name):
         if markers is not None:
-            if isinstance(markers, dict):
+            if isinstance(markers, Mapping):
                 return markers.get(name)
             elif index < len(markers):
                 return markers[index]
@@ -2222,7 +2272,7 @@ class GetDistPlotter(_BaseObject):
 
     @staticmethod
     def _make_param_object(names, samples, obj=None):
-        class SampleNames(object):
+        class SampleNames:
             pass
 
         obj = obj or SampleNames()
@@ -2230,11 +2280,12 @@ class GetDistPlotter(_BaseObject):
             setattr(obj, par.name, samples[:, i])
         return obj
 
+    # noinspection PyUnboundLocalVariable
     def triangle_plot(self, roots, params=None, legend_labels=None, plot_3d_with_param=None, filled=False, shaded=False,
                       contour_args=None, contour_colors=None, contour_ls=None, contour_lws=None, line_args=None,
                       label_order=None, legend_ncol=None, legend_loc=None, title_limit=None, upper_roots=None,
-                      upper_kwargs={}, upper_label_right=False, diag1d_kwargs={}, markers=None, marker_args={},
-                      param_limits={}, **kwargs):
+                      upper_kwargs=empty_dict, upper_label_right=False, diag1d_kwargs=empty_dict, markers=None,
+                      marker_args=empty_dict, param_limits=empty_dict, **kwargs):
         """
         Make a trianglular array of 1D and 2D plots.
 
@@ -2428,7 +2479,7 @@ class GetDistPlotter(_BaseObject):
                 if marker2 is not None:
                     self.add_y_marker(marker2, ax=ax, **marker_args)
                 self._inner_ticks(ax)
-                if i == 0:
+                if i != i2:
                     ax.set_ylim(lims[i2])
 
                 ax._shared_x_axis = self.subplots[bottom, i2]
@@ -2508,7 +2559,7 @@ class GetDistPlotter(_BaseObject):
                          **args)
 
     def rectangle_plot(self, xparams, yparams, yroots=None, roots=None, plot_roots=None, plot_texts=None,
-                       xmarkers=None, ymarkers=None, marker_args={}, param_limits={},
+                       xmarkers=None, ymarkers=None, marker_args=empty_dict, param_limits=empty_dict,
                        legend_labels=None, legend_ncol=None, label_order=None, **kwargs):
         """
         Make a grid of 2D plots.
@@ -2553,7 +2604,7 @@ class GetDistPlotter(_BaseObject):
         """
         xparams = makeList(xparams)
         yparams = makeList(yparams)
-        self.make_figure(nx=len(xparams), ny=len(yparams), sharex=len(yparams), sharey=len(xparams))
+        self.make_figure(nx=len(xparams), ny=len(yparams), sharex=bool(yparams), sharey=bool(xparams))
         sharey = None
         yshares = []
         xshares = []
@@ -2632,7 +2683,8 @@ class GetDistPlotter(_BaseObject):
         """
         self._set_axis_properties(self.get_axes(ax).yaxis, rotation, labelsize)
 
-    def add_colorbar(self, param, orientation='vertical', mappable=None, ax=None, **ax_args):
+    def add_colorbar(self, param, orientation='vertical', mappable=None, ax=None,
+                     colorbar_args: Mapping = empty_dict, **ax_args):
         """
         Adds a color bar to the given plot.
 
@@ -2640,12 +2692,15 @@ class GetDistPlotter(_BaseObject):
         :param orientation: The orientation of the color bar (default: 'vertical')
         :param mappable: the thing to color, defaults to current scatter
         :param ax: optional :class:`~matplotlib:matplotlib.axes.Axes` instance to add to (defaults to current plot)
+        :param colorbar_args: optional arguments for :func:`~matplotlib:matplotlib.pyplot.colorbar`
         :param ax_args: extra arguments -
 
                **color_label_in_axes** - if True, label is not added (insert as text label in plot instead)
         :return: The new :class:`~matplotlib:matplotlib.colorbar.Colorbar` instance
         """
-        cb = self.fig.colorbar(mappable, orientation=orientation, ax=self.get_axes(ax))
+        kwargs = {'orientation': orientation}
+        kwargs.update(colorbar_args)
+        cb = self.fig.colorbar(mappable, ax=self.get_axes(ax), **kwargs)
         cb.set_alpha(1)
         if not ax_args.get('color_label_in_axes'):
             self.add_colorbar_label(cb, param)
@@ -2712,6 +2767,7 @@ class GetDistPlotter(_BaseObject):
                        ax=None, alpha_samples=False, **kwargs):
         """
         Low-level function to add a 3D scatter plot to the current axes (or ax if specified).
+        Here 3D means a 2D plot, with samples colored by a third parameter.
 
         :param root: The root name of the samples to use
         :param params:  list of parameters to plot
@@ -2733,19 +2789,20 @@ class GetDistPlotter(_BaseObject):
         else:
             pts = self.sample_analyser.load_single_samples(root)
             weights = 1
+            mcsamples = None
         names = self.param_names_for_root(root)
-        fixed_color = kwargs.get('fixed_color')  # if actually just a plain scatter plot
         samples = []
         for param in params:
             if hasattr(param, 'getDerived'):
                 samples.append(param.getDerived(self._make_param_object(names, pts)))
             else:
                 samples.append(pts[:, names.numberOfName(param.name)])
-        if alpha_samples:
+        fixed_color = kwargs.get('fixed_color')  # if actually just a plain scatter plot
+        if mcsamples:
             # use most samples, but alpha with weight
             from matplotlib.cm import ScalarMappable
             from matplotlib.colors import Normalize, to_rgb
-            max_weight = weights.max()
+            max_weight = np.max(weights)
             dup_fac = 4
             filt = weights > max_weight / (100 * dup_fac)
             x = samples[0][filt]
@@ -2937,6 +2994,190 @@ class GetDistPlotter(_BaseObject):
         sets = [[param_x, param_y, z] for z in param_z if z != param_x and z != param_y]
         return self.plots_3d(roots, sets, **kwargs)
 
+    def add_4d_scatter(self, root, params, ax, color_bar=False, max_scatter_points: Optional[int] = None,
+                       lims=empty_dict, fixed_color=None, colorbar_args: Mapping = empty_dict, **kwargs):
+        samps = self.sample_analyser.samples_for_root(root)
+        params = self.get_param_array(root, params)
+        ix = samps.random_single_samples_indices(max_samples=max_scatter_points or samps.max_scatter_points)
+        if len(params) == 3:
+            fixed_color = fixed_color or 'k'
+        if len(params) < 3 + (0 if fixed_color else 1):
+            raise GetDistPlotError('4d plot must provide list of three or four parameters')
+
+        for name, lim in lims.items():
+            if not isinstance(lim, Sequence) or len(lim) != 2:
+                raise GetDistPlotError('lims for 4d plot must be dictionary of names and upper/lower tuples')
+            if lim[0] is not None:
+                ix = ix[samps[name][ix] > lim[0]]
+            if lim[1] is not None:
+                ix = ix[samps[name][ix] < lim[1]]
+
+        samples = []
+        for param in params:
+            if hasattr(param, 'getDerived'):
+                samples.append(param.getDerived(self._make_param_object(
+                    self.param_names_for_root(root), samps.samples[ix, :])))
+            else:
+                samples.append(samps[param.name][ix])
+
+        x, y, z = samples[:3]
+        colors = fixed_color or samples[3]
+
+        opts = dict({'marker': 'o', 'cmap': self.settings.colormap_scatter,
+                     's': self.settings.scatter_size}, **kwargs)
+        ax.scatter(x, y, z, c=colors, depthshade=True, **opts)
+
+        if color_bar and not fixed_color:
+            mappable = cm.ScalarMappable(plt.Normalize(colors.min(), colors.max()), cmap=opts['cmap'])
+            mappable.set_array(colors)
+            self.last_colorbar = self.add_colorbar(params[3], mappable=mappable,
+                                                   ax=ax, colorbar_args=colorbar_args)
+
+        return x, y, z
+
+    def plot_4d(self, roots, params, color_bar=True, colorbar_args: Mapping = empty_dict,
+                ax=None, lims=empty_dict, azim: Optional[float] = 15, elev: Optional[float] = None, dist: float = 12,
+                alpha: Union[float, Sequence[float]] = 0.5, marker='o', max_scatter_points: Optional[int] = None,
+                shadow_color=None, shadow_alpha=0.1, fixed_color=None, compare_colors=None,
+                animate=False, anim_angle_degrees=360, anim_step_degrees=0.6, anim_fps=15,
+                mp4_filename: Optional[str] = None, mp4_bitrate=-1, **kwargs):
+        """
+        Make a 3d x-y-z scatter plot colored by the value of a fourth parameter.
+        If animate is True, it will rotate, and can be saved to an mp4 video file by setting
+        mp4_filename (you must have ffmpeg installed). Note animations can be quite slow to render.
+
+        :param roots: root name or :class:`~.mcsamples.MCSamples` instance (or list of any of either of these) for
+                      the samples to plot
+        :param params: list with the three parameter names to plot and color (x, y, x, color); can also set
+                    fixed_color and specify just three parameters
+        :param color_bar: True if should include a color bar
+        :param colorbar_args: extra arguments for colorbar
+        :param ax: optional :class:`~matplotlib:mpl_toolkits.mplot3d.axes3d.Axes3D` instance
+                   to add to (defaults to current plot or the first/main plot if none)
+        :param lims: dictionary of optional limits, e.g. {'param1':(min1, max1),'param2':(min2,max2)}.
+                      If this include parameters that are not plotted, the samples outside the limits will still be
+                      removed
+        :param azim: azimuth for initial view
+        :param elev: elevation for initial view
+        :param dist: distance for view (make larger if labels out of area)
+        :param alpha: alpha, or list of alphas for each root, to use for scatter samples
+        :param marker:  marker, or list of markers for each root
+        :param max_scatter_points: if set, maximum number of points to plots from each root
+        :param shadow_color: if not None, a color value (or list of color values) to use for plotting axes-projected
+                             samples; or True to plot gray shadows
+        :param shadow_alpha: if not None, separate alpha or list of alpha for shadows
+        :param fixed_color: if not None, a fixed color for the the first-root scatter plot rather than a 4th parameter
+                            value
+        :param compare_colors: if not None, fixed scatter color for second-and-higher roots rather than using 4th
+                            parameter value
+        :param animate: if True, rotate the plot
+        :param anim_angle_degrees: total angle for animation rotation
+        :param anim_step_degrees: angle per frame
+        :param anim_fps: animation frames per second
+        :param mp4_filename: if animating, optional filename to produce mp4 video
+        :param mp4_bitrate: bitrate
+        :param kwargs: additional optional arguments for :meth:`~matplotlib:mpl_toolkits.mplot3d.axes3d.Axes3D.scatter`
+
+        .. plot::
+           :include-source:
+
+            from getdist import plots, gaussian_mixtures
+
+            samples1, samples2 = gaussian_mixtures.randomTestMCSamples(ndim=4, nMCSamples=2)
+            samples1.samples[:, 0] *= 5  # stretch out in one direction
+            g = plots.get_single_plotter()
+            g.plot_4d([samples1, samples2], ['x0', 'x1', 'x2', 'x3'],
+                      cmap='viridis', color_bar=False,
+                      alpha=[0.3, 0.1],  shadow_color=False, compare_colors=['k'])
+
+        .. plot::
+           :include-source:
+
+            from getdist import plots, gaussian_mixtures
+
+            samples1 = gaussian_mixtures.randomTestMCSamples(ndim=4)
+            samples1.samples[:, 0] *= 5  # stretch out in one direction
+            g = plots.get_single_plotter()
+            g.plot_4d(samples1, ['x0', 'x1', 'x2', 'x3'], cmap='jet',
+                      alpha=0.4, shadow_alpha=0.05, shadow_color=True,
+                      max_scatter_points=6000,
+                      lims={'x2': (-3, 3), 'x3': (-3, 3)},
+                      colorbar_args={'shrink': 0.6})
+
+        Generate an mp4 video (in jupyter, using a notebook rather than inline matplotlib)::
+
+            g.plot_4d([samples1, samples2], ['x0', 'x1', 'x2', 'x3'], cmap='viridis',
+              alpha = [0.3,0.1], shadow_alpha=[0.1,0.005], shadow_color=False,
+              compare_colors=['k'],
+              animate=True, mp4_filename='sample_rotation.mp4', mp4_bitrate=1024, anim_fps=20)
+
+        See `sample output video <https://cdn.cosmologist.info/antony/sample_rotation.mp4>`_.
+        """
+        roots = makeList(roots)
+        if not params:
+            raise GetDistPlotError('No parameters for plot_4d!')
+        params = self.get_param_array(roots[0], params)
+        from mpl_toolkits.mplot3d import Axes3D
+        if not ax:
+            if not self.fig:
+                self.make_figure()
+            ax = self.subplots[0, 0] = Axes3D(self.fig)
+            ax.dist = dist
+        pts = []
+        for i, (root, alph, mark) in enumerate(extend_list_zip(roots, alpha, marker)):
+            pts.append(self.add_4d_scatter(root, params, ax, color_bar=not i and color_bar,
+                                           fixed_color=(fixed_color if not i else (compare_colors[i - 1]
+                                                                                   if compare_colors is not None
+                                                                                   else None)),
+                                           lims=lims, alpha=alph, marker=mark,
+                                           max_scatter_points=max_scatter_points,
+                                           colorbar_args=colorbar_args, **kwargs))
+
+        axes = ax.xaxis, ax.yaxis, ax.zaxis
+        lim_x, lim_y, lim_z = [(tuple((_cur_lim if _lim is None else _lim) for _lim, _cur_lim in
+                                      zip(lims.get(par.name, (None, None)), axis.get_view_interval()))) for par, axis in
+                               zip(params, axes)]
+        for axis in axes:
+            self._set_main_axis_properties(axis, True)
+        ax.set_xlim(*lim_x)
+        ax.set_ylim(*lim_y)
+        ax.set_zlim(*lim_z)
+
+        if shadow_color:
+            if shadow_color is True:
+                shadow_color = ['gray']
+                if len(roots) > 1 and compare_colors is not None:
+                    shadow_color.extend(compare_colors)
+            if shadow_alpha is None:
+                shadow_alpha = alpha
+            for (x, y, z), shadow, alph, mark in extend_list_zip(pts, shadow_color, shadow_alpha, marker):
+                if shadow is not None:
+                    opts = dict(marker=mark or 'o', zorder=-1,
+                                s=kwargs.get('s', self.settings.scatter_size), alpha=alph)
+                    ax.scatter(x, y, zs=lim_z[0], c=shadow, **opts)
+                    ax.scatter(y, z, zdir='x', zs=lim_x[0], c=shadow, **opts)
+                    ax.scatter(x, z, zdir='y', zs=lim_y[0], c=shadow, **opts)
+
+        self.set_xlabel(params[0], ax)
+        self.set_ylabel(params[1], ax)
+        self.set_zlabel(params[2], ax)
+        ax.view_init(azim=azim, elev=elev)
+
+        if animate:
+            from matplotlib import animation
+
+            def rotate(angle):
+                ax.view_init(azim=azim + angle)
+
+            # note this is slow in notebook when using low thin factors
+            self.fig.rot_animation = animation.FuncAnimation(
+                self.fig, rotate, frames=np.arange(0, anim_angle_degrees, anim_step_degrees),  # noqa
+                interval=1000 / anim_fps)
+            if mp4_filename:
+                # need ffmpeg installed
+                writer = animation.writers['ffmpeg'](fps=anim_fps, bitrate=mp4_bitrate)
+                self.fig.rot_animation.save(mp4_filename, writer=writer)
+
     def add_text(self, text_label, x=0.95, y=0.06, ax=None, **kwargs):
         """
         Add text to given axis.
@@ -3037,7 +3278,7 @@ class GetDistPlotter(_BaseObject):
 style_name = 'default'
 
 
-class StyleManager(object):
+class StyleManager:
     def __init__(self):
         self._plot_styles = {style_name: GetDistPlotter}
         self.active_style = style_name

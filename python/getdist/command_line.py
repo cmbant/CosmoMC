@@ -1,10 +1,7 @@
-from __future__ import absolute_import
-from __future__ import print_function
 import os
 import subprocess
 import getdist
 import sys
-import io
 import logging
 from getdist import MCSamples, chains, IniFile
 
@@ -13,6 +10,7 @@ def runScript(fname):
     subprocess.Popen(['python', fname])
 
 
+# noinspection PyUnboundLocalVariable,PyProtectedMember
 def getdist_script(args, exit_on_error=True):
     def do_error(msg):
         if exit_on_error:
@@ -41,11 +39,13 @@ def getdist_script(args, exit_on_error=True):
         chain_root = chain_root[:-4]
 
     if chain_root is not None and ('*' in chain_root or '?' in chain_root):
-        import glob, copy
-        for f in glob.glob(chain_root + '.paramnames'):
-            fileargs = copy.copy(args)
-            fileargs.chain_root = f.replace('.paramnames', '')
-            getdist_script(fileargs)
+        import glob
+        import copy
+        for ending in ['.paramnames', 'updated.yaml']:
+            for f in glob.glob(chain_root + ending):
+                fileargs = copy.copy(args)
+                fileargs.chain_root = f.replace(ending, '')
+                getdist_script(fileargs)
         return
 
     # Input parameters
@@ -79,8 +79,8 @@ def getdist_script(args, exit_on_error=True):
     mc = MCSamples(in_root, ini=ini, files_are_chains=samples_are_chains, paramNamesFile=paramnames)
 
     if ini.bool('adjust_priors', False) or ini.bool('map_params', False):
-        do_error(
-            'To adjust priors or define new parameters, use a separate python script; see the python getdist docs for examples')
+        do_error('To adjust priors or define new parameters, use a separate python script; '
+                 'see the python getdist docs for examples')
 
     plot_ext = ini.string('plot_ext', 'py')
     finish_run_command = ini.string('finish_run_command', '')
@@ -130,8 +130,6 @@ def getdist_script(args, exit_on_error=True):
             PCA_func = ['N'] * PCA_num  # No mapping
         PCA_NormParam = ini.string('PCA_normparam', '') or None
 
-    make_scatter_samples = ini.bool('make_scatter_samples', False)
-
     # ==============================================================================
 
     first_chain = ini.int('first_chain', 0)
@@ -139,8 +137,11 @@ def getdist_script(args, exit_on_error=True):
     # -1 y keep reading until one not found
 
     # Chain files
-    chain_files = chains.chainFiles(in_root, first_chain=first_chain, last_chain=last_chain,
-                                    chain_exclude=chain_exclude)
+    for separator in ['_', '.']:
+        chain_files = chains.chainFiles(in_root, first_chain=first_chain, last_chain=last_chain,
+                                        chain_exclude=chain_exclude, separator=separator)
+        if chain_files:
+            break
 
     mc.loadChains(in_root, chain_files)
 
@@ -189,7 +190,8 @@ def getdist_script(args, exit_on_error=True):
         mc.writeThinData(filename, thin_ix, thin_cool)
 
     doprint(mc.getNumSampleSummaryText().strip())
-    if mc.likeStats: doprint(mc.likeStats.likeSummary().strip())
+    if mc.likeStats:
+        doprint(mc.likeStats.likeSummary().strip())
 
     if PCA_num > 0 and not plots_only:
         mc.PCA(PCA_params, PCA_func, PCA_NormParam, writeDataToFile=True)
@@ -244,7 +246,8 @@ def getdist_script(args, exit_on_error=True):
 
         filename = rootdirname + '.' + plot_ext
         mc._writeScriptPlots1D(filename, plotparams)
-        if make_plots: runScript(filename)
+        if make_plots:
+            runScript(filename)
 
         # Do 2D bins
         if plot_2D_param == 'corr':
@@ -259,28 +262,32 @@ def getdist_script(args, exit_on_error=True):
             doprint('...producing 2D plots')
             filename = rootdirname + '_2D.' + plot_ext
             mc._writeScriptPlots2D(filename, plot_2D_param, cust2DPlots)
-            if make_plots: runScript(filename)
+            if make_plots:
+                runScript(filename)
 
         if triangle_plot:
             # Add the off-diagonal 2D plots
             doprint('...producing triangle plot')
             filename = rootdirname + '_tri.' + plot_ext
             mc._writeScriptPlotsTri(filename, triangle_params)
-            if make_plots: runScript(filename)
+            if make_plots:
+                runScript(filename)
 
         # Do 3D plots (i.e. 2D scatter plots with coloured points)
         if num_3D_plots:
             doprint('...producing ', num_3D_plots, '2D colored scatter plots')
             filename = rootdirname + '_3D.' + plot_ext
             mc._writeScriptPlots3D(filename, plot_3D)
-            if make_plots: runScript(filename)
+            if make_plots:
+                runScript(filename)
 
     if not plots_only:
         # Write out stats marginalized
         mc.getMargeStats().saveAsText(rootdirname + '.margestats')
 
         # Limits from global likelihood
-        if mc.loglikes is not None: mc.getLikeStats().saveAsText(rootdirname + '.likestats')
+        if mc.loglikes is not None:
+            mc.getLikeStats().saveAsText(rootdirname + '.likestats')
 
     # System command
     if finish_run_command:
@@ -291,12 +298,12 @@ def getdist_script(args, exit_on_error=True):
 
 
 def make_param_file(file_name, feedback=True):
-    with io.open(getdist.distparam_template) as f:
+    with open(getdist.distparam_template, encoding="utf-8-sig") as f:
         content = f.read()
-    with io.open(getdist.default_getdist_settings) as f:
+    with open(getdist.default_getdist_settings, encoding="utf-8-sig") as f:
         analysis = f.read()
     content = content.replace('%%%ANALYSIS_DEFAULTS%%%', analysis)
-    with io.open(file_name, 'w') as f:
+    with open(file_name, 'w', encoding="utf-8") as f:
         f.write(content)
     if feedback:
         print('Template .ini file written to ' + file_name)
@@ -312,7 +319,7 @@ def getdist_command(args=None):
     parser.add_argument('chain_root', nargs='?',
                         help='Root name of chain to analyse (e.g. chains/test), required unless file'
                              '_root specified in ini_file')
-    parser.add_argument('--ignore_rows',
+    parser.add_argument('--ignore_rows', type=float,
                         help='set initial fraction of chains to cut as burn in (fraction of total rows'
                              ', or >1 number of rows); overrides any value in ini_file if set')
     parser.add_argument('--make_param_file',
@@ -336,13 +343,13 @@ def getdist_gui():
 
         path = os.path.join(os.path.dirname(getdist.gui.__file__), 'GetDist GUI.app')
         if os.path.exists(path):
-            if subprocess.call(["/usr/bin/open", "-a", path], env=os.environ):
+            if subprocess.call(["/usr/bin/open", "-a", path, "--args"] + sys.argv[1:], env=os.environ):
                 print("Error running 'GetDist GUI.app'. This may be a Catalina issue, any ideas?\n"
                       "Attempting to run script directly, using non-unified menus.")
                 run_gui()
         else:
             print('GetDist GUI.app not found; not running getdist-gui, getdist package not installed '
-                  'or no valid PySide/PySide2 found when setup was run. Running script...')
+                  'or no valid PySide2 found when setup was run. Running script...')
             run_gui()
     else:
         run_gui()
