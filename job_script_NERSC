@@ -1,0 +1,22 @@
+#!/bin/bash
+## On Haswell, make sure you set --cpus-per-task=64/tasks_per_node, or equivalently 
+## --cpus-per-task=64*nodes/tasks. On KNL, change 64 for 272. 
+
+#SBATCH --licenses=SCRATCH
+#SBATCH --job-name=CosmoMC
+#SBATCH --output=test.log
+#SBATCH --qos=debug
+#SBATCH --time=5
+#SBATCH --nodes=2
+#SBATCH --ntasks=4
+#SBATCH --cpus-per-task=32
+#SBATCH --constraint=haswell
+
+## Uncomment this to get job updates via email
+##SBATCH --mail-type=ALL
+
+export OMP_PROC_BIND=true
+export OMP_PLACES=threads
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+srun cosmomc test.ini
