@@ -692,13 +692,14 @@
         if (Like%LikelihoodType/='') then
             ix = LikelihoodTypes%IndexOf(Like%LikelihoodType)
             if (ix==-1) then
-                call LikelihoodTypes%Add(trim(Like%LikelihoodType))
+                call LikelihoodTypes%Add(Like%LikelihoodType)
                 counts(LikelihoodTypes%Count)=1
             else
                 counts(ix) = counts(ix)+1
             end if
         end if
     end do
+
     !Add a parameter for the prior
     LikeNames%name(L%Count+1) = 'chi2_prior'
     LikeNames%label(L%Count+1) = FormatString(trim(chisq_label), 'prior')
