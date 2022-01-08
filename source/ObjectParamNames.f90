@@ -391,25 +391,31 @@
     logical, intent(in), optional :: add_derived
     integer i
     Type(TTextFile) :: F
+    character(LEN=:), allocatable :: tmp
 
     call F%CreateFile(fname)
     if (present(indices)) then
         do i=1, size(indices)
-            call F%Write(this%AsString(indices(i)))
+            !call F%Write(this%AsString(indices(i)))
+            !gcc 9.4/10.3 bug workaround
+            tmp = this%AsString(indices(i))
+            call F%Write(tmp)
         end do
         if (present(add_derived)) then
             if (add_derived) then
                 do i=1,this%num_derived
-                    call F%Write(this%AsString(this%num_mcmc+i))
+                    tmp = this%AsString(this%num_mcmc+i)
+                    call F%Write(tmp)
                 end do
             end if
         end if
     else
         do i=1, this%nnames
-            call F%Write(this%AsString(i))
+            tmp = this%AsString(i)
+            call F%Write(tmp)
         end do
     end if
-
+ 
     call F%Close()
 
     end subroutine ParamNames_WriteFile
