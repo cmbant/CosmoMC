@@ -232,7 +232,6 @@
         corr(:,i) = corr(:,i) / sigmas(i)
     end do
     L = corr(this%indices,this%indices)
-    print *, corr
     call Matrix_Cholesky(L,zeroed=.true.)
     do i=1, this%nBlocks
         BP => this%Proposer(i)
