@@ -793,6 +793,8 @@
                     & covmat_scale*Cov( (binx-1)*num_in+cov_cl_used, (biny-1)*num_in+cov_cl_used)
             end do
         end do
+        print *, 'binned'
+        print *, sum(this%inv_covariance**2)
         call Matrix_Inverse(this%inv_covariance)
     else
         vecsize_in =  (this%pcl_lmax-this%pcl_lmin+1)
