@@ -1,5 +1,7 @@
 git gfortran -v
 
+export OPENBLAS_CORETYPE=Haswell
+
 cd /cosmomc
 
 
