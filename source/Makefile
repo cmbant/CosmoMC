@@ -71,7 +71,8 @@ else
 #gfortran 6 should work
 #see CosmoBox virtual machines for stable environments
 F90C = gfortran
-FFLAGS = -cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4
+#FFLAGS = -cpp -O3 -ffast-math -ffree-line-length-none -fopenmp -fmax-errors=4
+FFLAGS = -cpp -O3 -ffpe-trap=invalid,zero -ffree-line-length-none -fopenmp -fmax-errors=4
 DEBUGFLAGS = -cpp -g -fbounds-check -fbacktrace -ffree-line-length-none -fopenmp -fmax-errors=4 -ffpe-trap=invalid,overflow,zero
 MODOUT =  -J$(OUTPUT_DIR)
 #LAPACKL = -Wl,-framework -Wl,accelerate
