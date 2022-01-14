@@ -1,3 +1,6 @@
+import sys  #
+
+sys.path.insert(0, r'c:\work\dist\git\cosmomc\python')
 import planckStyle as s
 from getdist import inifile
 from paramgrid import batchjob
@@ -14,6 +17,9 @@ redshifts = [0.01, 0.05, 0.106, 0.15, 0.2, 0.25, 0.3, 0.34, 0.38, 0.42, 0.46, 0.
              3.]
 
 updated2019 = True
+updated2021 = True
+shifted = True
+shiftscale=1
 
 plot_DV = False  # if false plot D_V or D_M depending on measurement
 
@@ -51,7 +57,7 @@ for i, dat in enumerate(datasets):
 
 
 def GetBackgroundFuncs(samples):
-    ixs = samples.randomSingleSamples_indices()[::40]
+    ixs = samples.random_single_samples_indices()[::40]
     DMs = np.zeros((len(ixs), len(redshifts)))
     Hs = np.zeros(DMs.shape)
     rsDV = np.zeros(DMs.shape)
@@ -94,18 +100,32 @@ if True:  # H(z) plot
         samples2 = g.sampleAnalyser.samplesForRoot(variant)
         Hinterp2, Herrinterp2, _, _, _ = GetBackgroundFuncs(samples2)
         s.plotBands(redplot, Hinterp2(redplot), Herrinterp2(redplot), color='blue')
+    if shifted:
+        shiftscale = 1.08
+        Hmeans2 = Hinterp(redplot)*shiftscale
+        Herrs2 = Herrinterp(redplot)*shiftscale
+        rdrag = rdrag/shiftscale
+        s.plotBands(redplot, Hmeans2, Herrs2, color='cyan')
+
 
     Hmeans2 = Hinterp(redplot)
     Herrs2 = Herrinterp(redplot)
     s.plotBands(redplot, Hmeans2, Herrs2)
 
-    if updated2019:
+    if updated2021:
+        text(2.33, 63*np.sqrt(shiftscale), r'DR16 Ly-$\alpha$', color='orange', horizontalalignment='center')
+
+        z = 2.33
+        sdssdata = [c / (8.93 * rdrag) / (1 + z)]
+        sdsserr = [c / (8.93* rdrag) * 0.28 / 8.93 / (1 + z)]
+        sdssredshifts = [z]
+    elif updated2019:
         # Aganthe https://arxiv.org/abs/1904.03400
         z = 2.34
         sdssdata = [c / (8.86 * rdrag) / (1 + z)]
         sdsserr = [c / (8.86 * rdrag) * 0.29 / 8.86 / (1 + z)]
         print('Ly-alpha H:', sdssdata, sdsserr)
-        sdssredshifts = [z-0.007]
+        sdssredshifts = [z - 0.007]
         err = errorbar(sdssredshifts, sdssdata, sdsserr, fmt='.', color='orange', marker='x',
                        markersize=3)
         err[-1][0].set_linestyle('--')
@@ -136,16 +156,29 @@ if True:  # H(z) plot
              markersize=3)
     #    text(2.33, 63, r'BOSS Ly-$\alpha$', color='orange', horizontalalignment='center')
 
-    pts = np.loadtxt(batchjob.getCodeRootPath() + 'data/DR12/sdss_DR12Consensus_bao.dat', usecols=[0, 1])
-    cov = np.loadtxt(batchjob.getCodeRootPath() + 'data/DR12/BAO_consensus_covtot_dM_Hz.txt')
-    rdfid = 147.78
-    sdssredshifts = pts[1::2, 0]
-    sdssdata = pts[1::2, 1] * rdfid / rdrag / (1 + sdssredshifts)
-    sdsserr = np.sqrt(np.diag(cov)[1::2]) * rdfid / rdrag / (1 + sdssredshifts)
-    print('sdss DR12 H:', sdssdata, sdsserr)
-    errorbar(sdssredshifts, sdssdata, sdsserr, fmt='.', color='orangered', marker='^',
-             markersize=3)
-    text(0.5, 63.5, 'BOSS DR12', color='orangered', horizontalalignment='center')
+    if updated2021:
+        rdfid = 147.78
+        sdssredshifts = np.array([0.38, 0.51, 0.7])
+        Hd = np.array([25, 22.33, 19.33])
+        Hderr = np.array([0.76, 0.58, 0.53])
+        sdssdata = c / Hd / rdrag / (1 + sdssredshifts)
+        sdsserr = c * Hderr / Hd ** 2 / rdrag / (1 + sdssredshifts)
+        print('sdss DR16 H:', sdssdata, sdsserr)
+        errorbar(sdssredshifts, sdssdata, sdsserr, fmt='.', color='orangered', marker='^',
+                 markersize=3)
+        text(0.5, 64*shiftscale, 'BOSS DR16', color='orangered', horizontalalignment='center')
+
+    else:
+        pts = np.loadtxt(batchjob.getCodeRootPath() + 'data/DR12/sdss_DR12Consensus_bao.dat', usecols=[0, 1])
+        cov = np.loadtxt(batchjob.getCodeRootPath() + 'data/DR12/BAO_consensus_covtot_dM_Hz.txt')
+        rdfid = 147.78
+        sdssredshifts = pts[1::2, 0]
+        sdssdata = pts[1::2, 1] * rdfid / rdrag / (1 + sdssredshifts)
+        sdsserr = np.sqrt(np.diag(cov)[1::2]) * rdfid / rdrag / (1 + sdssredshifts)
+        print('sdss DR12 H:', sdssdata, sdsserr)
+        errorbar(sdssredshifts, sdssdata, sdsserr, fmt='.', color='orangered', marker='^',
+                 markersize=3)
+        text(0.5, 63.5, 'BOSS DR12', color='orangered', horizontalalignment='center')
     if variant:
         rdrag2 = samples2.mean('rdrag')
         sdssdata = pts[1::2, 1] * rdfid / rdrag2 / (1 + sdssredshifts)
@@ -164,7 +197,23 @@ if True:  # H(z) plot
                  markersize=3)
         text(0.1, 56, 'SDSS MGS', color='m', horizontalalignment='left')
 
-    if updated2019:
+    if updated2021:
+        if True:
+            H0red = [0.0075]
+            H0red = [0]
+            H0data = [73.2]
+            H0err = [1.3]
+            errorbar(H0red, H0data, H0err, fmt='.', color='blue', marker='.', markersize=3)
+            text(0.06, 73.5, 'Riess et al. (2021)', color='blue', horizontalalignment='left')
+
+            H0red = [0.0075]
+            H0red = [0]
+            H0data = [71.5]
+            H0err = [1.8]
+            errorbar(H0red, H0data, H0err, fmt='.', color='green', marker='.', markersize=3, alpha=0.5)
+            text(0.06, 71, 'Anand et al. (2021)', color='green', horizontalalignment='left')
+
+    elif updated2019:
         H0red = [0.0075]
         H0red = [0]
         H0data = [74.03]
@@ -187,6 +236,15 @@ if True:  # H(z) plot
         H0err = np.array([14.63, 12.42, 12.75, 14.79]) * rdfid / rdrag / (1 + H0red)
         errorbar(H0red, H0data, H0err, fmt='.', color='darkgreen', marker='o', markersize=3)
         text(1.05, 52, 'DR14 Quasars', color='darkgreen', horizontalalignment='left')
+    elif updated2021:
+        sdssredshifts = np.array([1.48])
+        Hd = np.array([13.26])
+        Hderr = np.array([0.55])
+        sdssdata = c / Hd / rdrag / (1 + sdssredshifts)
+        sdsserr = c * Hderr / Hd ** 2 / rdrag / (1 + sdssredshifts)
+        text(1.2, 57*np.sqrt(shiftscale), 'DR16 quasars', color='darkgreen', horizontalalignment='left')
+        errorbar(sdssredshifts, sdssdata, sdsserr, fmt='.', color='darkgreen', marker='o', markersize=3)
+
     else:
         # DR14 quasar http://arxiv.org/abs/1801.02689, single bin
         # Note three bins are all systematically lower than one bin. Hector explained he thinks this is due
@@ -286,7 +344,7 @@ else:
         # Ly-alpha and cross-correlation: https://arxiv.org/abs/1904.03430 (quoted to different precision in the two papers)
         redshift = 2.34
         data = np.array([36.981])
-        err = np.atleast_2d([1.18,1.26])
+        err = np.atleast_2d([1.18, 1.26]).T
     else:
         # DM https: // arxiv.org / abs / 1708.02225, Bourboux
         data = np.array([36.6])
@@ -295,7 +353,8 @@ else:
     print('Ly-alpha:', data, err, planckvals)
     errorbar([redshift], data / planckvals, err / planckvals, fmt='.', color='orange', marker='H', markersize=3)
 if updated2019:
-    text(2.00, 0.973, r'DR14 Ly-$\alpha$/'+'\n\\quad quasars ($D_M$)', color='orange', horizontalalignment='left', fontsize=7.5)
+    text(2.00, 0.973, r'DR14 Ly-$\alpha$/' + '\n\\quad quasars ($D_M$)', color='orange', horizontalalignment='left',
+         fontsize=7.5)
 else:
     text(2.23, 0.97, r'BOSS Ly-$\alpha$ ($D_M$)', color='orange', horizontalalignment='center')
 

@@ -1,4 +1,7 @@
+gfortran -v
 
+# Getting Choleksy errors: bug in openBLAS? https://github.com/xianyi/OpenBLAS/pull/2286
+export OPENBLAS_CORETYPE=Haswell
 cd /cosmomc
 wget https://pla.esac.esa.int/pla/aio/product-action?COSMOLOGY.FILE_ID=COM_Likelihood_Code-v3.0_R3.01.tar.gz
 tar xvf *.tar.gz
@@ -23,4 +26,3 @@ rc=$?
 
 
 exit $rc
-

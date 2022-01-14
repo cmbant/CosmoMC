@@ -1,3 +1,8 @@
+import sys, os
+os.chdir(r'c:\work\dist\git\cosmomc')
+sys.path.insert(0, r'c:\work\dist\git\cosmomc\python')
+
+
 import planckStyle as s
 import pylab as plt
 
@@ -8,8 +13,8 @@ updated = True
 legacy = False
 
 if updated:
-    g.add_y_bands(74.03, 1.42)
-    g.add_text_left('Riess et al. (2019)', 0.03, 0.8, color='k', fontsize=7)
+    g.add_y_bands(73.2, 1.3)
+    g.add_text_left('Riess et al. (2021)', 0.03, 0.76, color='k', fontsize=7)
 else:
     g.add_y_bands(73.45, 1.66)
     g.add_text_left('Riess et al. (2018)', 0.03, 0.76, color='k', fontsize=7)
