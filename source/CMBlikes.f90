@@ -793,13 +793,7 @@
                     & covmat_scale*Cov( (binx-1)*num_in+cov_cl_used, (biny-1)*num_in+cov_cl_used)
             end do
         end do
-        print *, 'binned', size(this%inv_covariance)
-        print *, sum(this%inv_covariance**2)
-        do i=1, size(this%inv_covariance,1)
-             print *, this%inv_covariance(i,i)
-        end do
         call Matrix_Inverse(this%inv_covariance)
-        print *, 'done'
     else
         vecsize_in =  (this%pcl_lmax-this%pcl_lmin+1)
         if (IsMainMPI()) then

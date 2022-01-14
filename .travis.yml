@@ -4,7 +4,7 @@ language: shell
 git:
   depth: false
 
-dist: bionic
+dist: focal
 
 services:
   - docker
